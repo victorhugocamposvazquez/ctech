@@ -75,6 +75,21 @@ curl -X POST http://localhost:3000/api/trades/manual \
 
 Ejecuta `supabase/schema.sql` en el SQL Editor de Supabase para crear tablas y políticas RLS del MVP.
 
+## Migraciones de Supabase (historial en proyecto)
+
+- Carpeta de migraciones: `supabase/migrations/`
+- Índice legible: `supabase/migrations/README.md`
+- Comando para listarlas:
+
+```bash
+npm run db:migrations:list
+```
+
+La primera migración quedó registrada como:
+- `supabase/migrations/20260222223000_init_schema.sql`
+
+Cuando hagamos cambios de esquema, añadimos nuevas migraciones con timestamp y se actualiza el índice.
+
 ## Deploy en Vercel
 
 Si ves este error:

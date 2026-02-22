@@ -1,0 +1,7 @@
+-- Initial migration for CTech.
+-- NOTE:
+-- This migration corresponds to the schema snapshot in:
+--   supabase/schema.sql
+--
+-- Keep this file as the first migration marker in git history.
+-- For next changes, create new timestamped files in this folder.
