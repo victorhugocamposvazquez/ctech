@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import logo from "../../../logo.png";
 
 const nav = [
   { label: "Dashboard", href: "/dashboard" },
@@ -12,8 +14,8 @@ export default function DashboardSidebar() {
   return (
     <aside className="w-64 shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col">
       <div className="p-6 border-b border-slate-200 dark:border-slate-700">
-        <Link href="/dashboard" className="text-xl font-bold text-slate-900 dark:text-white">
-          CTech
+        <Link href="/dashboard" className="inline-block">
+          <Image src={logo} alt="CTech logo" width={170} className="h-auto" priority />
         </Link>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           Copy Trading

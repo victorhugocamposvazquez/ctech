@@ -37,6 +37,58 @@ SaaS de copy trading con señales, ejecución automática y autoaprendizaje. Nex
 
 Las rutas bajo `/dashboard` requieren sesión; si no estás logueado te redirige a `/login`.
 
+## API mínima (MVP)
+
+- `GET /api/dashboard/kpis` → devuelve `signalsToday`, `tradesToday`, `pnlTotal`.
+- `POST /api/signals` → crea una señal para el usuario autenticado.
+- `POST /api/trades/manual` → crea una operación manual (`status: open`).
+
+### Ejemplos rápidos
+
+```bash
+curl -X POST http://localhost:3000/api/signals \
+  -H "Content-Type: application/json" \
+  -d '{
+    "strategyName": "mvp_rule_1",
+    "symbol": "BTCUSDT",
+    "timeframe": "1m",
+    "direction": "buy",
+    "score": 0.82,
+    "source": "manual"
+  }'
+```
+
+```bash
+curl -X POST http://localhost:3000/api/trades/manual \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "BTCUSDT",
+    "side": "buy",
+    "quantity": 0.001,
+    "entryPrice": 95000
+  }'
+```
+
+> Nota: estas rutas requieren sesión válida (cookies de Supabase en el navegador).
+
+## SQL de Supabase
+
+Ejecuta `supabase/schema.sql` en el SQL Editor de Supabase para crear tablas y políticas RLS del MVP.
+
+## Deploy en Vercel
+
+Si ves este error:
+
+`No Output Directory named "public" found after the build complete`
+
+la causa suele ser configuración incorrecta del proyecto en Vercel (Output Directory forzado a `public`).
+
+Este repo ya incluye `vercel.json` con `framework: nextjs`. Además, en Vercel revisa:
+
+- **Framework Preset**: `Next.js`
+- **Build Command**: `next build` (o por defecto)
+- **Output Directory**: vacío / por defecto (no `public`)
+
 ## Stack
 
 - **Next.js 15** (App Router), **TypeScript**, **Tailwind CSS**

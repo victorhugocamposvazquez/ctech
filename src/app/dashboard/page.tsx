@@ -1,4 +1,41 @@
-export default function DashboardPage() {
+import { createClient } from "@/lib/supabase/server";
+
+function startOfTodayIso() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return start.toISOString();
+}
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const todayIso = startOfTodayIso();
+
+  const [signalsResult, tradesResult, pnlResult] = await Promise.all([
+    supabase
+      .from("signals")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user?.id ?? "")
+      .gte("generated_at", todayIso),
+    supabase
+      .from("trades")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user?.id ?? "")
+      .gte("opened_at", todayIso),
+    supabase
+      .from("trades")
+      .select("pnl_abs")
+      .eq("user_id", user?.id ?? "")
+      .not("pnl_abs", "is", null),
+  ]);
+
+  const signalsToday = signalsResult.count ?? 0;
+  const tradesToday = tradesResult.count ?? 0;
+  const pnlTotal =
+    pnlResult.data?.reduce((acc, row) => acc + Number(row.pnl_abs ?? 0), 0) ?? 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -16,7 +53,7 @@ export default function DashboardPage() {
             Señales hoy
           </h3>
           <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
-            —
+            {signalsToday}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
@@ -24,7 +61,7 @@ export default function DashboardPage() {
             Trades hoy
           </h3>
           <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
-            —
+            {tradesToday}
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
@@ -32,7 +69,7 @@ export default function DashboardPage() {
             PnL acumulado
           </h3>
           <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
-            —
+            {pnlTotal.toFixed(2)}
           </p>
         </div>
       </div>

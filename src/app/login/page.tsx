@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import logo from "../../../logo.png";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -58,6 +60,13 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-900">
       <div className="w-full max-w-sm space-y-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 shadow-lg">
         <div className="text-center">
+          <Image
+            src={logo}
+            alt="CTech logo"
+            width={220}
+            className="mx-auto mb-4 h-auto"
+            priority
+          />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             Iniciar sesión
           </h1>
