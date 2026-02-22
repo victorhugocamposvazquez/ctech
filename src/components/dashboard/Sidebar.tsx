@@ -13,11 +13,21 @@ const nav = [
   { label: "Configuración", href: "/dashboard/config" },
 ];
 
-export default function DashboardSidebar() {
+type DashboardSidebarProps = {
+  className?: string;
+  onNavigate?: () => void;
+};
+
+export default function DashboardSidebar({
+  className = "",
+  onNavigate,
+}: DashboardSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-72 shrink-0 border-r border-white/10 bg-[#0b1230]/95 backdrop-blur-xl flex flex-col">
+    <aside
+      className={`border-r border-white/10 bg-[#0b1230]/95 backdrop-blur-xl flex flex-col ${className}`}
+    >
       <div className="p-6 border-b border-white/10">
         <Link href="/dashboard" className="inline-block">
           <Image src={logo} alt="CTech logo" width={170} className="h-auto" priority />
@@ -31,6 +41,7 @@ export default function DashboardSidebar() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={onNavigate}
             className={`block rounded-xl px-4 py-3 text-sm font-medium transition ${
               pathname === item.href
                 ? "bg-gradient-to-r from-indigo-500/30 to-cyan-400/20 text-cyan-200 border border-cyan-300/30 shadow-[0_0_22px_rgba(56,189,248,0.22)]"

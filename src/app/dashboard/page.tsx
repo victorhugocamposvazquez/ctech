@@ -39,20 +39,20 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-7">
       <div>
-        <h1 className="text-2xl font-bold text-white">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">
           Dashboard
         </h1>
-        <p className="mt-1 text-slate-300">
+        <p className="mt-1 text-sm sm:text-base text-slate-300">
           Resumen de señales, trades y estado del sistema.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <div className="rounded-2xl border border-white/10 bg-[#1a234f]/90 p-6 shadow-[0_18px_40px_rgba(6,8,25,0.45)]">
           <h3 className="text-sm font-medium text-slate-300">
             Señales hoy
           </h3>
-          <p className="mt-2 text-4xl font-semibold text-white">
+          <p className="mt-2 text-3xl sm:text-4xl font-semibold text-white">
             {signalsToday}
           </p>
         </div>
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
           <h3 className="text-sm font-medium text-indigo-100">
             Trades hoy
           </h3>
-          <p className="mt-2 text-4xl font-semibold text-white">
+          <p className="mt-2 text-3xl sm:text-4xl font-semibold text-white">
             {tradesToday}
           </p>
         </div>
@@ -68,7 +68,7 @@ export default async function DashboardPage() {
           <h3 className="text-sm font-medium text-slate-300">
             PnL acumulado
           </h3>
-          <p className={`mt-2 text-4xl font-semibold ${pnlTotal >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+          <p className={`mt-2 text-3xl sm:text-4xl font-semibold ${pnlTotal >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
             {pnlTotal.toFixed(2)}
           </p>
         </div>
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
               Live mode
             </span>
           </div>
-          <div className="mt-5 h-52 rounded-xl border border-white/10 bg-gradient-to-b from-[#1f2a63] to-[#0f1538] p-4 flex items-end">
+          <div className="mt-5 h-44 sm:h-52 rounded-xl border border-white/10 bg-gradient-to-b from-[#1f2a63] to-[#0f1538] p-4 flex items-end">
             <div className="relative h-full w-full">
               <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-[size:28px_28px]" />
               <svg viewBox="0 0 500 180" className="absolute inset-0 h-full w-full">
