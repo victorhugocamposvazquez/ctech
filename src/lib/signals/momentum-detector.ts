@@ -30,6 +30,7 @@ export interface MomentumScanResult {
   signals: MomentumSignal[];
   poolsScanned: number;
   networkErrors: string[];
+  filterStats?: Record<string, number>;
 }
 
 export interface MomentumConfig {
@@ -46,13 +47,13 @@ export interface MomentumConfig {
 
 const DEFAULT_CONFIG: MomentumConfig = {
   networks: ["solana"],
-  minLiquidityUsd: 20_000,
+  minLiquidityUsd: 10_000,
   maxLiquidityUsd: 50_000_000,
-  minVolume24h: 15_000,
-  minBuyPressure: 1.2,
+  minVolume24h: 5_000,
+  minBuyPressure: 1.1,
   minMomentumScore: 45,
-  minPairAgeDays: 1,
-  maxPriceChange24h: 80,
+  minPairAgeDays: 0.25,
+  maxPriceChange24h: 180,
   source: "birdeye",
 };
 
@@ -110,6 +111,7 @@ export class MomentumDetector {
 
     const seen = new Set<string>();
     const signals: MomentumSignal[] = [];
+    const filterStats: Record<string, number> = {};
 
     for (const pool of pools) {
       const pair = this.geckoPoolToDexPair(pool, tokens);
@@ -119,13 +121,19 @@ export class MomentumDetector {
       if (seen.has(key)) continue;
       seen.add(key);
 
+      const rejectReason = this.getRejectReason(pair);
+      if (rejectReason) {
+        filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+        continue;
+      }
+
       const signal = this.analyzePair(pair);
       if (signal) signals.push(signal);
     }
 
     signals.sort((a, b) => b.momentumScore - a.momentumScore);
 
-    return { signals, poolsScanned: pools.length, networkErrors: errors };
+    return { signals, poolsScanned: pools.length, networkErrors: errors, filterStats };
   }
 
   private async scanFromBirdeye(): Promise<MomentumScanResult> {
@@ -141,17 +149,25 @@ export class MomentumDetector {
       const pairs = await this.birdeye.getTrendingPairs(60);
       const seen = new Set<string>();
       const signals: MomentumSignal[] = [];
+      const filterStats: Record<string, number> = {};
 
       for (const pair of pairs) {
         const key = `${pair.chainId}:${pair.baseToken.address}`;
         if (seen.has(key)) continue;
         seen.add(key);
+
+        const rejectReason = this.getRejectReason(pair);
+        if (rejectReason) {
+          filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+          continue;
+        }
+
         const signal = this.analyzePair(pair);
         if (signal) signals.push(signal);
       }
 
       signals.sort((a, b) => b.momentumScore - a.momentumScore);
-      return { signals, poolsScanned: pairs.length, networkErrors: [] };
+      return { signals, poolsScanned: pairs.length, networkErrors: [], filterStats };
     } catch (err) {
       return {
         signals: [],
@@ -282,14 +298,16 @@ export class MomentumDetector {
     const priceChange24h = pair.priceChange?.h24 ?? 0;
     if (Math.abs(priceChange24h) > this.config.maxPriceChange24h) return null;
 
-    const txns24h = pair.txns?.h24 ?? { buys: 0, sells: 0 };
-    const txCount24h = txns24h.buys + txns24h.sells;
-    const buyPressure =
-      txns24h.sells > 0
-        ? txns24h.buys / txns24h.sells
-        : txns24h.buys > 0
-          ? 5
-          : 0;
+      const txns24h = pair.txns?.h24 ?? { buys: 0, sells: 0 };
+      const txCount24h = txns24h.buys + txns24h.sells;
+      const buyPressure =
+        txCount24h < 5
+          ? 1.2
+          : txns24h.sells > 0
+            ? txns24h.buys / txns24h.sells
+            : txns24h.buys > 0
+              ? 5
+              : 0;
 
     if (buyPressure < this.config.minBuyPressure) return null;
 
@@ -387,5 +405,44 @@ export class MomentumDetector {
 
   getConfig(): Readonly<MomentumConfig> {
     return this.config;
+  }
+
+  private getRejectReason(pair: DexPair): string | null {
+    const liquidityUsd = pair.liquidity?.usd ?? 0;
+    const volume24h = pair.volume?.h24 ?? 0;
+    const price = parseFloat(pair.priceUsd) || 0;
+    if (liquidityUsd < this.config.minLiquidityUsd) return "low_liquidity";
+    if (liquidityUsd > this.config.maxLiquidityUsd) return "high_liquidity";
+    if (volume24h < this.config.minVolume24h) return "low_volume";
+    if (price <= 0) return "invalid_price";
+
+    const network = pair.chainId?.toLowerCase() ?? "";
+    if (this.config.networks.length > 0 && !this.config.networks.includes(network)) {
+      return "network_filtered";
+    }
+
+    const pairAgeMs = pair.pairCreatedAt ? Date.now() - pair.pairCreatedAt : 0;
+    const pairAgeDays = pairAgeMs / (24 * 60 * 60 * 1000);
+    if (pairAgeDays < this.config.minPairAgeDays) return "too_new_pair";
+
+    const priceChange24h = pair.priceChange?.h24 ?? 0;
+    if (Math.abs(priceChange24h) > this.config.maxPriceChange24h) return "price_too_volatile";
+
+    const txns24h = pair.txns?.h24 ?? { buys: 0, sells: 0 };
+    const txCount24h = txns24h.buys + txns24h.sells;
+    const buyPressure =
+      txCount24h < 5
+        ? 1.2
+        : txns24h.sells > 0
+          ? txns24h.buys / txns24h.sells
+          : txns24h.buys > 0
+            ? 5
+            : 0;
+    if (buyPressure < this.config.minBuyPressure) return "low_buy_pressure";
+
+    const volumeChange = this.calcVolumeAcceleration(pair);
+    const momentumScore = this.calcMomentumScore(pair, buyPressure, volumeChange, pairAgeDays);
+    if (momentumScore < this.config.minMomentumScore) return "low_momentum_score";
+    return null;
   }
 }

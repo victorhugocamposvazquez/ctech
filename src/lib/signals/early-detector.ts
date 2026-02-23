@@ -34,6 +34,7 @@ export interface EarlyScanResult {
   signals: EarlySignal[];
   poolsScanned: number;
   networkErrors: string[];
+  filterStats?: Record<string, number>;
 }
 
 export interface EarlyConfig {
@@ -54,13 +55,13 @@ const DEFAULT_CONFIG: EarlyConfig = {
   networks: ["solana"],
   minLiquidityUsd: 10_000,
   maxLiquidityUsd: 2_000_000,
-  minVolume24h: 5_000,
-  minBuyPressure: 1.2,
+  minVolume24h: 2_000,
+  minBuyPressure: 1.1,
   minBuyerSellerRatio: 1.1,
   minEarlyScore: 42,
   maxPairAgeHours: 72,
   minPairAgeHours: 1,
-  maxPriceChange24h: 200,
+  maxPriceChange24h: 400,
   source: "birdeye",
 };
 
@@ -115,6 +116,7 @@ export class EarlyDetector {
 
     const seen = new Set<string>();
     const signals: EarlySignal[] = [];
+    const filterStats: Record<string, number> = {};
 
     for (const pool of pools) {
       const pair = this.geckoPoolToDexPair(pool, tokens);
@@ -124,13 +126,19 @@ export class EarlyDetector {
       if (seen.has(key)) continue;
       seen.add(key);
 
+      const rejectReason = this.getRejectReason(pair, pool);
+      if (rejectReason) {
+        filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+        continue;
+      }
+
       const signal = this.analyzeEarlyPair(pair, pool);
       if (signal) signals.push(signal);
     }
 
     signals.sort((a, b) => b.earlyScore - a.earlyScore);
 
-    return { signals, poolsScanned: pools.length, networkErrors: errors };
+    return { signals, poolsScanned: pools.length, networkErrors: errors, filterStats };
   }
 
   private async scanFromBirdeye(): Promise<EarlyScanResult> {
@@ -146,17 +154,25 @@ export class EarlyDetector {
       const pairs = await this.birdeye.getNewPairs(60);
       const seen = new Set<string>();
       const signals: EarlySignal[] = [];
+      const filterStats: Record<string, number> = {};
 
       for (const pair of pairs) {
         const key = `${pair.chainId}:${pair.baseToken.address}`;
         if (seen.has(key)) continue;
         seen.add(key);
+
+        const rejectReason = this.getRejectReason(pair, null);
+        if (rejectReason) {
+          filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+          continue;
+        }
+
         const signal = this.analyzeEarlyPair(pair, null);
         if (signal) signals.push(signal);
       }
 
       signals.sort((a, b) => b.earlyScore - a.earlyScore);
-      return { signals, poolsScanned: pairs.length, networkErrors: [] };
+      return { signals, poolsScanned: pairs.length, networkErrors: [], filterStats };
     } catch (err) {
       return {
         signals: [],
@@ -274,9 +290,11 @@ export class EarlyDetector {
     const txns24h = pair.txns?.h24 ?? { buys: 0, sells: 0 };
     const txCount24h = txns24h.buys + txns24h.sells;
     const buyPressure =
-      txns24h.sells > 0
-        ? txns24h.buys / txns24h.sells
-        : txns24h.buys > 0 ? 5 : 0;
+      txCount24h < 5
+        ? 1.2
+        : txns24h.sells > 0
+          ? txns24h.buys / txns24h.sells
+          : txns24h.buys > 0 ? 5 : 0;
 
     if (buyPressure < this.config.minBuyPressure) return null;
 
@@ -415,5 +433,52 @@ export class EarlyDetector {
 
   getConfig(): Readonly<EarlyConfig> {
     return this.config;
+  }
+
+  private getRejectReason(
+    pair: DexPair,
+    pool: GeckoTerminalPool | null
+  ): string | null {
+    const liquidityUsd = pair.liquidity?.usd ?? 0;
+    const volume24h = pair.volume?.h24 ?? 0;
+    const price = parseFloat(pair.priceUsd) || 0;
+    if (liquidityUsd < this.config.minLiquidityUsd) return "low_liquidity";
+    if (liquidityUsd > this.config.maxLiquidityUsd) return "high_liquidity";
+    if (volume24h < this.config.minVolume24h) return "low_volume";
+    if (price <= 0) return "invalid_price";
+
+    const network = pair.chainId?.toLowerCase() ?? "";
+    if (this.config.networks.length > 0 && !this.config.networks.includes(network)) {
+      return "network_filtered";
+    }
+
+    const pairAgeMs = pair.pairCreatedAt ? Date.now() - pair.pairCreatedAt : 0;
+    const pairAgeHours = pairAgeMs / (60 * 60 * 1000);
+    if (pairAgeHours > this.config.maxPairAgeHours) return "too_old_pair";
+    if (pairAgeHours < this.config.minPairAgeHours) return "too_new_pair";
+
+    const priceChange24h = pair.priceChange?.h24 ?? 0;
+    if (Math.abs(priceChange24h) > this.config.maxPriceChange24h) return "price_too_volatile";
+
+    const txns24h = pair.txns?.h24 ?? { buys: 0, sells: 0 };
+    const txCount24h = txns24h.buys + txns24h.sells;
+    const buyPressure =
+      txCount24h < 5
+        ? 1.2
+        : txns24h.sells > 0
+          ? txns24h.buys / txns24h.sells
+          : txns24h.buys > 0 ? 5 : 0;
+    if (buyPressure < this.config.minBuyPressure) return "low_buy_pressure";
+
+    const buyerSellerRatio = this.calcBuyerSellerRatio(pool);
+    if (buyerSellerRatio < this.config.minBuyerSellerRatio) return "low_buyer_seller_ratio";
+
+    const volumeChange = this.calcVolumeGrowth(pair);
+    const earlyScore = this.calcEarlyScore(
+      pair, pool, buyPressure, buyerSellerRatio, volumeChange, pairAgeHours
+    );
+    if (earlyScore < this.config.minEarlyScore) return "low_early_score";
+
+    return null;
   }
 }

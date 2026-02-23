@@ -212,6 +212,14 @@ export class Orchestrator {
       for (const ne of scanResult.networkErrors) {
         result.errors.push(`Discovery trending: ${ne}`);
       }
+      if (scanResult.signals.length === 0 && scanResult.filterStats) {
+        const top = Object.entries(scanResult.filterStats)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 4)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(", ");
+        if (top) result.errors.push(`Trending filter stats: ${top}`);
+      }
     } catch (err) {
       result.errors.push(`Momentum scan: ${errMsg(err)}`);
     }
@@ -264,6 +272,14 @@ export class Orchestrator {
       result.earlyCandidates = earlyScan.signals.length;
       for (const ne of earlyScan.networkErrors) {
         result.errors.push(`Discovery early: ${ne}`);
+      }
+      if (earlyScan.signals.length === 0 && earlyScan.filterStats) {
+        const top = Object.entries(earlyScan.filterStats)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 4)
+          .map(([k, v]) => `${k}=${v}`)
+          .join(", ");
+        if (top) result.errors.push(`Early filter stats: ${top}`);
       }
     } catch (err) {
       result.errors.push(`Early scan: ${errMsg(err)}`);
