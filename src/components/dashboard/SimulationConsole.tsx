@@ -182,6 +182,25 @@ type CycleSummary = {
   };
 };
 
+type CycleHistoryItem = {
+  id: string;
+  timestamp: string;
+  regime: string;
+  pools_scanned: number;
+  tokens_scanned: number;
+  early_pools_scanned: number;
+  early_candidates: number;
+  signals_generated: number;
+  trades_opened: number;
+  trades_closed: number;
+  errors_count: number;
+};
+
+type CyclesResponse = {
+  count: number;
+  cycles: CycleHistoryItem[];
+};
+
 type SystemStatus = {
   ready: boolean;
   envs: Record<string, boolean>;
@@ -212,6 +231,7 @@ export default function SimulationConsole() {
 
   const [performance, setPerformance] = useState<PerformanceResponse | null>(null);
   const [positions, setPositions] = useState<PositionsResponse | null>(null);
+  const [cycles, setCycles] = useState<CyclesResponse | null>(null);
   const [lastCycle, setLastCycle] = useState<CycleSummary | null>(null);
   const [status, setStatus] = useState<SystemStatus | null>(null);
 
@@ -246,8 +266,9 @@ export default function SimulationConsole() {
     setLoadingData(true);
     setLastError(null);
     try {
-      const [perfRes, posRes] = await Promise.all([
+      const [perfRes, cyclesRes, posRes] = await Promise.all([
         fetch("/api/performance", { method: "GET" }),
+        fetch("/api/cycles?limit=10", { method: "GET" }),
         fetch(
           `/api/positions?status=${positionsStatus}&limit=${encodeURIComponent(
             positionsLimit
@@ -262,11 +283,16 @@ export default function SimulationConsole() {
       if (!posRes.ok) {
         throw new Error(`Positions HTTP ${posRes.status}`);
       }
+      if (!cyclesRes.ok) {
+        throw new Error(`Cycles HTTP ${cyclesRes.status}`);
+      }
 
       const perfData = (await perfRes.json()) as PerformanceResponse;
+      const cyclesData = (await cyclesRes.json()) as CyclesResponse;
       const posData = (await posRes.json()) as PositionsResponse;
 
       setPerformance(perfData);
+      setCycles(cyclesData);
       setPositions(posData);
     } catch (err) {
       setLastError(err instanceof Error ? err.message : String(err));
@@ -973,6 +999,29 @@ export default function SimulationConsole() {
         </div>
 
         <div className="space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              Historial de ciclos (persistido)
+            </h3>
+            <div className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1">
+              {cycles?.cycles?.length ? (
+                cycles.cycles.map((c) => (
+                  <div key={c.id} className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 text-[11px] text-slate-300">
+                    <p className="text-slate-400">{new Date(c.timestamp).toLocaleString()}</p>
+                    <p>
+                      {c.regime} · Trend {c.pools_scanned}/{c.tokens_scanned} · Early {c.early_pools_scanned}/{c.early_candidates}
+                    </p>
+                    <p>
+                      Señales {c.signals_generated} · Open {c.trades_opened} · Close {c.trades_closed} · Err {c.errors_count}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400">Sin ciclos persistidos todavía.</p>
+              )}
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-5">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
               Risk State

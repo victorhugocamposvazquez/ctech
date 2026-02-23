@@ -348,6 +348,7 @@ export class Orchestrator {
       result.errors.push(`Position check: ${errMsg(err)}`);
     }
 
+    await this.persistCycleRun(result);
     return result;
   }
 
@@ -639,6 +640,36 @@ export class Orchestrator {
         trades_today_satellite: riskState.tradesTodaySatellite,
       })
       .eq("user_id", this.userId);
+  }
+
+  private async persistCycleRun(result: CycleResult): Promise<void> {
+    try {
+      await this.supabase.from("cycle_runs").insert({
+        user_id: this.userId,
+        timestamp: result.timestamp.toISOString(),
+        regime: result.regime,
+        pools_scanned: result.poolsScanned,
+        tokens_scanned: result.tokensScanned,
+        early_pools_scanned: result.earlyPoolsScanned,
+        early_candidates: result.earlyCandidates,
+        signals_generated: result.signalsGenerated,
+        trades_opened: result.tradesOpened,
+        trades_closed: result.tradesClosed,
+        errors_count: result.errors.length,
+        errors: result.errors,
+        stress_events_count: result.stressEvents.length,
+        calibration: result.calibration ?? null,
+        rolling_metrics: result.rollingMetrics ?? null,
+        forward_prediction_7d: result.forwardPrediction7d ?? null,
+        forward_prediction_30d: result.forwardPrediction30d ?? null,
+        metadata: {
+          entriesCount: result.entries.length,
+          exitsCount: result.exits.length,
+        },
+      });
+    } catch {
+      // Non-blocking: cycle execution should never fail by logging issue
+    }
   }
 }
 
