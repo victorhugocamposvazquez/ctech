@@ -12,6 +12,7 @@ export async function GET() {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     CRON_SECRET: !!process.env.CRON_SECRET,
+    BIRDEYE_API_KEY: !!process.env.BIRDEYE_API_KEY,
     ARKHAM_API_KEY: !!process.env.ARKHAM_API_KEY,
   };
 
@@ -103,6 +104,9 @@ function buildNextSteps(
   }
   if (!envs.CRON_SECRET) {
     steps.push("Configura CRON_SECRET en Vercel (protege endpoints de cron).");
+  }
+  if (!envs.BIRDEYE_API_KEY) {
+    steps.push("Configura BIRDEYE_API_KEY para discovery principal en Solana.");
   }
   if (!db) {
     steps.push("Verifica la conexión con Supabase (URL/key incorrectos o proyecto inactivo).");

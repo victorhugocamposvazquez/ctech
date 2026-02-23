@@ -4,6 +4,7 @@ import {
   type GeckoTerminalPool,
   type GeckoTerminalToken,
 } from "../market/geckoterminal";
+import { BirdeyeClient } from "../market/birdeye";
 
 /**
  * Señal de un token en fase temprana con potencial.
@@ -46,19 +47,21 @@ export interface EarlyConfig {
   maxPairAgeHours: number;
   minPairAgeHours: number;
   maxPriceChange24h: number;
+  source: "birdeye" | "gecko";
 }
 
 const DEFAULT_CONFIG: EarlyConfig = {
-  networks: ["ethereum", "base", "solana", "arbitrum"],
-  minLiquidityUsd: 5_000,
+  networks: ["solana"],
+  minLiquidityUsd: 10_000,
   maxLiquidityUsd: 2_000_000,
-  minVolume24h: 3_000,
-  minBuyPressure: 1.3,
-  minBuyerSellerRatio: 1.2,
+  minVolume24h: 5_000,
+  minBuyPressure: 1.4,
+  minBuyerSellerRatio: 1.4,
   minEarlyScore: 50,
   maxPairAgeHours: 72,
-  minPairAgeHours: 1,
+  minPairAgeHours: 2,
   maxPriceChange24h: 200,
+  source: "birdeye",
 };
 
 /**
@@ -83,16 +86,30 @@ const DEFAULT_CONFIG: EarlyConfig = {
  */
 export class EarlyDetector {
   private gecko: GeckoTerminalClient;
+  private birdeye: BirdeyeClient | null;
   private dex: DexScreenerClient;
   private config: EarlyConfig;
 
   constructor(config?: Partial<EarlyConfig>) {
     this.gecko = new GeckoTerminalClient();
+    this.birdeye = null;
+    try {
+      this.birdeye = new BirdeyeClient();
+    } catch {
+      this.birdeye = null;
+    }
     this.dex = new DexScreenerClient();
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
   async scan(): Promise<EarlyScanResult> {
+    if (this.config.source === "birdeye") {
+      const fromBirdeye = await this.scanFromBirdeye();
+      if (fromBirdeye.signals.length > 0 || fromBirdeye.networkErrors.length === 0) {
+        return fromBirdeye;
+      }
+    }
+
     const { pools, tokens, errors } =
       await this.gecko.getNewPoolsMultiChain(this.config.networks);
 
@@ -114,6 +131,39 @@ export class EarlyDetector {
     signals.sort((a, b) => b.earlyScore - a.earlyScore);
 
     return { signals, poolsScanned: pools.length, networkErrors: errors };
+  }
+
+  private async scanFromBirdeye(): Promise<EarlyScanResult> {
+    if (!this.birdeye) {
+      return {
+        signals: [],
+        poolsScanned: 0,
+        networkErrors: ["Birdeye no configurado (falta BIRDEYE_API_KEY)"],
+      };
+    }
+
+    try {
+      const pairs = await this.birdeye.getNewPairs(60);
+      const seen = new Set<string>();
+      const signals: EarlySignal[] = [];
+
+      for (const pair of pairs) {
+        const key = `${pair.chainId}:${pair.baseToken.address}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const signal = this.analyzeEarlyPair(pair, null);
+        if (signal) signals.push(signal);
+      }
+
+      signals.sort((a, b) => b.earlyScore - a.earlyScore);
+      return { signals, poolsScanned: pairs.length, networkErrors: [] };
+    } catch (err) {
+      return {
+        signals: [],
+        poolsScanned: 0,
+        networkErrors: [`Birdeye new_listing: ${err instanceof Error ? err.message : String(err)}`],
+      };
+    }
   }
 
   async analyzeToken(

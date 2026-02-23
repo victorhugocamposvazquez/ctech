@@ -478,6 +478,15 @@ export default function SimulationConsole() {
         </section>
       )}
 
+      <section className="rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-4 py-2.5 flex flex-wrap items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide rounded bg-cyan-300/20 text-cyan-200 px-2 py-0.5">
+          Entorno actual
+        </span>
+        <span className="text-xs text-cyan-100">
+          Discovery: <strong>Birdeye</strong> · Red activa: <strong>Solana only</strong>
+        </span>
+      </section>
+
       <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-5 space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
           Control de simulación
@@ -529,7 +538,7 @@ export default function SimulationConsole() {
             onChange={(e) => setWalletLines(e.target.value)}
             rows={4}
             className="w-full rounded-lg border border-white/15 bg-[#0e1538] px-3 py-2 text-xs text-white outline-none focus:border-cyan-300/40"
-            placeholder="0xabc...,ethereum,alpha-1"
+            placeholder="So11111111111111111111111111111111111111112,solana,alpha-1"
           />
         </label>
 
@@ -1081,7 +1090,7 @@ function parseWalletLines(raw: string): Array<{
       const [address, network, label] = line.split(",").map((part) => part?.trim());
       return {
         address: (address ?? "").toLowerCase(),
-        network: network ? network.toLowerCase() : "ethereum",
+        network: network ? network.toLowerCase() : "solana",
         label: label || undefined,
       };
     })

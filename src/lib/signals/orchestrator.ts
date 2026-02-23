@@ -210,7 +210,7 @@ export class Orchestrator {
       result.poolsScanned = scanResult.poolsScanned;
       result.tokensScanned = scanResult.signals.length;
       for (const ne of scanResult.networkErrors) {
-        result.errors.push(`GeckoTerminal trending: ${ne}`);
+        result.errors.push(`Discovery trending: ${ne}`);
       }
     } catch (err) {
       result.errors.push(`Momentum scan: ${errMsg(err)}`);
@@ -263,7 +263,7 @@ export class Orchestrator {
       result.earlyPoolsScanned = earlyScan.poolsScanned;
       result.earlyCandidates = earlyScan.signals.length;
       for (const ne of earlyScan.networkErrors) {
-        result.errors.push(`GeckoTerminal new_pools: ${ne}`);
+        result.errors.push(`Discovery early: ${ne}`);
       }
     } catch (err) {
       result.errors.push(`Early scan: ${errMsg(err)}`);

@@ -5,3 +5,4 @@ export type { TokenHealthResult } from "./token-health";
 export { DexScreenerQuoteFetcher } from "./quote-fetcher";
 export { RegimeDetector } from "./regime-detector";
 export type { RegimeSnapshot } from "./regime-detector";
+export { BirdeyeClient } from "./birdeye";

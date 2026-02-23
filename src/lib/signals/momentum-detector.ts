@@ -4,6 +4,7 @@ import {
   type GeckoTerminalPool,
   type GeckoTerminalToken,
 } from "../market/geckoterminal";
+import { BirdeyeClient } from "../market/birdeye";
 
 export interface MomentumSignal {
   tokenAddress: string;
@@ -40,17 +41,19 @@ export interface MomentumConfig {
   minMomentumScore: number;
   minPairAgeDays: number;
   maxPriceChange24h: number;
+  source: "birdeye" | "gecko";
 }
 
 const DEFAULT_CONFIG: MomentumConfig = {
-  networks: ["ethereum", "base", "solana", "arbitrum"],
-  minLiquidityUsd: 50_000,
+  networks: ["solana"],
+  minLiquidityUsd: 20_000,
   maxLiquidityUsd: 50_000_000,
-  minVolume24h: 10_000,
-  minBuyPressure: 1.2,
+  minVolume24h: 15_000,
+  minBuyPressure: 1.35,
   minMomentumScore: 55,
   minPairAgeDays: 2,
   maxPriceChange24h: 80,
+  source: "birdeye",
 };
 
 /**
@@ -74,11 +77,18 @@ const DEFAULT_CONFIG: MomentumConfig = {
 export class MomentumDetector {
   private dex: DexScreenerClient;
   private gecko: GeckoTerminalClient;
+  private birdeye: BirdeyeClient | null;
   private config: MomentumConfig;
 
   constructor(config?: Partial<MomentumConfig>) {
     this.dex = new DexScreenerClient();
     this.gecko = new GeckoTerminalClient();
+    this.birdeye = null;
+    try {
+      this.birdeye = new BirdeyeClient();
+    } catch {
+      this.birdeye = null;
+    }
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -88,6 +98,13 @@ export class MomentumDetector {
    * junto con el total de pools escaneados.
    */
   async scan(): Promise<MomentumScanResult> {
+    if (this.config.source === "birdeye") {
+      const fromBirdeye = await this.scanFromBirdeye();
+      if (fromBirdeye.signals.length > 0 || fromBirdeye.networkErrors.length === 0) {
+        return fromBirdeye;
+      }
+    }
+
     const { pools, tokens, errors } =
       await this.gecko.getTrendingPoolsMultiChain(this.config.networks);
 
@@ -109,6 +126,39 @@ export class MomentumDetector {
     signals.sort((a, b) => b.momentumScore - a.momentumScore);
 
     return { signals, poolsScanned: pools.length, networkErrors: errors };
+  }
+
+  private async scanFromBirdeye(): Promise<MomentumScanResult> {
+    if (!this.birdeye) {
+      return {
+        signals: [],
+        poolsScanned: 0,
+        networkErrors: ["Birdeye no configurado (falta BIRDEYE_API_KEY)"],
+      };
+    }
+
+    try {
+      const pairs = await this.birdeye.getTrendingPairs(60);
+      const seen = new Set<string>();
+      const signals: MomentumSignal[] = [];
+
+      for (const pair of pairs) {
+        const key = `${pair.chainId}:${pair.baseToken.address}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const signal = this.analyzePair(pair);
+        if (signal) signals.push(signal);
+      }
+
+      signals.sort((a, b) => b.momentumScore - a.momentumScore);
+      return { signals, poolsScanned: pairs.length, networkErrors: [] };
+    } catch (err) {
+      return {
+        signals: [],
+        poolsScanned: 0,
+        networkErrors: [`Birdeye trending: ${err instanceof Error ? err.message : String(err)}`],
+      };
+    }
   }
 
   /**
