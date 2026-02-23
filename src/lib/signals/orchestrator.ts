@@ -11,6 +11,7 @@ import { RiskGate } from "../engine/risk-gate";
 import { PaperBroker } from "../engine/paper-broker";
 import type { RiskState, TradeRecord } from "../engine/types";
 import { ArkhamClient } from "../arkham/client";
+import { SignalOutcomeTracker } from "./signal-outcome-tracker";
 
 export interface CycleResult {
   timestamp: Date;
@@ -62,6 +63,7 @@ export class Orchestrator {
   private regime: RegimeDetector;
   private riskGate: RiskGate;
   private broker: PaperBroker;
+  private outcomeTracker: SignalOutcomeTracker;
 
   constructor(
     private supabase: SupabaseClient,
@@ -84,6 +86,7 @@ export class Orchestrator {
       this.riskGate,
       new DexScreenerQuoteFetcher()
     );
+    this.outcomeTracker = new SignalOutcomeTracker(supabase);
   }
 
   async runCycle(): Promise<CycleResult> {
@@ -146,6 +149,18 @@ export class Orchestrator {
         const entryResult = await this.executeEntry(confluenceResult, riskState);
         result.entries.push(entryResult);
 
+        try {
+          await this.outcomeTracker.recordSignal(
+            this.userId,
+            confluenceResult,
+            entryResult.executed,
+            entryResult.executed ? null : entryResult.reason,
+            result.regime
+          );
+        } catch {
+          // No bloquear el ciclo si falla el tracking
+        }
+
         if (entryResult.executed) {
           result.tradesOpened++;
           await this.registerOpenedTrade(riskState, confluenceResult.layer);
@@ -155,7 +170,14 @@ export class Orchestrator {
       }
     }
 
-    // --- 7. Gestionar posiciones abiertas ---
+    // --- 7. Actualizar outcomes de señales pasadas ---
+    try {
+      await this.outcomeTracker.updatePendingOutcomes();
+    } catch (err) {
+      result.errors.push(`Outcome tracking: ${errMsg(err)}`);
+    }
+
+    // --- 8. Gestionar posiciones abiertas ---
     try {
       const exits = await this.positions.checkPositions(this.userId);
       result.exits = exits;

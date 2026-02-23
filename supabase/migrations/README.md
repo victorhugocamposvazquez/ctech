@@ -14,6 +14,7 @@ Este directorio guarda el historial de migraciones SQL de Supabase versionado en
 |---|---|---|
 | 1 | `20260222223000_init_schema.sql` | Migración inicial (referencia al snapshot base). |
 | 2 | `20260223120000_engine_tables.sql` | Engine: tracked_wallets, wallet_scores, wallet_movements, token_registry, token_health_snapshots, market_regimes, risk_state + campos nuevos en trades. |
+| 3 | `20260223180000_signal_outcomes.sql` | Signal outcomes: tracking de evolución de precio post-señal para validación forward del sistema. |
 
 ## Cómo añadir una nueva migración
 
