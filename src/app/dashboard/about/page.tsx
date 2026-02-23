@@ -156,6 +156,20 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="0.5.0"
+            date="23 feb 2026"
+            title="Motor de Señales v2: Momentum + Confluencia + Gestión de Posiciones + Orquestador"
+            items={[
+              "MomentumDetector: escanea DexScreener buscando tokens con volumen anómalo, liquidez creciente, ratio buy/sell alto y precio gradual. Genera momentumScore 0-100 con aceleración de volumen multi-timeframe.",
+              "ConfluenceEngine: combina 4 capas independientes (momentum 40 pts, wallet confluence 25 pts, token health 20 pts, régimen 15 pts) para generar un confidence score 0-100. Core si >= 75, Satellite si >= 50.",
+              "Wallet confluence: detecta cuando 3+ wallets con buen score compran el mismo token en <6h — la señal más fuerte del sistema.",
+              "PositionManager: gestión de trades abiertos con 5 señales de salida — trailing stop dinámico, tiempo máximo, volumen cayendo, liquidez bajando, take profit escalonado.",
+              "Orchestrator: pipeline completo end-to-end en un solo ciclo — régimen → momentum → token health → confluencia → riesgo → ejecución → gestión de posiciones.",
+              "API: POST /api/cycle ejecuta un ciclo completo del motor. En producción será un cron automático.",
+              "El sistema funciona sin Arkham ($0): momentum + DexScreener como señal principal. Arkham se añade como capa de confirmación opcional.",
+            ]}
+          />
+          <ChangelogEntry
             version="0.4.0"
             date="23 feb 2026"
             title="Market Intelligence: Token Health + QuoteFetcher + Régimen de Mercado"

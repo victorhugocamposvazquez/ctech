@@ -131,9 +131,22 @@ Este repo ya incluye `vercel.json` con `framework: nextjs`. Además, en Vercel r
 - **WalletScorer** — scoring de wallets (win rate, profit factor, drawdown, consistencia).
 - **SignalGenerator** — generación de señales operativas filtradas por wallet_score + token_health.
 
+## Señales (src/lib/signals)
+
+- **MomentumDetector** — escanea DexScreener buscando tokens con momentum anómalo (volumen, buy pressure, aceleración).
+- **ConfluenceEngine** — combina 4 capas (momentum + wallet confluence + token health + régimen) y decide si operar.
+- **PositionManager** — gestiona trades abiertos: trailing stops, tiempo máximo, salida por volumen/liquidez, take profit.
+- **Orchestrator** — pipeline completo end-to-end en un ciclo. API: `POST /api/cycle`.
+
+## Market Data (src/lib/market)
+
+- **DexScreenerClient** — precios, liquidez y volumen en tiempo real ($0).
+- **TokenHealthChecker** — scoring de salud de tokens con risk flags.
+- **DexScreenerQuoteFetcher** — conecta precios reales al PaperBroker.
+- **RegimeDetector** — clasifica mercado en risk_on/risk_off/neutral ($0).
+
 ## Próximos pasos
 
-- Integración con Dune Analytics (token health) y Glassnode (market regime).
-- Feed de precios DEX real para el PaperBroker (QuoteFetcher).
-- Cron/worker para escaneo automático periódico.
-- Loop de mejora continua (reentrenamiento semanal de scores).
+- Cron/worker para ejecutar ciclos automáticamente.
+- Loop de mejora continua (reentrenamiento semanal de scores y umbrales).
+- UI para visualizar señales, posiciones y rendimiento.
