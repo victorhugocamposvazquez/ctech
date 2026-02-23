@@ -53,7 +53,7 @@ export interface GeckoTerminalPool {
   relationships: {
     base_token:  { data: { id: string; type: string } };
     quote_token: { data: { id: string; type: string } };
-    network:     { data: { id: string; type: string } };
+    network?:    { data: { id: string; type: string } };
     dex:         { data: { id: string; type: string } };
   };
 }
@@ -202,5 +202,18 @@ export class GeckoTerminalClient {
       if (gt === gtNetworkId) return internal;
     }
     return gtNetworkId;
+  }
+
+  /**
+   * Obtiene el network id de un pool con fallback robusto:
+   * 1) relationships.network.data.id (si viene en payload)
+   * 2) prefijo de pool.id (ej: "eth_0x...", "solana_...")
+   */
+  getPoolNetworkId(pool: GeckoTerminalPool): string {
+    const fromRelationship = pool.relationships?.network?.data?.id;
+    if (fromRelationship) return fromRelationship;
+
+    const prefix = pool.id.split("_")[0];
+    return prefix || "unknown";
   }
 }

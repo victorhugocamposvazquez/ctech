@@ -130,7 +130,7 @@ export class EarlyDetector {
     tokenMap: Map<string, GeckoTerminalToken>
   ): DexPair | null {
     const a = pool.attributes;
-    const networkGt = pool.relationships.network.data.id;
+    const networkGt = this.gecko.getPoolNetworkId(pool);
     const chainId = this.gecko.resolveNetwork(networkGt);
 
     const baseRef = pool.relationships.base_token.data.id;
