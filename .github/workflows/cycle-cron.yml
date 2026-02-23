@@ -5,9 +5,14 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: ctech-cycle-scheduler
+  cancel-in-progress: false
+
 jobs:
   trigger-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Trigger /api/cron/cycle
         env:
@@ -24,13 +29,29 @@ jobs:
             exit 1
           fi
 
-          HTTP_STATUS=$(curl -sS -o response.json -w "%{http_code}" \
-            -X GET "${CTECH_BASE_URL%/}/api/cron/cycle?secret=${CRON_SECRET}")
+          endpoint="${CTECH_BASE_URL%/}/api/cron/cycle?secret=${CRON_SECRET}"
+          ok=0
 
-          echo "HTTP status: $HTTP_STATUS"
-          cat response.json
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt/3 -> $endpoint"
+            HTTP_STATUS=$(curl -sS --max-time 25 -o response.json -w "%{http_code}" \
+              -X GET "$endpoint")
 
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "Cycle trigger failed"
+            echo "HTTP status: $HTTP_STATUS"
+            cat response.json
+
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+              ok=1
+              break
+            fi
+
+            if [ "$attempt" -lt 3 ]; then
+              echo "Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+
+          if [ "$ok" -ne 1 ]; then
+            echo "Cycle trigger failed after 3 attempts"
             exit 1
           fi

@@ -131,6 +131,12 @@ El workflow llama:
 - `GET /api/cron/cycle?secret=...` cada 15 minutos
 - también se puede lanzar manualmente con `workflow_dispatch`
 
+### Monitorización de fallos del scheduler
+
+- Workflow: `.github/workflows/cycle-watchdog.yml`
+- Se activa cuando termina `CTech Cycle Scheduler`.
+- Si el ciclo falla, crea (o actualiza) una issue de incidencia con etiqueta `scheduler-incident`.
+
 ## Stack
 
 - **Next.js 15** (App Router), **TypeScript**, **Tailwind CSS**

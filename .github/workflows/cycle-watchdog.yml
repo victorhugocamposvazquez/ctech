@@ -1,0 +1,63 @@
+name: CTech Cycle Watchdog
+
+on:
+  workflow_run:
+    workflows: ["CTech Cycle Scheduler"]
+    types: [completed]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  alert-on-failure:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update incident issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueTitle = "Incident: Cycle scheduler failing";
+            const runUrl = context.payload.workflow_run.html_url;
+            const startedAt = context.payload.workflow_run.run_started_at;
+            const branch = context.payload.workflow_run.head_branch;
+
+            const issues = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: "open",
+              labels: "scheduler-incident"
+            });
+
+            const existing = issues.data.find((i) => i.title === issueTitle);
+            const body = [
+              "The cycle scheduler workflow failed.",
+              "",
+              `- Run: ${runUrl}`,
+              `- Branch: ${branch}`,
+              `- Started at: ${startedAt}`,
+              "",
+              "Please inspect GitHub Actions logs and the `/api/cron/cycle` endpoint."
+            ].join("\n");
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+              core.info(`Updated issue #${existing.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title: issueTitle,
+                body,
+                labels: ["scheduler-incident"]
+              });
+              core.info(`Created issue #${created.data.number}`);
+            }
