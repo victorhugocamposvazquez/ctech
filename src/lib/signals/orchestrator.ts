@@ -140,6 +140,7 @@ export class Orchestrator {
 
         if (entryResult.executed) {
           result.tradesOpened++;
+          await this.registerOpenedTrade(riskState, confluenceResult.layer);
         }
       } catch (err) {
         result.errors.push(`${signal.tokenSymbol}: ${errMsg(err)}`);
@@ -307,6 +308,28 @@ export class Orchestrator {
         is_paused: newState.isPaused,
         pause_reason: newState.pauseReason,
         pause_until: newState.pauseUntil?.toISOString() ?? null,
+      })
+      .eq("user_id", this.userId);
+
+    // Mantener estado en memoria sincronizado para cierres múltiples en el mismo ciclo.
+    Object.assign(riskState, newState);
+  }
+
+  private async registerOpenedTrade(
+    riskState: RiskState,
+    layer: "core" | "satellite"
+  ): Promise<void> {
+    if (layer === "core") {
+      riskState.tradesTodayCore += 1;
+    } else {
+      riskState.tradesTodaySatellite += 1;
+    }
+
+    await this.supabase
+      .from("risk_state")
+      .update({
+        trades_today_core: riskState.tradesTodayCore,
+        trades_today_satellite: riskState.tradesTodaySatellite,
       })
       .eq("user_id", this.userId);
   }

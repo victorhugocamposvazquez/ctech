@@ -17,6 +17,7 @@ export interface OpenPosition {
   currentPrice: number;
   pnlPct: number;
   trailingStopPrice: number;
+  metadata: Record<string, unknown>;
 }
 
 export interface ExitSignal {
@@ -116,16 +117,16 @@ export class PositionManager {
     const pnlPct = (currentPrice - pos.entryPrice) / pos.entryPrice;
     const highestPrice = Math.max(pos.highestPrice, currentPrice);
 
-    await this.updatePositionPrice(pos.tradeId, currentPrice, highestPrice);
-
     // 1. Trailing stop
     const trailingPct = pos.layer === "core"
       ? this.config.coreTrailingStopPct
       : this.config.satelliteTrailingStopPct;
 
     const trailingStopPrice = highestPrice * (1 - trailingPct);
+    await this.updatePositionPrice(pos, currentPrice, highestPrice, trailingStopPrice);
 
-    if (currentPrice <= trailingStopPrice && pnlPct < 0) {
+    const isAfterProfitRun = highestPrice > pos.entryPrice;
+    if (currentPrice <= trailingStopPrice && isAfterProfitRun) {
       return this.createExit(pos, currentPrice,
         `Trailing stop (${(trailingPct * 100).toFixed(0)}% desde máximo $${highestPrice.toFixed(6)})`
       );
@@ -145,7 +146,7 @@ export class PositionManager {
 
     // 3. Volumen cayendo (comparar con metadata de entrada si hay)
     if (currentVolume > 0) {
-      const entryVolume = (pos as unknown as { metadata?: { entryVolume24h?: number } }).metadata?.entryVolume24h;
+      const entryVolume = Number(pos.metadata.entryVolume24h ?? 0);
       if (entryVolume && entryVolume > 0) {
         const volumeRatio = currentVolume / entryVolume;
         if (volumeRatio < this.config.volumeDropExitThreshold && pnlPct > 0) {
@@ -220,24 +221,28 @@ export class PositionManager {
       currentPrice: Number(t.metadata?.currentPrice ?? t.entry_price) || 0,
       pnlPct: Number(t.pnl_pct) || 0,
       trailingStopPrice: Number(t.metadata?.trailingStopPrice ?? 0),
+      metadata: (t.metadata as Record<string, unknown>) ?? {},
     }));
   }
 
   private async updatePositionPrice(
-    tradeId: string,
+    pos: OpenPosition,
     currentPrice: number,
-    highestPrice: number
+    highestPrice: number,
+    trailingStopPrice: number
   ): Promise<void> {
     await this.supabase
       .from("trades")
       .update({
         metadata: {
+          ...pos.metadata,
           currentPrice,
           highestPrice,
+          trailingStopPrice,
           lastCheckedAt: new Date().toISOString(),
         },
       })
-      .eq("id", tradeId);
+      .eq("id", pos.tradeId);
   }
 
   private async closeTrade(exit: ExitSignal): Promise<void> {
