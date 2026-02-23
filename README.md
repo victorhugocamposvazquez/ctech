@@ -35,6 +35,7 @@ SaaS de copy trading con señales, ejecución automática y autoaprendizaje. Nex
 - `/login` – Login (email + contraseña o enlace mágico).
 - `/signup` – Registro.
 - `/dashboard` – Área privada (sidebar: Dashboard, Señales, Trades, Exchanges, Configuración).
+- `/dashboard/simulacion` – Consola operativa para bootstrap, run cycle, métricas y posiciones de paper trading.
 
 Las rutas bajo `/dashboard` requieren sesión; si no estás logueado te redirige a `/login`.
 

@@ -7,6 +7,7 @@ import logo from "../../../logo.png";
 
 const nav = [
   { label: "Dashboard", href: "/dashboard" },
+  { label: "Simulación", href: "/dashboard/simulacion" },
   { label: "Señales", href: "/dashboard/senales" },
   { label: "Trades", href: "/dashboard/trades" },
   { label: "Exchanges", href: "/dashboard/exchanges" },
