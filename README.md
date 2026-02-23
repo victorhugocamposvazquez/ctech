@@ -37,11 +37,19 @@ SaaS de copy trading con señales, ejecución automática y autoaprendizaje. Nex
 
 Las rutas bajo `/dashboard` requieren sesión; si no estás logueado te redirige a `/login`.
 
-## API mínima (MVP)
+## API
 
+### Dashboard
 - `GET /api/dashboard/kpis` → devuelve `signalsToday`, `tradesToday`, `pnlTotal`.
+
+### Señales y trades
 - `POST /api/signals` → crea una señal para el usuario autenticado.
 - `POST /api/trades/manual` → crea una operación manual (`status: open`).
+
+### Arkham Pipeline (Wallet Intelligence)
+- `GET /api/wallets` → lista wallets tracked del usuario (con último score).
+- `POST /api/wallets` → añade/actualiza una wallet al tracking.
+- `POST /api/scan` → ejecuta ciclo completo: escaneo de swaps → scoring de wallets → generación de señales.
 
 ### Ejemplos rápidos
 
@@ -110,7 +118,22 @@ Este repo ya incluye `vercel.json` con `framework: nextjs`. Además, en Vercel r
 - **Supabase** (Auth + DB)
 - Deploy en **Vercel**
 
-## Próximos pasos (producto)
+## Engine (src/lib/engine)
 
-- Modelo de datos en Supabase (señales, trades, exchanges).
-- Integración con APIs (Glassnode, Arkham, Dune) y ejecución en exchange.
+- **RiskGate** — evaluación pre-trade con kill switches (pérdida diaria, semanal, pérdidas consecutivas).
+- **PaperBroker** — ejecución simulada con slippage, gas y latencia realistas conectada a precios de mercado.
+- Arquitectura dual Core (estabilidad) + Satellite (alta asimetría).
+
+## Arkham Pipeline (src/lib/arkham)
+
+- **ArkhamClient** — cliente HTTP con rate limiting para Arkham Intelligence API.
+- **WalletTracker** — escaneo de swaps de wallets monitorizadas.
+- **WalletScorer** — scoring de wallets (win rate, profit factor, drawdown, consistencia).
+- **SignalGenerator** — generación de señales operativas filtradas por wallet_score + token_health.
+
+## Próximos pasos
+
+- Integración con Dune Analytics (token health) y Glassnode (market regime).
+- Feed de precios DEX real para el PaperBroker (QuoteFetcher).
+- Cron/worker para escaneo automático periódico.
+- Loop de mejora continua (reentrenamiento semanal de scores).

@@ -156,6 +156,20 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="0.3.0"
+            date="23 feb 2026"
+            title="Arkham Pipeline: Wallet Intelligence + Signal Generation"
+            items={[
+              "Cliente Arkham API con rate limiting integrado (1 req/s), tipos de respuesta tipados y manejo de errores robusto.",
+              "WalletTracker: escanea swaps (DEX trades) de wallets monitorizadas vía GET /swaps, filtra duplicados y persiste movimientos nuevos.",
+              "WalletScorer: empareja compras/ventas por token, calcula win rate, profit factor, drawdown, consistencia y genera score compuesto 0-100.",
+              "SignalGenerator: convierte movimientos cualificados en señales operativas — solo si wallet_score >= 70 y token_health >= 65.",
+              "Asignación automática de layer: Core (wallet >= 80, token sano) vs Satellite (resto que pase filtros mínimos).",
+              "API: GET/POST /api/wallets (gestionar wallets tracked), POST /api/scan (ejecutar ciclo completo: escaneo → scoring → señales).",
+              "Página 'Sobre CTech' con presentación para inversores, explicación detallada del sistema y changelog.",
+            ]}
+          />
+          <ChangelogEntry
             version="0.2.0"
             date="23 feb 2026"
             title="Engine: Risk Gate + Paper Broker + modelo de datos completo"
