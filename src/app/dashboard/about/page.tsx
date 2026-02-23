@@ -137,18 +137,60 @@ export default function AboutPage() {
               incluso sin Arkham API."
           />
           <Block
-            title="10. Validación Forward + Reentrenamiento Incremental"
+            title="10. Validación Forward + Reentrenamiento Incremental v2"
             description="Cada señal generada se registra con su precio de entrada.
               El sistema consulta el precio real a 1h, 6h, 24h, 48h y 7d
-              para calcular hit rate y PnL medio. El IncrementalCalibrator
-              usa esos outcomes para auto-ajustar umbrales (momentum score,
-              early score, confianza core/satellite) con pasos de ±2 pts.
-              Si el hit rate core cae del 55% → sube umbrales (más selectivo).
-              Si sube del 70% → baja umbrales (más señales). Requiere mínimo
-              20 outcomes tracked para activarse."
+              para calcular hit rate y PnL medio. El IncrementalCalibrator v2
+              usa esos outcomes para auto-ajustar umbrales con pasos adaptativos
+              (±2-4 pts según gap vs target). Nuevo: trackea exposición
+              acumulada por detector (momentum vs early), calcula profit factor
+              por pipeline, detecta overlap entre detectores y recomienda
+              sesgo (momentum-biased, early-biased o balanced). Si un detector
+              domina >70% de exposure pero tiene peor PF → rebalancea."
           />
           <Block
-            title="11. Métricas Rolling y Forward-Looking"
+            title="11. Simulación de Eventos Extremos (Stress Testing)"
+            description="El StressEventSimulator modela 5 tipos de black swan:
+              liquidity rug (LP retira liquidez), flash crash (liquidaciones
+              en cascada), exploit/hack (contrato drenado), whale dump
+              (gran holder vende) y oracle failure (feed manipulado). Dos
+              modos: (1) rollForEvent() — check probabilístico en cada fill
+              del PaperBroker, modulado por liquidez, edad del par y layer;
+              (2) runStressTest() — test determinista que evalúa N escenarios
+              contra cada posición abierta. Devuelve pérdida media/máxima,
+              tasa de supervivencia y % de eventos que RiskGate atraparía."
+          />
+          <Block
+            title="12. Monitor de Sensibilidad"
+            description="El SensitivityMonitor evalúa cómo cambios de ±5% y ±10%
+              en parámetros clave (momentum threshold, early threshold,
+              confianza core/satellite, trailing stop, max daily loss)
+              afectarían profit factor, expectancy, win rate y drawdown.
+              Identifica el parámetro más sensible del sistema y genera
+              una recomendación accionable. Accesible desde el dashboard."
+          />
+          <Block
+            title="13. Capital Scaling — Saturación de Edge"
+            description="El CapitalScalingSimulator proyecta cómo se degrada el
+              edge al crecer el capital ($500 → $1M). Modela el incremento
+              no-lineal de slippage en pools micro/small-cap, la limitación
+              de posiciones por profundidad del pool, y la saturación de
+              oportunidades. Calcula: capital óptimo (máximo edge), capital
+              de breakeven (edge = 0), PnL mensual proyectado por nivel
+              de capital. Permite planificar scaling responsable."
+          />
+          <Block
+            title="14. Predicción Forward — Monte Carlo"
+            description="El ForwardPredictor ejecuta 5.000 simulaciones Monte Carlo
+              sobre la distribución reciente de trades para proyectar a 7d y 30d:
+              PnL esperado con percentiles (P10/P25/P50/P75/P90), drawdown
+              esperado con P90/P95, probabilidad de drawdown >5% y >10%,
+              racha de pérdidas esperada y P90, probabilidad de PnL positivo,
+              y riesgo de ruina (pérdida >5% del capital). Usa distribución
+              Student-t para modelar fat tails propios de DeFi."
+          />
+          <Block
+            title="15. Métricas Rolling y Forward-Looking"
             description="El RollingPerformanceEngine calcula métricas en ventanas
               de 7 y 30 días: profit factor por capa, expectancy ajustada
               por slippage/gas/competencia, drawdown actual y máximo,
@@ -157,13 +199,16 @@ export default function AboutPage() {
               en el dashboard para toma de decisiones informada."
           />
           <Block
-            title="12. Orquestación Automática — Doble Pipeline"
-            description="Cada ciclo: (0) Carga rolling metrics + calibra umbrales →
+            title="16. Orquestación Automática — Doble Pipeline + Stress"
+            description="Cada ciclo: (0) Carga rolling metrics + calibra umbrales
+              con exposición cruzada + forward prediction Monte Carlo →
               (1) Detecta régimen → (2) Inyecta smart money simulado →
-              (3) Pipeline Trending (MomentumDetector → ConfluenceEngine → Core/Sat) →
-              (4) Pipeline Early (EarlyDetector → ConfluenceEngine con wallet boost
-              → Satellite) → (5) Actualiza outcomes → (6) Gestiona posiciones.
-              Deduplicación automática. Todo automático, 24/7, $0."
+              (3) Pipeline Trending con stress events probabilísticos →
+              (4) Pipeline Early con wallet boost →
+              (5) Actualiza outcomes → (6) Gestiona posiciones.
+              Stress events se registran en el ciclo. Análisis avanzado
+              (stress test, sensibilidad, capital scaling) bajo demanda
+              desde el dashboard. Todo automático, 24/7, $0."
           />
         </div>
       </section>
@@ -182,8 +227,16 @@ export default function AboutPage() {
           <Metric label="Avg slippage (AMM + competencia)" />
           <Metric label="Recovery factor" />
           <Metric label="Rachas (W/L streaks)" />
-          <Metric label="Calibración auto (umbrales)" />
+          <Metric label="Calibración auto (umbrales + exposición)" />
           <Metric label="Hit rate por régimen" />
+          <Metric label="Monte Carlo PnL percentiles (P10-P90)" />
+          <Metric label="Prob. drawdown > 5% / > 10%" />
+          <Metric label="Risk of ruin (pérdida >5% capital)" />
+          <Metric label="Stress test: supervivencia y captura RiskGate" />
+          <Metric label="Sensibilidad: parámetro más impactante" />
+          <Metric label="Capital scaling: edge óptimo y breakeven" />
+          <Metric label="Exposición por detector (momentum vs early)" />
+          <Metric label="Detector interaction (PF, overlap, bias)" />
         </ul>
       </section>
 
@@ -226,6 +279,28 @@ export default function AboutPage() {
         </p>
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
+          <ChangelogEntry
+            version="1.1.0"
+            date="23 feb 2026"
+            title="Stress Testing, Sensibilidad, Capital Scaling, Monte Carlo, Calibrador v2"
+            items={[
+              "StressEventSimulator: simula 5 tipos de black swan (rug pull, flash crash, exploit, whale dump, oracle failure). Check probabilístico en cada fill + test determinista bajo demanda.",
+              "SensitivityMonitor: evalúa impacto de ±5/10% en parámetros clave sobre PF, expectancy, win rate y drawdown. Identifica parámetro más sensible con recomendación.",
+              "CapitalScalingSimulator: proyecta edge, slippage y saturación de pools desde $500 hasta $1M. Calcula capital óptimo y breakeven.",
+              "ForwardPredictor: 5.000 simulaciones Monte Carlo con Student-t (fat tails). PnL percentiles, probabilidad de drawdown, rachas y risk of ruin a 7d/30d.",
+              "IncrementalCalibrator v2: step size adaptativo (±2-4 pts), tracking de exposición por detector, profit factor por pipeline, detección de overlap, recomendación de bias.",
+              "PaperBroker con stress events: cada fill tiene probabilidad de rug pull, flash crash, etc. Liquidez y precio se ajustan in-situ si ocurre evento.",
+              "Orchestrator integra forward prediction Monte Carlo y registra stress events por ciclo.",
+              "API /api/simulation/stress-test: test de estrés bajo demanda contra posiciones abiertas.",
+              "API /api/simulation/sensitivity: análisis de sensibilidad paramétrica.",
+              "API /api/simulation/capital-scaling: proyección de scaling con curva de edge.",
+              "API /api/performance ampliada con forwardPrediction7d y forwardPrediction30d.",
+              "Dashboard: sección 'Predicción Forward' con percentiles Monte Carlo. Sección 'Análisis Avanzado' con 3 botones (Stress Test, Sensibilidad, Capital Scaling) y resultados inline.",
+              "Migración calibration_v2: columnas exposure_momentum_pct, exposure_early_pct, detector_interaction (JSONB).",
+              "About: 16 bloques en 'Cómo funciona' (antes 12). Métricas ampliadas a 18.",
+              "Coste: sigue $0.",
+            ]}
+          />
           <ChangelogEntry
             version="1.0.0"
             date="23 feb 2026"

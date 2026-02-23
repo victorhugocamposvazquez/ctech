@@ -9,6 +9,8 @@ import { RiskGate } from "./risk-gate";
 import { SlippageModel } from "./slippage-model";
 import { CompetitionSimulator } from "./competition-simulator";
 import { MicroVolatility } from "./micro-volatility";
+import { StressEventSimulator } from "./stress-events";
+import type { StressEvent } from "./stress-events";
 
 /**
  * PaperBroker — ejecuta órdenes contra datos de mercado reales
@@ -17,14 +19,16 @@ import { MicroVolatility } from "./micro-volatility";
  * Flujo:
  *  1. RiskGate.evaluate() → ¿se puede operar?
  *  2. fetchQuote()          → precio/liquidez real del token
- *  3. MicroVolatility       → ruido de precio durante latencia
- *  4. SlippageModel (AMM)   → impacto no-lineal de precio
- *  5. CompetitionSimulator  → MEV / front-run / back-run
- *  6. buildTradeRecord()    → registro listo para Supabase
+ *  3. StressEvent check     → ¿evento extremo en este ciclo?
+ *  4. MicroVolatility       → ruido de precio durante latencia
+ *  5. SlippageModel (AMM)   → impacto no-lineal de precio
+ *  6. CompetitionSimulator  → MEV / front-run / back-run
+ *  7. buildTradeRecord()    → registro listo para Supabase
  */
 export class PaperBroker {
   private riskGate: RiskGate;
   private quoteFetcher: QuoteFetcher;
+  lastStressEvent: StressEvent | null = null;
 
   constructor(riskGate: RiskGate, quoteFetcher: QuoteFetcher) {
     this.riskGate = riskGate;
@@ -81,6 +85,28 @@ export class PaperBroker {
       };
     }
 
+    const pairAgeHours = (order.metadata?.pairAgeHours as number) ?? 100;
+    const stressEvent = StressEventSimulator.rollForEvent(
+      quote.liquidityUsd,
+      pairAgeHours,
+      order.layer
+    );
+    this.lastStressEvent = stressEvent;
+
+    if (stressEvent.type !== "none") {
+      quote = {
+        ...quote,
+        liquidityUsd: Math.max(
+          100,
+          quote.liquidityUsd * (1 + stressEvent.liquidityImpactPct)
+        ),
+        price: Math.max(
+          1e-12,
+          quote.price * (1 + stressEvent.priceImpactPct)
+        ),
+      };
+    }
+
     const fill = simulateFill(order, positionUsd, quote);
 
     const trade: TradeRecord = {
@@ -113,6 +139,7 @@ export class PaperBroker {
         wasBackrun: fill.wasBackrun,
         competitionSlippage: fill.competitionSlippagePct,
         noisePct: fill.noisePct,
+        stressEvent: stressEvent.type !== "none" ? stressEvent : undefined,
       },
     };
 

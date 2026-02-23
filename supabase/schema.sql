@@ -540,6 +540,9 @@ create table if not exists public.calibration_state (
   avg_pnl_24h               numeric not null default 0,
   profit_factor_rolling     numeric not null default 0,
   expectancy_rolling        numeric not null default 0,
+  exposure_momentum_pct     numeric not null default 50,
+  exposure_early_pct        numeric not null default 50,
+  detector_interaction      jsonb,
   calibrated_at             timestamptz not null default now(),
   created_at                timestamptz not null default now(),
   constraint uq_calibration_state_user unique (user_id)

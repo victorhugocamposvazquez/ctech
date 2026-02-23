@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { RollingPerformanceEngine } from "@/lib/engine/rolling-performance";
+import { ForwardPredictor } from "@/lib/engine/forward-predictor";
 
 /**
  * GET /api/performance — métricas de rendimiento del paper trading.
@@ -50,13 +51,19 @@ export async function GET() {
 
   let rolling7d = null;
   let rolling30d = null;
+  let forwardPrediction7d = null;
+  let forwardPrediction30d = null;
   try {
     const engine = new RollingPerformanceEngine(supabase);
     const both = await engine.computeBothWindows(user.id);
     rolling7d = both.rolling7d;
     rolling30d = both.rolling30d;
+
+    const capital = Number(riskResult.data?.capital ?? 10_000);
+    forwardPrediction7d = ForwardPredictor.predict(both.rolling30d, "7d", capital, 2_000);
+    forwardPrediction30d = ForwardPredictor.predict(both.rolling30d, "30d", capital, 2_000);
   } catch {
-    // Rolling metrics no disponibles
+    // Rolling / forward metrics no disponibles
   }
 
   return NextResponse.json({
@@ -64,6 +71,8 @@ export async function GET() {
     core: calcMetrics(core),
     satellite: calcMetrics(satellite),
     openPositions: open.length,
+    forwardPrediction7d,
+    forwardPrediction30d,
     riskState: riskResult.data
       ? {
           capital: Number(riskResult.data.capital),

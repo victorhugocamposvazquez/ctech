@@ -56,6 +56,82 @@ type RiskState = {
   pauseReason: string | null;
 } | null;
 
+type ForwardPredictionBlock = {
+  window: string;
+  simulations: number;
+  expectedPnl: number;
+  pnlP10: number;
+  pnlP25: number;
+  pnlMedian: number;
+  pnlP75: number;
+  pnlP90: number;
+  maxDrawdownExpected: number;
+  drawdownP90: number;
+  drawdownP95: number;
+  probDrawdownOver5Pct: number;
+  probDrawdownOver10Pct: number;
+  expectedLossStreak: number;
+  lossStreakP90: number;
+  probStreakOver5: number;
+  probPositivePnl: number;
+  probReturn2xDaily: number;
+  riskOfRuin5Pct: number;
+};
+
+type StressTestResult = {
+  positionsAnalyzed: number;
+  capital: number;
+  aggregated: {
+    avgLossPct: number;
+    maxLossPct: number;
+    avgSurvivalRate: number;
+    avgRiskGateCatchRate: number;
+  };
+};
+
+type SensitivityScenario = {
+  paramName: string;
+  baseValue: number;
+  deltaPercent: number;
+  newValue: number;
+  projectedPF: number;
+  projectedExpectancy: number;
+  projectedWinRate: number;
+  projectedDrawdown: number;
+  deltaFromBase: {
+    pfChange: number;
+    expectancyChange: number;
+    winRateChange: number;
+    drawdownChange: number;
+  };
+};
+
+type SensitivityReport = {
+  baseMetrics: { profitFactor: number; expectancy: number; winRate: number; drawdown: number };
+  scenarios: SensitivityScenario[];
+  mostSensitiveParam: string;
+  recommendation: string;
+};
+
+type CapitalScalingPoint = {
+  capitalUsd: number;
+  effectiveEdgePct: number;
+  avgSlippagePct: number;
+  poolSaturationPct: number;
+  maxPositionUsd: number;
+  profitFactorProjected: number;
+  monthlyPnlProjected: number;
+};
+
+type CapitalScalingReport = {
+  currentCapital: number;
+  optimalCapital: number;
+  saturationCapital: number;
+  edgeBreakevenCapital: number;
+  scalingCurve: CapitalScalingPoint[];
+  recommendation: string;
+};
+
 type PerformanceResponse = {
   global: PerformanceBlock;
   core: PerformanceBlock;
@@ -64,6 +140,8 @@ type PerformanceResponse = {
   riskState: RiskState;
   rolling7d: RollingBlock | null;
   rolling30d: RollingBlock | null;
+  forwardPrediction7d: ForwardPredictionBlock | null;
+  forwardPrediction30d: ForwardPredictionBlock | null;
 };
 
 type PositionRow = {
@@ -136,6 +214,11 @@ export default function SimulationConsole() {
   const [positions, setPositions] = useState<PositionsResponse | null>(null);
   const [lastCycle, setLastCycle] = useState<CycleSummary | null>(null);
   const [status, setStatus] = useState<SystemStatus | null>(null);
+
+  const [stressResult, setStressResult] = useState<StressTestResult | null>(null);
+  const [sensitivityResult, setSensitivityResult] = useState<SensitivityReport | null>(null);
+  const [capitalResult, setCapitalResult] = useState<CapitalScalingReport | null>(null);
+  const [loadingAdvanced, setLoadingAdvanced] = useState<string | null>(null);
 
   useEffect(() => {
     void checkStatus();
@@ -279,6 +362,48 @@ export default function SimulationConsole() {
       setLastError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoadingBootstrap(false);
+    }
+  }
+
+  async function runStressTest() {
+    setLoadingAdvanced("stress");
+    setLastError(null);
+    try {
+      const res = await fetch("/api/simulation/stress-test", { method: "POST" });
+      if (!res.ok) throw new Error(`Stress test HTTP ${res.status}`);
+      setStressResult(await res.json());
+    } catch (err) {
+      setLastError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoadingAdvanced(null);
+    }
+  }
+
+  async function runSensitivity() {
+    setLoadingAdvanced("sensitivity");
+    setLastError(null);
+    try {
+      const res = await fetch("/api/simulation/sensitivity");
+      if (!res.ok) throw new Error(`Sensitivity HTTP ${res.status}`);
+      setSensitivityResult(await res.json());
+    } catch (err) {
+      setLastError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoadingAdvanced(null);
+    }
+  }
+
+  async function runCapitalScaling() {
+    setLoadingAdvanced("capital");
+    setLastError(null);
+    try {
+      const res = await fetch("/api/simulation/capital-scaling");
+      if (!res.ok) throw new Error(`Capital scaling HTTP ${res.status}`);
+      setCapitalResult(await res.json());
+    } catch (err) {
+      setLastError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoadingAdvanced(null);
     }
   }
 
@@ -586,6 +711,204 @@ export default function SimulationConsole() {
           </div>
         </section>
       )}
+
+      {/* Forward Prediction (Monte Carlo) */}
+      {performance?.forwardPrediction7d && (
+        <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-5 space-y-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+            Predicción Forward (Monte Carlo)
+          </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {[performance.forwardPrediction7d, performance.forwardPrediction30d].filter(Boolean).map((fp) => (
+              <div key={fp!.window} className="rounded-xl border border-white/5 bg-white/[0.02] p-4 space-y-2">
+                <p className="text-xs font-semibold text-cyan-300 uppercase">{fp!.window} — {fp!.simulations.toLocaleString()} simulaciones</p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                  <p>PnL esperado: <span className={fp!.expectedPnl >= 0 ? "text-emerald-300" : "text-rose-300"}>${fp!.expectedPnl.toFixed(2)}</span></p>
+                  <p>PnL mediana: <span className={fp!.pnlMedian >= 0 ? "text-emerald-300" : "text-rose-300"}>${fp!.pnlMedian.toFixed(2)}</span></p>
+                  <p>P10/P90: ${fp!.pnlP10.toFixed(2)} / ${fp!.pnlP90.toFixed(2)}</p>
+                  <p>Prob PnL+: <span className={fp!.probPositivePnl > 50 ? "text-emerald-300" : "text-rose-300"}>{fp!.probPositivePnl}%</span></p>
+                  <p>DD esperado: {fp!.maxDrawdownExpected}%</p>
+                  <p>DD P95: <span className={fp!.drawdownP95 < 10 ? "text-emerald-300" : "text-rose-300"}>{fp!.drawdownP95}%</span></p>
+                  <p>Prob DD &gt;5%: {fp!.probDrawdownOver5Pct}%</p>
+                  <p>Prob DD &gt;10%: {fp!.probDrawdownOver10Pct}%</p>
+                  <p>Racha pérd. esp.: {fp!.expectedLossStreak.toFixed(1)}</p>
+                  <p>Racha P90: {fp!.lossStreakP90}</p>
+                  <p>Risk of ruin (5%): <span className={fp!.riskOfRuin5Pct < 5 ? "text-emerald-300" : "text-rose-300"}>{fp!.riskOfRuin5Pct}%</span></p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Advanced Analysis */}
+      <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-5 space-y-4">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+          Análisis avanzado
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void runStressTest()}
+            disabled={loadingAdvanced === "stress"}
+            className="rounded-lg bg-rose-500/80 hover:bg-rose-400 disabled:opacity-60 px-4 py-2 text-sm font-semibold text-white"
+          >
+            {loadingAdvanced === "stress" ? "Ejecutando..." : "Stress Test"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void runSensitivity()}
+            disabled={loadingAdvanced === "sensitivity"}
+            className="rounded-lg bg-amber-500/80 hover:bg-amber-400 disabled:opacity-60 px-4 py-2 text-sm font-semibold text-[#041025]"
+          >
+            {loadingAdvanced === "sensitivity" ? "Analizando..." : "Sensibilidad"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void runCapitalScaling()}
+            disabled={loadingAdvanced === "capital"}
+            className="rounded-lg bg-violet-500/80 hover:bg-violet-400 disabled:opacity-60 px-4 py-2 text-sm font-semibold text-white"
+          >
+            {loadingAdvanced === "capital" ? "Calculando..." : "Capital Scaling"}
+          </button>
+        </div>
+
+        {/* Stress Test Results */}
+        {stressResult && (
+          <div className="rounded-xl border border-rose-400/20 bg-rose-400/5 p-4 space-y-2">
+            <p className="text-xs font-semibold text-rose-300 uppercase">Stress Test — {stressResult.positionsAnalyzed} posiciones</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-300">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Pérdida media</p>
+                <p className="text-lg font-semibold text-rose-300">{stressResult.aggregated.avgLossPct}%</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Pérdida máxima</p>
+                <p className="text-lg font-semibold text-rose-300">{stressResult.aggregated.maxLossPct}%</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Supervivencia</p>
+                <p className="text-lg font-semibold text-emerald-300">{stressResult.aggregated.avgSurvivalRate}%</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">RiskGate detecta</p>
+                <p className="text-lg font-semibold text-cyan-300">{stressResult.aggregated.avgRiskGateCatchRate}%</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sensitivity Results */}
+        {sensitivityResult && (
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4 space-y-3">
+            <p className="text-xs font-semibold text-amber-300 uppercase">
+              Análisis de Sensibilidad
+            </p>
+            <p className="text-xs text-slate-300">{sensitivityResult.recommendation}</p>
+            <p className="text-xs text-slate-400">
+              Parámetro más sensible:{" "}
+              <span className="text-amber-300">{sensitivityResult.mostSensitiveParam}</span>
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-[10px]">
+                <thead>
+                  <tr className="text-slate-400">
+                    <th className="text-left py-1 pr-2">Parámetro</th>
+                    <th className="text-left py-1 pr-2">Delta</th>
+                    <th className="text-left py-1 pr-2">Base → Nuevo</th>
+                    <th className="text-left py-1 pr-2">PF</th>
+                    <th className="text-left py-1 pr-2">Expectancy</th>
+                    <th className="text-left py-1 pr-2">WinRate</th>
+                    <th className="text-left py-1 pr-2">DD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sensitivityResult.scenarios
+                    .filter((s) => Math.abs(s.deltaPercent) === 10)
+                    .map((s, i) => (
+                      <tr key={i} className="border-t border-white/5 text-slate-200">
+                        <td className="py-1 pr-2">{s.paramName.replace(/_/g, " ")}</td>
+                        <td className="py-1 pr-2">{s.deltaPercent > 0 ? "+" : ""}{s.deltaPercent}%</td>
+                        <td className="py-1 pr-2">{s.baseValue} → {s.newValue}</td>
+                        <td className={`py-1 pr-2 ${s.deltaFromBase.pfChange >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {s.deltaFromBase.pfChange >= 0 ? "+" : ""}{s.deltaFromBase.pfChange.toFixed(2)}
+                        </td>
+                        <td className={`py-1 pr-2 ${s.deltaFromBase.expectancyChange >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {s.deltaFromBase.expectancyChange >= 0 ? "+" : ""}{s.deltaFromBase.expectancyChange.toFixed(2)}
+                        </td>
+                        <td className={`py-1 pr-2 ${s.deltaFromBase.winRateChange >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {s.deltaFromBase.winRateChange >= 0 ? "+" : ""}{s.deltaFromBase.winRateChange.toFixed(2)}%
+                        </td>
+                        <td className={`py-1 pr-2 ${s.deltaFromBase.drawdownChange <= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                          {s.deltaFromBase.drawdownChange >= 0 ? "+" : ""}{s.deltaFromBase.drawdownChange.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Capital Scaling Results */}
+        {capitalResult && (
+          <div className="rounded-xl border border-violet-400/20 bg-violet-400/5 p-4 space-y-3">
+            <p className="text-xs font-semibold text-violet-300 uppercase">
+              Capital Scaling
+            </p>
+            <p className="text-xs text-slate-300">{capitalResult.recommendation}</p>
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Capital actual</p>
+                <p className="text-lg font-semibold text-white">${capitalResult.currentCapital.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Capital óptimo</p>
+                <p className="text-lg font-semibold text-emerald-300">${capitalResult.optimalCapital.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-500 uppercase">Breakeven</p>
+                <p className="text-lg font-semibold text-rose-300">${capitalResult.edgeBreakevenCapital.toLocaleString()}</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-[10px]">
+                <thead>
+                  <tr className="text-slate-400">
+                    <th className="text-left py-1 pr-2">Capital</th>
+                    <th className="text-left py-1 pr-2">Edge%</th>
+                    <th className="text-left py-1 pr-2">Slip%</th>
+                    <th className="text-left py-1 pr-2">Saturación</th>
+                    <th className="text-left py-1 pr-2">PF proy.</th>
+                    <th className="text-left py-1 pr-2">PnL/mes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {capitalResult.scalingCurve.map((row, i) => (
+                    <tr
+                      key={i}
+                      className={`border-t border-white/5 text-slate-200 ${row.capitalUsd === capitalResult.currentCapital ? "bg-white/5" : ""} ${row.capitalUsd === capitalResult.optimalCapital ? "bg-emerald-400/5" : ""}`}
+                    >
+                      <td className="py-1 pr-2">${row.capitalUsd.toLocaleString()}</td>
+                      <td className={`py-1 pr-2 ${row.effectiveEdgePct > 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                        {row.effectiveEdgePct.toFixed(3)}%
+                      </td>
+                      <td className="py-1 pr-2">{row.avgSlippagePct.toFixed(2)}%</td>
+                      <td className="py-1 pr-2">{row.poolSaturationPct.toFixed(0)}%</td>
+                      <td className={`py-1 pr-2 ${row.profitFactorProjected >= 1 ? "text-emerald-300" : "text-rose-300"}`}>
+                        {row.profitFactorProjected.toFixed(2)}
+                      </td>
+                      <td className={`py-1 pr-2 ${row.monthlyPnlProjected >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                        ${row.monthlyPnlProjected.toFixed(0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2 rounded-2xl border border-white/10 bg-[#131b43]/90 p-5">

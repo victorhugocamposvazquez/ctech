@@ -16,7 +16,11 @@ import type { RiskState, TradeRecord } from "../engine/types";
 import { ArkhamClient } from "../arkham/client";
 import { SignalOutcomeTracker } from "./signal-outcome-tracker";
 import { IncrementalCalibrator } from "./incremental-calibrator";
+import type { DetectorInteraction } from "./incremental-calibrator";
 import { SmartMoneySimulator } from "./smart-money-simulator";
+import { ForwardPredictor } from "../engine/forward-predictor";
+import type { ForwardPrediction } from "../engine/forward-predictor";
+import type { StressEvent } from "../engine/stress-events";
 
 export interface CycleResult {
   timestamp: Date;
@@ -37,7 +41,13 @@ export interface CycleResult {
     earlyThreshold: number;
     coreMinConf: number;
     satMinConf: number;
+    exposureMomentumPct?: number;
+    exposureEarlyPct?: number;
+    detectorBias?: string;
   };
+  forwardPrediction7d?: ForwardPrediction;
+  forwardPrediction30d?: ForwardPrediction;
+  stressEvents: StressEvent[];
 }
 
 interface EntryResult {
@@ -85,6 +95,7 @@ export class Orchestrator {
   private rollingEngine: RollingPerformanceEngine;
   private calibrator: IncrementalCalibrator;
   private smartMoney: SmartMoneySimulator;
+  private _pendingStressEvents: StressEvent[] = [];
 
   constructor(
     private supabase: SupabaseClient,
@@ -128,6 +139,7 @@ export class Orchestrator {
       entries: [],
       exits: [],
       errors: [],
+      stressEvents: [],
     };
 
     // --- 0. Rolling metrics + adaptive risk + calibration ---
@@ -147,6 +159,9 @@ export class Orchestrator {
           earlyThreshold: cal.earlyScoreThreshold,
           coreMinConf: cal.coreMinConfidence,
           satMinConf: cal.satelliteMinConfidence,
+          exposureMomentumPct: cal.exposureMomentumPct,
+          exposureEarlyPct: cal.exposureEarlyPct,
+          detectorBias: cal.detectorInteraction.recommendedBias,
         };
 
         this.confluence = new ConfluenceEngine(this.supabase, this.userId, {
@@ -158,6 +173,21 @@ export class Orchestrator {
       }
     } catch (err) {
       result.errors.push(`Calibración: ${errMsg(err)}`);
+    }
+
+    // --- 0b. Forward prediction (Monte Carlo) ---
+    if (result.rollingMetrics) {
+      try {
+        const riskState = await this.getRiskState();
+        result.forwardPrediction7d = ForwardPredictor.predict(
+          result.rollingMetrics, "7d", riskState.capital
+        );
+        result.forwardPrediction30d = ForwardPredictor.predict(
+          result.rollingMetrics, "30d", riskState.capital
+        );
+      } catch (err) {
+        result.errors.push(`Forward prediction: ${errMsg(err)}`);
+      }
     }
 
     // --- 1. Régimen de mercado ---
@@ -279,6 +309,9 @@ export class Orchestrator {
       }
     }
 
+    result.stressEvents = [...this._pendingStressEvents];
+    this._pendingStressEvents = [];
+
     // --- 4. Actualizar outcomes de señales pasadas ---
     try {
       await this.outcomeTracker.updatePendingOutcomes();
@@ -359,6 +392,10 @@ export class Orchestrator {
     }
 
     const brokerResult = await this.broker.execute(conf.order, riskState);
+
+    if (this.broker.lastStressEvent?.type !== "none" && this.broker.lastStressEvent) {
+      this._pendingStressEvents.push(this.broker.lastStressEvent);
+    }
 
     if (!brokerResult.executed || !brokerResult.trade) {
       return {

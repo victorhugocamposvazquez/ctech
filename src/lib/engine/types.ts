@@ -98,6 +98,7 @@ export interface FillResult {
   wasBackrun?: boolean;
   competitionSlippagePct?: number;
   noisePct?: number;
+  stressEventType?: string;
 }
 
 export interface TradeRecord {
