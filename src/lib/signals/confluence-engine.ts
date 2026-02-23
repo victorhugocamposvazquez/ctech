@@ -46,15 +46,15 @@ export interface ConfluenceConfig {
 }
 
 const DEFAULT_CONFIG: ConfluenceConfig = {
-  minMomentumScore: 55,
-  minEarlyScore: 50,
+  minMomentumScore: 45,
+  minEarlyScore: 42,
   minTokenHealth: 60,
-  minTokenHealthEarly: 40,
+  minTokenHealthEarly: 35,
   minWalletsForConfluence: 3,
   minWalletScoreForConfluence: 70,
   confluenceWindowHours: 6,
-  coreMinConfidence: 75,
-  satelliteMinConfidence: 50,
+  coreMinConfidence: 72,
+  satelliteMinConfidence: 45,
   earlyWalletBoostMultiplier: 1.5,
 };
 
@@ -261,7 +261,7 @@ export class ConfluenceEngine {
       } else if (regime.regime === "neutral") {
         confidence += 3;
       } else {
-        confidence -= 8;
+        confidence -= 4;
         reasons.push("Mercado risk-off — penalización suave para early");
       }
     }
@@ -306,7 +306,7 @@ export class ConfluenceEngine {
       return confidence + 5;
     } else {
       reasons.push("Mercado risk-off — penalización");
-      return confidence - 15;
+      return confidence - 8;
     }
   }
 
