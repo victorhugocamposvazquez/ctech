@@ -92,6 +92,12 @@ export interface FillResult {
   latencyMs: number;
   fillTimestamp: Date;
   error?: string;
+  priceImpactPct?: number;
+  depthScore?: number;
+  wasFrontrun?: boolean;
+  wasBackrun?: boolean;
+  competitionSlippagePct?: number;
+  noisePct?: number;
 }
 
 export interface TradeRecord {

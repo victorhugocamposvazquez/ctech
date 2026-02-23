@@ -6,6 +6,9 @@ import type {
   RiskState,
 } from "./types";
 import { RiskGate } from "./risk-gate";
+import { SlippageModel } from "./slippage-model";
+import { CompetitionSimulator } from "./competition-simulator";
+import { MicroVolatility } from "./micro-volatility";
 
 /**
  * PaperBroker — ejecuta órdenes contra datos de mercado reales
@@ -14,8 +17,10 @@ import { RiskGate } from "./risk-gate";
  * Flujo:
  *  1. RiskGate.evaluate() → ¿se puede operar?
  *  2. fetchQuote()          → precio/liquidez real del token
- *  3. simulateFill()        → slippage + gas + latencia
- *  4. buildTradeRecord()    → registro listo para Supabase
+ *  3. MicroVolatility       → ruido de precio durante latencia
+ *  4. SlippageModel (AMM)   → impacto no-lineal de precio
+ *  5. CompetitionSimulator  → MEV / front-run / back-run
+ *  6. buildTradeRecord()    → registro listo para Supabase
  */
 export class PaperBroker {
   private riskGate: RiskGate;
@@ -76,7 +81,7 @@ export class PaperBroker {
       };
     }
 
-    const fill = simulateFill(order.side, positionUsd, quote);
+    const fill = simulateFill(order, positionUsd, quote);
 
     const trade: TradeRecord = {
       userId: order.userId,
@@ -102,6 +107,12 @@ export class PaperBroker {
         quotePrice: quote.price,
         quoteLiquidity: quote.liquidityUsd,
         quoteSpread: quote.spreadPct,
+        priceImpactPct: fill.priceImpactPct,
+        depthScore: fill.depthScore,
+        wasFrontrun: fill.wasFrontrun,
+        wasBackrun: fill.wasBackrun,
+        competitionSlippage: fill.competitionSlippagePct,
+        noisePct: fill.noisePct,
       },
     };
 
@@ -109,48 +120,66 @@ export class PaperBroker {
   }
 }
 
-// --------------- Simulación de fill ---------------
+// --------------- Simulación de fill (enhanced) ---------------
 
 function simulateFill(
-  side: "buy" | "sell",
+  order: OrderRequest,
   positionUsd: number,
   quote: PriceQuote
 ): FillResult {
-  const slippagePct = estimateSlippage(positionUsd, quote.liquidityUsd);
+  const latencyMs = simulateLatency();
+
+  const priceChange1hPct = (order.metadata?.priceChange1h as number) ?? 0;
+  const { adjustedPrice: noisePrice, noisePct } = MicroVolatility.apply(
+    quote.price,
+    latencyMs,
+    { priceChange1hPct }
+  );
+
+  const slippageEst = SlippageModel.estimate(
+    positionUsd,
+    quote.liquidityUsd,
+    noisePrice,
+    order.side,
+    { feeRate: 0.003 }
+  );
+
+  const volume24h = (order.metadata?.entryVolume24h as number) ?? 0;
+  const competition = CompetitionSimulator.simulate(
+    order.network,
+    positionUsd,
+    quote.liquidityUsd,
+    volume24h
+  );
+
+  const totalSlippage = slippageEst.slippagePct + competition.additionalSlippagePct;
   const spreadImpact = quote.spreadPct / 2;
 
   const priceImpact =
-    side === "buy" ? 1 + slippagePct + spreadImpact : 1 - slippagePct - spreadImpact;
-  const entryPrice = quote.price * priceImpact;
+    order.side === "buy"
+      ? 1 + totalSlippage + spreadImpact
+      : 1 - totalSlippage - spreadImpact;
+
+  const entryPrice = noisePrice * priceImpact;
   const quantity = positionUsd / entryPrice;
 
   const gasCost = estimateGas(quote.network);
-  const latencyMs = simulateLatency();
 
   return {
     success: true,
     entryPrice,
     quantity,
-    slippage: slippagePct,
+    slippage: totalSlippage,
     gasCost,
     latencyMs,
     fillTimestamp: new Date(),
+    priceImpactPct: slippageEst.priceImpactPct,
+    depthScore: slippageEst.depthScore,
+    wasFrontrun: competition.wasFrontrun,
+    wasBackrun: competition.wasBackrun,
+    competitionSlippagePct: competition.additionalSlippagePct,
+    noisePct,
   };
-}
-
-/**
- * Slippage proporcional al tamaño vs liquidez del pool.
- * Modelo simplificado: slippage ≈ (positionUsd / liquidityUsd) * factor
- * Con suelo y techo realistas.
- */
-function estimateSlippage(positionUsd: number, liquidityUsd: number): number {
-  if (liquidityUsd <= 0) return 0.05; // 5% máximo si no hay data
-
-  const ratio = positionUsd / liquidityUsd;
-  const base = ratio * 2;
-  const noise = (Math.random() - 0.5) * 0.001;
-
-  return Math.max(0.0005, Math.min(base + noise, 0.05));
 }
 
 const GAS_ESTIMATES_USD: Record<string, [number, number]> = {

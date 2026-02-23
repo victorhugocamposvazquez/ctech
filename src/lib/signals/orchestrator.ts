@@ -8,11 +8,15 @@ import type { ExitSignal } from "./position-manager";
 import { TokenHealthChecker } from "../market/token-health";
 import { RegimeDetector } from "../market/regime-detector";
 import { DexScreenerQuoteFetcher } from "../market/quote-fetcher";
-import { RiskGate } from "../engine/risk-gate";
+import { AdaptiveRiskGate } from "../engine/adaptive-risk-gate";
 import { PaperBroker } from "../engine/paper-broker";
+import { RollingPerformanceEngine } from "../engine/rolling-performance";
+import type { RollingMetrics } from "../engine/rolling-performance";
 import type { RiskState, TradeRecord } from "../engine/types";
 import { ArkhamClient } from "../arkham/client";
 import { SignalOutcomeTracker } from "./signal-outcome-tracker";
+import { IncrementalCalibrator } from "./incremental-calibrator";
+import { SmartMoneySimulator } from "./smart-money-simulator";
 
 export interface CycleResult {
   timestamp: Date;
@@ -27,6 +31,13 @@ export interface CycleResult {
   entries: EntryResult[];
   exits: ExitSignal[];
   errors: string[];
+  rollingMetrics?: RollingMetrics;
+  calibration?: {
+    momentumThreshold: number;
+    earlyThreshold: number;
+    coreMinConf: number;
+    satMinConf: number;
+  };
 }
 
 interface EntryResult {
@@ -50,15 +61,16 @@ interface PositionSizingDecision {
  * Orchestrator — pipeline completo end-to-end.
  *
  * Un ciclo:
+ *  0. Cargar rolling metrics + calibrar umbrales (auto-tune)
  *  1. Detectar régimen de mercado
- *  2. Escanear tokens con momentum
- *  3. Evaluar salud de cada token candidato
- *  4. Pasar por ConfluenceEngine (momentum + wallets + health + régimen)
- *  5. RiskGate evalúa si se puede operar
- *  6. PaperBroker ejecuta con datos reales
- *  7. PositionManager revisa posiciones abiertas y cierra las que toque
- *
- * Se llama periódicamente (cron, botón manual, etc.).
+ *  2. Simular smart money para tokens trending
+ *  3. Escanear tokens con momentum + early
+ *  4. Evaluar salud de cada token candidato
+ *  5. Pasar por ConfluenceEngine (momentum + wallets + health + régimen)
+ *  6. AdaptiveRiskGate evalúa si se puede operar (con sizing dinámico)
+ *  7. PaperBroker ejecuta con SlippageModel + MicroVolatility + CompetitionSim
+ *  8. PositionManager revisa posiciones abiertas y cierra las que toque
+ *  9. Actualizar outcomes + recalibrar
  */
 export class Orchestrator {
   private momentum: MomentumDetector;
@@ -67,9 +79,12 @@ export class Orchestrator {
   private positions: PositionManager;
   private tokenHealth: TokenHealthChecker;
   private regime: RegimeDetector;
-  private riskGate: RiskGate;
+  private riskGate: AdaptiveRiskGate;
   private broker: PaperBroker;
   private outcomeTracker: SignalOutcomeTracker;
+  private rollingEngine: RollingPerformanceEngine;
+  private calibrator: IncrementalCalibrator;
+  private smartMoney: SmartMoneySimulator;
 
   constructor(
     private supabase: SupabaseClient,
@@ -88,12 +103,15 @@ export class Orchestrator {
     this.positions = new PositionManager(supabase);
     this.tokenHealth = new TokenHealthChecker(supabase, arkham);
     this.regime = new RegimeDetector(supabase);
-    this.riskGate = new RiskGate();
+    this.riskGate = new AdaptiveRiskGate();
     this.broker = new PaperBroker(
       this.riskGate,
       new DexScreenerQuoteFetcher()
     );
     this.outcomeTracker = new SignalOutcomeTracker(supabase);
+    this.rollingEngine = new RollingPerformanceEngine(supabase);
+    this.calibrator = new IncrementalCalibrator(supabase);
+    this.smartMoney = new SmartMoneySimulator();
   }
 
   async runCycle(): Promise<CycleResult> {
@@ -111,6 +129,36 @@ export class Orchestrator {
       exits: [],
       errors: [],
     };
+
+    // --- 0. Rolling metrics + adaptive risk + calibration ---
+    try {
+      const rolling30d = await this.rollingEngine.compute(this.userId, "30d");
+      this.riskGate.setRollingMetrics(rolling30d);
+      result.rollingMetrics = rolling30d;
+    } catch (err) {
+      result.errors.push(`Rolling metrics: ${errMsg(err)}`);
+    }
+
+    try {
+      const cal = await this.calibrator.recalibrate(this.userId);
+      if (cal) {
+        result.calibration = {
+          momentumThreshold: cal.momentumScoreThreshold,
+          earlyThreshold: cal.earlyScoreThreshold,
+          coreMinConf: cal.coreMinConfidence,
+          satMinConf: cal.satelliteMinConfidence,
+        };
+
+        this.confluence = new ConfluenceEngine(this.supabase, this.userId, {
+          minMomentumScore: cal.momentumScoreThreshold,
+          minEarlyScore: cal.earlyScoreThreshold,
+          coreMinConfidence: cal.coreMinConfidence,
+          satelliteMinConfidence: cal.satelliteMinConfidence,
+        });
+      }
+    } catch (err) {
+      result.errors.push(`Calibración: ${errMsg(err)}`);
+    }
 
     // --- 1. Régimen de mercado ---
     let regimeSnapshot;
@@ -142,6 +190,8 @@ export class Orchestrator {
       try {
         const key = `${signal.network}:${signal.tokenAddress}`;
         processedTokens.add(key);
+
+        await this.injectSmartMoney(signal.tokenAddress, signal.tokenSymbol, signal.network, signal.momentumScore, false);
 
         let health = null;
         try {
@@ -194,6 +244,8 @@ export class Orchestrator {
         const key = `${signal.network}:${signal.tokenAddress}`;
         if (processedTokens.has(key)) continue;
         processedTokens.add(key);
+
+        await this.injectSmartMoney(signal.tokenAddress, signal.tokenSymbol, signal.network, signal.earlyScore, true);
 
         let health = null;
         try {
@@ -250,6 +302,25 @@ export class Orchestrator {
     return result;
   }
 
+  private async injectSmartMoney(
+    tokenAddress: string,
+    tokenSymbol: string,
+    network: string,
+    score: number,
+    isEarly: boolean
+  ): Promise<void> {
+    try {
+      const movements = this.smartMoney.simulateActivity(
+        tokenAddress, tokenSymbol, network, score, isEarly
+      );
+      if (movements.length > 0) {
+        await this.smartMoney.persistMovements(this.supabase, this.userId, movements);
+      }
+    } catch {
+      // Non-critical, don't block cycle
+    }
+  }
+
   private async executeEntry(
     conf: ConfluenceResult,
     riskState: RiskState
@@ -272,6 +343,8 @@ export class Orchestrator {
     conf.order.metadata = {
       ...conf.order.metadata,
       positionSizing: sizing,
+      priceChange1h: conf.sources.momentum?.priceChange1h ?? conf.sources.early?.priceChange1h ?? 0,
+      entryVolume24h: conf.sources.momentum?.volume24h ?? conf.sources.early?.volume24h ?? 0,
     };
 
     if (conf.order.amountUsd <= 0) {
@@ -397,7 +470,6 @@ export class Orchestrator {
       };
     }
 
-    // Si no existe, crearlo con valores por defecto
     const defaultState: RiskState = {
       capital: 10_000,
       pnlToday: 0,
@@ -451,7 +523,6 @@ export class Orchestrator {
       })
       .eq("user_id", this.userId);
 
-    // Mantener estado en memoria sincronizado para cierres múltiples en el mismo ciclo.
     Object.assign(riskState, newState);
   }
 

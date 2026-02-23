@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { RollingPerformanceEngine } from "@/lib/engine/rolling-performance";
 
 /**
  * GET /api/performance — métricas de rendimiento del paper trading.
@@ -9,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
  *  - Desglose Core vs Satellite
  *  - Estado de riesgo actual
  *  - Posiciones abiertas
+ *  - Rolling metrics (7d y 30d) con métricas forward-looking
  */
 export async function GET() {
   const supabase = await createClient();
@@ -46,6 +48,17 @@ export async function GET() {
   const core = closed.filter((t) => t.layer === "core");
   const satellite = closed.filter((t) => t.layer === "satellite");
 
+  let rolling7d = null;
+  let rolling30d = null;
+  try {
+    const engine = new RollingPerformanceEngine(supabase);
+    const both = await engine.computeBothWindows(user.id);
+    rolling7d = both.rolling7d;
+    rolling30d = both.rolling30d;
+  } catch {
+    // Rolling metrics no disponibles
+  }
+
   return NextResponse.json({
     global: calcMetrics(closed),
     core: calcMetrics(core),
@@ -62,6 +75,8 @@ export async function GET() {
           pauseReason: riskResult.data.pause_reason,
         }
       : null,
+    rolling7d,
+    rolling30d,
   });
 }
 
@@ -105,7 +120,6 @@ function calcMetrics(trades: { pnl_abs: unknown; pnl_pct: unknown; is_win: unkno
 
   const expectancy = trades.length > 0 ? netPnl / trades.length : 0;
 
-  // Max drawdown (equity curve)
   let peak = 0;
   let cumulative = 0;
   let maxDrawdown = 0;

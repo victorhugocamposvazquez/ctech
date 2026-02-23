@@ -104,36 +104,66 @@ export default function AboutPage() {
               con la confianza de la señal y la liquidez del pool."
           />
           <Block
-            title="7. Gestión de Riesgo (Risk Gate)"
+            title="7. Gestión de Riesgo Adaptativa (AdaptiveRiskGate)"
             description="Cada operación pasa por el Risk Gate. Reglas no
               negociables: pérdida diaria > 2% → pausa total; pérdida
               semanal > 6% → pausa total; 3 pérdidas seguidas en Satellite
-              → cooldown 24h. Los contadores se resetean automáticamente
-              cada día (00:00 UTC) y cada semana (lunes)."
+              → cooldown 24h. Además, el sizing se ajusta dinámicamente:
+              si el profit factor rolling cae por debajo de 0.8 → sizing ×0.5;
+              si sube de 1.5 → sizing ×1.25. Drawdown > 3% reduce progresivamente.
+              Drawdown > 10% → pausa adaptativa automática. Kelly criterion
+              como techo de posición por capa."
           />
           <Block
-            title="8. Ejecución Simulada (Paper Trading)"
+            title="8. Ejecución Simulada Avanzada (Paper Trading)"
             description="El Paper Broker opera con precios reales de DexScreener
-              y simula slippage, spread, gas y latencia proporcionales a la
-              liquidez del pool. Gestión de posiciones abiertas con trailing
-              stop dinámico, tiempo máximo de holding, salida por caída de
-              volumen/liquidez y take profit escalonado."
+              e integra 3 capas de realismo: (1) SlippageModel AMM (x·y=k)
+              calcula slippage no-lineal según tamaño vs profundidad del pool;
+              (2) MicroVolatility aplica Geometric Brownian Motion al precio
+              durante la latencia de ejecución; (3) CompetitionSimulator
+              simula MEV, front-running y back-running con probabilidades
+              según red, visibilidad del trade y densidad de bots. Gestión
+              de posiciones con trailing stop, tiempo máximo, salida por
+              caída de volumen/liquidez y take profit escalonado."
           />
           <Block
-            title="9. Validación Forward de Señales"
-            description="Cada señal generada — ejecutada o no — se registra con
-              su precio de entrada. Automáticamente, el sistema vuelve a
-              consultar el precio real del token a 1h, 6h, 24h, 48h y 7 días.
-              Calcula hit rate y PnL medio por ventana temporal, por layer,
-              por señal source (trending vs early) y por régimen de mercado."
+            title="9. Smart Money Simulado"
+            description="SmartMoneySimulator genera actividad de wallets sintéticas
+              (Alpha Whale, DeFi OG, Early Sniper, Trend Surfer, Patient Whale)
+              de forma determinista por (token + fecha). Cada wallet tiene su
+              estilo, win rate histórico y redes preferidas. Los movimientos
+              se persisten en wallet_movements y el ConfluenceEngine los
+              detecta como wallet confluence real. Permite validar señales
+              incluso sin Arkham API."
           />
           <Block
-            title="10. Orquestación Automática — Doble Pipeline"
-            description="Cada ciclo ejecuta dos pipelines en secuencia:
-              1) Trending → MomentumDetector → ConfluenceEngine → Core/Sat.
-              2) Early → EarlyDetector → ConfluenceEngine (con wallet boost)
-              → Satellite. Deduplicación automática (si un token aparece en
-              ambos, solo se evalúa una vez). Todo automático, 24/7, $0."
+            title="10. Validación Forward + Reentrenamiento Incremental"
+            description="Cada señal generada se registra con su precio de entrada.
+              El sistema consulta el precio real a 1h, 6h, 24h, 48h y 7d
+              para calcular hit rate y PnL medio. El IncrementalCalibrator
+              usa esos outcomes para auto-ajustar umbrales (momentum score,
+              early score, confianza core/satellite) con pasos de ±2 pts.
+              Si el hit rate core cae del 55% → sube umbrales (más selectivo).
+              Si sube del 70% → baja umbrales (más señales). Requiere mínimo
+              20 outcomes tracked para activarse."
+          />
+          <Block
+            title="11. Métricas Rolling y Forward-Looking"
+            description="El RollingPerformanceEngine calcula métricas en ventanas
+              de 7 y 30 días: profit factor por capa, expectancy ajustada
+              por slippage/gas/competencia, drawdown actual y máximo,
+              Kelly criterion, PnL proyectado 7d, rachas (W/L streaks),
+              recovery factor. Alimenta el AdaptiveRiskGate y se muestra
+              en el dashboard para toma de decisiones informada."
+          />
+          <Block
+            title="12. Orquestación Automática — Doble Pipeline"
+            description="Cada ciclo: (0) Carga rolling metrics + calibra umbrales →
+              (1) Detecta régimen → (2) Inyecta smart money simulado →
+              (3) Pipeline Trending (MomentumDetector → ConfluenceEngine → Core/Sat) →
+              (4) Pipeline Early (EarlyDetector → ConfluenceEngine con wallet boost
+              → Satellite) → (5) Actualiza outcomes → (6) Gestiona posiciones.
+              Deduplicación automática. Todo automático, 24/7, $0."
           />
         </div>
       </section>
@@ -144,14 +174,16 @@ export default function AboutPage() {
           Métricas clave que monitoriza
         </h2>
         <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-300">
-          <Metric label="Expectancy neta / trade" />
-          <Metric label="Profit factor" />
-          <Metric label="Max drawdown" />
-          <Metric label="Sharpe / Sortino" />
-          <Metric label="% meses positivos" />
-          <Metric label="Slippage medio" />
-          <Metric label="Coste por operación" />
-          <Metric label="Estabilidad por régimen" />
+          <Metric label="Expectancy ajustada por slippage+gas+MEV" />
+          <Metric label="Profit factor rolling (7d / 30d)" />
+          <Metric label="Max drawdown y drawdown actual" />
+          <Metric label="Kelly criterion por capa" />
+          <Metric label="PnL proyectado 7d" />
+          <Metric label="Avg slippage (AMM + competencia)" />
+          <Metric label="Recovery factor" />
+          <Metric label="Rachas (W/L streaks)" />
+          <Metric label="Calibración auto (umbrales)" />
+          <Metric label="Hit rate por régimen" />
         </ul>
       </section>
 
@@ -194,6 +226,26 @@ export default function AboutPage() {
         </p>
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
+          <ChangelogEntry
+            version="1.0.0"
+            date="23 feb 2026"
+            title="Simulador Avanzado: AMM Slippage, MEV, GBM, Auto-Calibración, Smart Money Sintético"
+            items={[
+              "SlippageModel: slippage no lineal basado en curva AMM constant-product (x*y=k). Considera profundidad del pool, tamaño de posición, fee LP y liquidez concentrada.",
+              "MicroVolatility: movimiento browniano geométrico (GBM) aplicado al precio durante la latencia de ejecución. Estima volatilidad automáticamente desde priceChange1h.",
+              "CompetitionSimulator: simula MEV, front-running y back-running con probabilidades basadas en red (ETH=35%, Solana=5%), visibilidad del trade y densidad de bots.",
+              "AdaptiveRiskGate: extiende RiskGate con sizing dinámico basado en profit factor rolling, drawdown actual y Kelly criterion. Pausa automática si drawdown > 10%.",
+              "RollingPerformanceEngine: calcula métricas rolling (7d/30d) — profit factor, expectancy ajustada por slippage/gas/competencia, Kelly, drawdown, rachas, PnL proyectado.",
+              "IncrementalCalibrator: auto-tuning de umbrales (momentum score, early score, confianza core/satellite) basado en hit rate y expectancy recientes. Paso ±2 pts para evitar oscilación.",
+              "SmartMoneySimulator: genera actividad de wallets simuladas (Alpha Whale, DeFi OG, Early Sniper, etc.) de forma determinista por (token+fecha). Alimenta ConfluenceEngine sin depender de Arkham.",
+              "PaperBroker reescrito: integra SlippageModel + MicroVolatility + CompetitionSimulator en cada fill. Metadata enriquecida (priceImpact, depthScore, wasFrontrun, noisePct).",
+              "Orchestrator mejorado: carga rolling metrics al inicio, alimenta AdaptiveRiskGate, recalibra umbrales con IncrementalCalibrator, inyecta smart money antes de evaluar confluencia.",
+              "Dashboard con métricas rolling/forward-looking: profit factor, drawdown, expectancy ajustada, Kelly, PnL proyectado 7d, costes de competencia, rachas — comparativa 30d vs 7d.",
+              "API /api/performance ampliada con rolling7d y rolling30d.",
+              "Nueva tabla calibration_state para persistir umbrales auto-ajustados.",
+              "Coste: sigue $0.",
+            ]}
+          />
           <ChangelogEntry
             version="0.9.0"
             date="23 feb 2026"
