@@ -1,4 +1,9 @@
 import { DexScreenerClient, type DexPair } from "../market/dexscreener";
+import {
+  GeckoTerminalClient,
+  type GeckoTerminalPool,
+  type GeckoTerminalToken,
+} from "../market/geckoterminal";
 
 export interface MomentumSignal {
   tokenAddress: string;
@@ -18,6 +23,11 @@ export interface MomentumSignal {
   momentumScore: number;
   tier: "strong" | "moderate" | "weak";
   bestPair: DexPair;
+}
+
+export interface MomentumScanResult {
+  signals: MomentumSignal[];
+  poolsScanned: number;
 }
 
 export interface MomentumConfig {
@@ -45,45 +55,63 @@ const DEFAULT_CONFIG: MomentumConfig = {
 /**
  * MomentumDetector — señal principal del sistema.
  *
- * Escanea DexScreener buscando tokens con tracción real:
+ * Descubre tokens con tracción real usando GeckoTerminal (trending pools)
+ * y los analiza para generar un momentumScore 0-100.
+ *
+ * Criterios:
  *  - Volumen creciente en múltiples timeframes
- *  - Más compras que ventas
- *  - Liquidez estable o creciente
+ *  - Más compras que ventas (buy pressure)
+ *  - Liquidez estable en rango adecuado
  *  - Precio subiendo pero no parabólico
  *  - Par con antigüedad suficiente (no scams de 1 día)
  *
- * Genera un momentumScore 0-100.
- * Coste: $0 (DexScreener API gratuita).
+ * GeckoTerminal: descubrimiento (trending pools multi-cadena).
+ * DexScreener:   datos de ejecución (quotes, pares individuales).
+ *
+ * Coste: $0 (ambas APIs gratuitas).
  */
 export class MomentumDetector {
   private dex: DexScreenerClient;
+  private gecko: GeckoTerminalClient;
   private config: MomentumConfig;
 
   constructor(config?: Partial<MomentumConfig>) {
     this.dex = new DexScreenerClient();
+    this.gecko = new GeckoTerminalClient();
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
   /**
-   * Escanea tokens trending en DexScreener y filtra por momentum.
+   * Escanea trending pools en GeckoTerminal (multi-cadena) y filtra
+   * por momentum. Devuelve señales ordenadas por score descendente
+   * junto con el total de pools escaneados.
    */
-  async scan(): Promise<MomentumSignal[]> {
+  async scan(): Promise<MomentumScanResult> {
+    const { pools, tokens } =
+      await this.gecko.getTrendingPoolsMultiChain(this.config.networks);
+
+    const seen = new Set<string>();
     const signals: MomentumSignal[] = [];
 
-    const trending = await this.dex.search("trending");
+    for (const pool of pools) {
+      const pair = this.geckoPoolToDexPair(pool, tokens);
+      if (!pair) continue;
 
-    for (const pair of trending) {
+      const key = `${pair.chainId}:${pair.baseToken.address}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
       const signal = this.analyzePair(pair);
       if (signal) signals.push(signal);
     }
 
     signals.sort((a, b) => b.momentumScore - a.momentumScore);
 
-    return signals;
+    return { signals, poolsScanned: pools.length };
   }
 
   /**
-   * Analiza un token específico por address + network.
+   * Analiza un token específico por address + network (vía DexScreener).
    */
   async analyzeToken(
     tokenAddress: string,
@@ -95,7 +123,7 @@ export class MomentumDetector {
   }
 
   /**
-   * Analiza una lista de tokens.
+   * Analiza una lista de tokens (vía DexScreener).
    */
   async analyzeTokens(
     tokens: { address: string; network: string }[]
@@ -107,6 +135,79 @@ export class MomentumDetector {
     }
     return signals.sort((a, b) => b.momentumScore - a.momentumScore);
   }
+
+  // ----- Conversion GeckoTerminal → DexPair -----
+
+  private geckoPoolToDexPair(
+    pool: GeckoTerminalPool,
+    tokenMap: Map<string, GeckoTerminalToken>
+  ): DexPair | null {
+    const a = pool.attributes;
+    const networkGt = pool.relationships.network.data.id;
+    const chainId = this.gecko.resolveNetwork(networkGt);
+
+    const baseRef = pool.relationships.base_token.data.id;
+    const baseAddr = baseRef.includes("_")
+      ? baseRef.split("_").slice(1).join("_")
+      : baseRef;
+    const baseMeta = tokenMap.get(baseRef);
+
+    const quoteRef = pool.relationships.quote_token.data.id;
+    const quoteAddr = quoteRef.includes("_")
+      ? quoteRef.split("_").slice(1).join("_")
+      : quoteRef;
+
+    const nameParts = a.name.split(" / ");
+
+    return {
+      chainId,
+      dexId: pool.relationships.dex?.data?.id ?? "unknown",
+      url: `https://www.geckoterminal.com/${networkGt}/pools/${a.address}`,
+      pairAddress: a.address,
+      baseToken: {
+        address: baseAddr,
+        name: baseMeta?.attributes.name ?? nameParts[0]?.trim() ?? "Unknown",
+        symbol: baseMeta?.attributes.symbol ?? nameParts[0]?.trim() ?? "???",
+      },
+      quoteToken: {
+        address: quoteAddr,
+        name: nameParts[1]?.trim() ?? "Unknown",
+        symbol: nameParts[1]?.trim() ?? "???",
+      },
+      priceNative: a.base_token_price_native_currency ?? "0",
+      priceUsd: a.base_token_price_usd ?? "0",
+      txns: {
+        m5:  { buys: a.transactions.m5.buys,  sells: a.transactions.m5.sells },
+        h1:  { buys: a.transactions.h1.buys,  sells: a.transactions.h1.sells },
+        h6:  { buys: a.transactions.h6.buys,  sells: a.transactions.h6.sells },
+        h24: { buys: a.transactions.h24.buys, sells: a.transactions.h24.sells },
+      },
+      volume: {
+        m5:  parseFloat(a.volume_usd.m5)  || 0,
+        h1:  parseFloat(a.volume_usd.h1)  || 0,
+        h6:  parseFloat(a.volume_usd.h6)  || 0,
+        h24: parseFloat(a.volume_usd.h24) || 0,
+      },
+      priceChange: {
+        m5:  parseFloat(a.price_change_percentage.m5)  || 0,
+        h1:  parseFloat(a.price_change_percentage.h1)  || 0,
+        h6:  parseFloat(a.price_change_percentage.h6)  || 0,
+        h24: parseFloat(a.price_change_percentage.h24) || 0,
+      },
+      liquidity: {
+        usd: parseFloat(a.reserve_in_usd ?? "0") || 0,
+        base: 0,
+        quote: 0,
+      },
+      fdv: parseFloat(a.fdv_usd ?? "0") || 0,
+      marketCap: parseFloat(a.market_cap_usd ?? "0") || 0,
+      pairCreatedAt: a.pool_created_at
+        ? new Date(a.pool_created_at).getTime()
+        : 0,
+    };
+  }
+
+  // ----- Análisis -----
 
   private analyzePair(pair: DexPair): MomentumSignal | null {
     const liquidityUsd = pair.liquidity?.usd ?? 0;
@@ -132,7 +233,12 @@ export class MomentumDetector {
 
     const txns24h = pair.txns?.h24 ?? { buys: 0, sells: 0 };
     const txCount24h = txns24h.buys + txns24h.sells;
-    const buyPressure = txns24h.sells > 0 ? txns24h.buys / txns24h.sells : txns24h.buys > 0 ? 5 : 0;
+    const buyPressure =
+      txns24h.sells > 0
+        ? txns24h.buys / txns24h.sells
+        : txns24h.buys > 0
+          ? 5
+          : 0;
 
     if (buyPressure < this.config.minBuyPressure) return null;
 
@@ -203,13 +309,9 @@ export class MomentumDetector {
     volumeAccel: number,
     pairAgeDays: number
   ): number {
-    // Buy pressure (0-25)
     const bpScore = Math.min(buyPressure * 8, 25);
-
-    // Volume acceleration (0-20)
     const vaScore = Math.min(volumeAccel * 8, 20);
 
-    // Price momentum: queremos subida gradual (2-30%), no parabólica
     const pc1h = pair.priceChange?.h1 ?? 0;
     const pc6h = pair.priceChange?.h6 ?? 0;
     let priceScore = 0;
@@ -219,15 +321,12 @@ export class MomentumDetector {
       priceScore = 5;
     }
 
-    // Liquidez vs volumen (>1 = sano, <0.5 = volumen artificial)
     const liqVolRatio = (pair.liquidity?.usd ?? 0) / Math.max(pair.volume?.h24 ?? 1, 1);
     const liqScore = liqVolRatio >= 2 ? 15 : liqVolRatio >= 0.5 ? 10 : liqVolRatio >= 0.2 ? 5 : 0;
 
-    // TX count (actividad orgánica)
     const txs = (pair.txns?.h24?.buys ?? 0) + (pair.txns?.h24?.sells ?? 0);
     const txScore = txs >= 500 ? 10 : txs >= 100 ? 7 : txs >= 30 ? 4 : 1;
 
-    // Madurez del par
     const maturityScore = pairAgeDays >= 30 ? 10 : pairAgeDays >= 7 ? 7 : pairAgeDays >= 2 ? 4 : 0;
 
     return Math.round(

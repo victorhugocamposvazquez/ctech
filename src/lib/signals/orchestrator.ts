@@ -16,6 +16,7 @@ import { SignalOutcomeTracker } from "./signal-outcome-tracker";
 export interface CycleResult {
   timestamp: Date;
   regime: string;
+  poolsScanned: number;
   tokensScanned: number;
   signalsGenerated: number;
   tradesOpened: number;
@@ -93,6 +94,7 @@ export class Orchestrator {
     const result: CycleResult = {
       timestamp: new Date(),
       regime: "unknown",
+      poolsScanned: 0,
       tokensScanned: 0,
       signalsGenerated: 0,
       tradesOpened: 0,
@@ -111,11 +113,13 @@ export class Orchestrator {
       result.errors.push(`Régimen: ${errMsg(err)}`);
     }
 
-    // --- 2. Escanear momentum ---
-    let momentumSignals: Awaited<ReturnType<MomentumDetector["scan"]>> = [];
+    // --- 2. Escanear momentum (GeckoTerminal trending → filtro) ---
+    let momentumSignals: Awaited<ReturnType<MomentumDetector["scan"]>>["signals"] = [];
     try {
-      momentumSignals = await this.momentum.scan();
-      result.tokensScanned = momentumSignals.length;
+      const scanResult = await this.momentum.scan();
+      momentumSignals = scanResult.signals;
+      result.poolsScanned = scanResult.poolsScanned;
+      result.tokensScanned = scanResult.signals.length;
     } catch (err) {
       result.errors.push(`Momentum scan: ${errMsg(err)}`);
     }

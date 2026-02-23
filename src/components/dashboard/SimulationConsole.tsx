@@ -58,6 +58,7 @@ type PositionsResponse = {
 type CycleSummary = {
   timestamp?: string;
   regime?: string;
+  poolsScanned?: number;
   tokensScanned?: number;
   signalsGenerated?: number;
   tradesOpened?: number;
@@ -167,6 +168,7 @@ export default function SimulationConsole() {
       setLastCycle({
         timestamp: data.timestamp,
         regime: data.regime,
+        poolsScanned: data.poolsScanned,
         tokensScanned: data.tokensScanned,
         signalsGenerated: data.signalsGenerated,
         tradesOpened: data.tradesOpened,
@@ -216,6 +218,7 @@ export default function SimulationConsole() {
           ? {
               timestamp: data.firstCycle.timestamp,
               regime: data.firstCycle.regime,
+              poolsScanned: data.firstCycle.poolsScanned,
               tokensScanned: data.firstCycle.tokensScanned,
               signalsGenerated: data.firstCycle.signalsGenerated,
               tradesOpened: data.firstCycle.tradesOpened,
@@ -533,8 +536,9 @@ export default function SimulationConsole() {
               <ul className="mt-3 space-y-1 text-xs text-slate-300">
                 <li>Timestamp: {String(lastCycle.timestamp ?? "-")}</li>
                 <li>Régimen: {String(lastCycle.regime ?? "-")}</li>
-                <li>Tokens escaneados: {lastCycle.tokensScanned ?? 0}</li>
-                <li>Señales: {lastCycle.signalsGenerated ?? 0}</li>
+                <li>Pools trending escaneados: {lastCycle.poolsScanned ?? 0}</li>
+                <li>Candidatos tras filtro: {lastCycle.tokensScanned ?? 0}</li>
+                <li>Señales con confluencia: {lastCycle.signalsGenerated ?? 0}</li>
                 <li>Trades abiertos: {lastCycle.tradesOpened ?? 0}</li>
                 <li>Trades cerrados: {lastCycle.tradesClosed ?? 0}</li>
                 <li>Errores: {(lastCycle.errors ?? []).length}</li>

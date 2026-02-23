@@ -45,13 +45,15 @@ export default function AboutPage() {
         <div className="mt-6 space-y-6">
           <Block
             title="1. Escaneo de Mercado (Momentum Detection)"
-            description="Cada 15 minutos, el sistema escanea automáticamente
-              DexScreener buscando tokens DeFi con tracción real en Ethereum,
-              Base, Solana y Arbitrum. Filtra por liquidez ($50K–$50M),
-              volumen, ratio compras/ventas, aceleración de volumen y
-              antigüedad del par (>2 días). Genera un momentum score 0-100
-              para cada token. Solo los que superan 55 pasan al siguiente
-              filtro. Coste: $0."
+            description="Cada 15 minutos, el sistema consulta GeckoTerminal
+              (CoinGecko on-chain) para descubrir los trending pools reales
+              de Ethereum, Base, Solana y Arbitrum — hasta 20 pools por red,
+              80 pools totales por ciclo. Filtra por liquidez ($50K–$50M),
+              volumen, ratio compras/ventas (buy pressure), aceleración de
+              volumen multi-timeframe y antigüedad del par (>2 días). Genera
+              un momentum score 0-100. Solo los que superan 55 pasan al
+              siguiente filtro. DexScreener se mantiene para datos de
+              ejecución (quotes, pares individuales). Coste: $0."
           />
           <Block
             title="2. Validación de Token (Token Health)"
@@ -153,6 +155,7 @@ export default function AboutPage() {
             "TypeScript",
             "Tailwind CSS",
             "Supabase",
+            "GeckoTerminal API",
             "DexScreener API",
             "Arkham API (opcional)",
             "CoinGecko API",
@@ -180,6 +183,21 @@ export default function AboutPage() {
         </p>
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
+          <ChangelogEntry
+            version="0.8.0"
+            date="23 feb 2026"
+            title="GeckoTerminal: Descubrimiento Real de Tokens Trending"
+            items={[
+              "Nuevo cliente GeckoTerminal (CoinGecko on-chain): API gratuita, sin API key, con endpoint nativo de trending pools multi-cadena.",
+              "MomentumDetector refactorizado: usa GeckoTerminal para descubrir pools trending reales en Ethereum, Base, Solana y Arbitrum (hasta 80 pools/ciclo).",
+              "Arquitectura de dos capas: GeckoTerminal descubre tokens con tracción → DexScreener proporciona datos de ejecución (quotes, pares individuales).",
+              "Datos multi-timeframe por pool: precio, volumen y transacciones (buys/sells/buyers/sellers) a 5m, 15m, 30m, 1h, 6h y 24h — directos del API.",
+              "Deduplicación automática: si un mismo token aparece en múltiples pools trending, solo se analiza una vez.",
+              "Dashboard mejorado: 'Último ciclo' muestra pools trending escaneados vs candidatos tras filtro, más claro que el anterior 'tokens escaneados'.",
+              "Fix: el sistema ahora escanea tokens reales en cada ciclo. Antes, DexScreener search('trending') buscaba tokens por nombre, devolviendo 0 resultados.",
+              "Coste: sigue siendo $0. GeckoTerminal free tier permite ~30 req/min.",
+            ]}
+          />
           <ChangelogEntry
             version="0.7.0"
             date="23 feb 2026"
