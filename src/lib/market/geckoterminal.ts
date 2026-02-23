@@ -118,26 +118,80 @@ export class GeckoTerminalClient {
 
   /**
    * Trending pools de varias redes. Cada red es una request separada
-   * (respeta rate limit interno).
+   * (respeta rate limit interno). Reporta errores por red sin abortar.
    */
   async getTrendingPoolsMultiChain(networks: string[]): Promise<{
     pools: GeckoTerminalPool[];
     tokens: Map<string, GeckoTerminalToken>;
+    errors: string[];
   }> {
     const allPools: GeckoTerminalPool[] = [];
     const allTokens = new Map<string, GeckoTerminalToken>();
+    const errors: string[] = [];
 
     for (const net of networks) {
       try {
         const { pools, tokens } = await this.getTrendingPools(net);
         allPools.push(...pools);
         for (const [k, v] of tokens) allTokens.set(k, v);
-      } catch {
-        // Red falla → continúa con las demás
+      } catch (err) {
+        errors.push(`${net}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
 
-    return { pools: allPools, tokens: allTokens };
+    return { pools: allPools, tokens: allTokens, errors };
+  }
+
+  /**
+   * Pools recién creados en una red. Útil para early detection
+   * de tokens en fase temprana.
+   */
+  async getNewPools(network: string): Promise<{
+    pools: GeckoTerminalPool[];
+    tokens: Map<string, GeckoTerminalToken>;
+  }> {
+    await this.throttle();
+
+    const netId = NETWORK_MAP[network] ?? network;
+    const url = `${BASE_URL}/networks/${netId}/new_pools?include=base_token&page=1`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      throw new Error(
+        `GeckoTerminal new_pools ${res.status}: ${await res.text().catch(() => "")}`
+      );
+    }
+
+    const body: GeckoTerminalResponse = await res.json();
+    const tokenMap = new Map<string, GeckoTerminalToken>();
+    for (const t of body.included ?? []) tokenMap.set(t.id, t);
+
+    return { pools: body.data ?? [], tokens: tokenMap };
+  }
+
+  /**
+   * New pools de varias redes.
+   */
+  async getNewPoolsMultiChain(networks: string[]): Promise<{
+    pools: GeckoTerminalPool[];
+    tokens: Map<string, GeckoTerminalToken>;
+    errors: string[];
+  }> {
+    const allPools: GeckoTerminalPool[] = [];
+    const allTokens = new Map<string, GeckoTerminalToken>();
+    const errors: string[] = [];
+
+    for (const net of networks) {
+      try {
+        const { pools, tokens } = await this.getNewPools(net);
+        allPools.push(...pools);
+        for (const [k, v] of tokens) allTokens.set(k, v);
+      } catch (err) {
+        errors.push(`new_pools ${net}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    return { pools: allPools, tokens: allTokens, errors };
   }
 
   /**

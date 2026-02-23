@@ -60,6 +60,8 @@ type CycleSummary = {
   regime?: string;
   poolsScanned?: number;
   tokensScanned?: number;
+  earlyPoolsScanned?: number;
+  earlyCandidates?: number;
   signalsGenerated?: number;
   tradesOpened?: number;
   tradesClosed?: number;
@@ -170,6 +172,8 @@ export default function SimulationConsole() {
         regime: data.regime,
         poolsScanned: data.poolsScanned,
         tokensScanned: data.tokensScanned,
+        earlyPoolsScanned: data.earlyPoolsScanned,
+        earlyCandidates: data.earlyCandidates,
         signalsGenerated: data.signalsGenerated,
         tradesOpened: data.tradesOpened,
         tradesClosed: data.tradesClosed,
@@ -220,6 +224,8 @@ export default function SimulationConsole() {
               regime: data.firstCycle.regime,
               poolsScanned: data.firstCycle.poolsScanned,
               tokensScanned: data.firstCycle.tokensScanned,
+              earlyPoolsScanned: data.firstCycle.earlyPoolsScanned,
+              earlyCandidates: data.firstCycle.earlyCandidates,
               signalsGenerated: data.firstCycle.signalsGenerated,
               tradesOpened: data.firstCycle.tradesOpened,
               tradesClosed: data.firstCycle.tradesClosed,
@@ -536,12 +542,19 @@ export default function SimulationConsole() {
               <ul className="mt-3 space-y-1 text-xs text-slate-300">
                 <li>Timestamp: {String(lastCycle.timestamp ?? "-")}</li>
                 <li>Régimen: {String(lastCycle.regime ?? "-")}</li>
-                <li>Pools trending escaneados: {lastCycle.poolsScanned ?? 0}</li>
-                <li>Candidatos tras filtro: {lastCycle.tokensScanned ?? 0}</li>
+                <li>Trending pools: {lastCycle.poolsScanned ?? 0} escaneados → {lastCycle.tokensScanned ?? 0} candidatos</li>
+                <li>Early pools: {lastCycle.earlyPoolsScanned ?? 0} escaneados → {lastCycle.earlyCandidates ?? 0} candidatos</li>
                 <li>Señales con confluencia: {lastCycle.signalsGenerated ?? 0}</li>
                 <li>Trades abiertos: {lastCycle.tradesOpened ?? 0}</li>
                 <li>Trades cerrados: {lastCycle.tradesClosed ?? 0}</li>
                 <li>Errores: {(lastCycle.errors ?? []).length}</li>
+                {(lastCycle.errors ?? []).length > 0 && (
+                  <li className="mt-2 space-y-1">
+                    {(lastCycle.errors ?? []).map((e, i) => (
+                      <p key={i} className="text-rose-300 break-all">{e}</p>
+                    ))}
+                  </li>
+                )}
               </ul>
             ) : (
               <p className="mt-3 text-xs text-slate-400">

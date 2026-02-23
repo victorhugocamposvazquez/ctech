@@ -5,7 +5,10 @@ import {
   type GeckoTerminalToken,
 } from "../market/geckoterminal";
 
-export interface MomentumSignal {
+/**
+ * Señal de un token en fase temprana con potencial.
+ */
+export interface EarlySignal {
   tokenAddress: string;
   tokenSymbol: string;
   tokenName: string;
@@ -15,84 +18,86 @@ export interface MomentumSignal {
   volume24h: number;
   volumeChange: number;
   buyPressure: number;
+  buyerSellerRatio: number;
   priceChange1h: number;
   priceChange6h: number;
   priceChange24h: number;
   txCount24h: number;
-  pairAge: number;
-  momentumScore: number;
-  tier: "strong" | "moderate" | "weak";
+  pairAgeHours: number;
+  earlyScore: number;
+  tier: "high_potential" | "moderate_potential" | "speculative";
   bestPair: DexPair;
 }
 
-export interface MomentumScanResult {
-  signals: MomentumSignal[];
+export interface EarlyScanResult {
+  signals: EarlySignal[];
   poolsScanned: number;
   networkErrors: string[];
 }
 
-export interface MomentumConfig {
+export interface EarlyConfig {
   networks: string[];
   minLiquidityUsd: number;
   maxLiquidityUsd: number;
   minVolume24h: number;
   minBuyPressure: number;
-  minMomentumScore: number;
-  minPairAgeDays: number;
+  minBuyerSellerRatio: number;
+  minEarlyScore: number;
+  maxPairAgeHours: number;
+  minPairAgeHours: number;
   maxPriceChange24h: number;
 }
 
-const DEFAULT_CONFIG: MomentumConfig = {
+const DEFAULT_CONFIG: EarlyConfig = {
   networks: ["ethereum", "base", "solana", "arbitrum"],
-  minLiquidityUsd: 50_000,
-  maxLiquidityUsd: 50_000_000,
-  minVolume24h: 10_000,
-  minBuyPressure: 1.2,
-  minMomentumScore: 55,
-  minPairAgeDays: 2,
-  maxPriceChange24h: 80,
+  minLiquidityUsd: 5_000,
+  maxLiquidityUsd: 2_000_000,
+  minVolume24h: 3_000,
+  minBuyPressure: 1.3,
+  minBuyerSellerRatio: 1.2,
+  minEarlyScore: 50,
+  maxPairAgeHours: 72,
+  minPairAgeHours: 1,
+  maxPriceChange24h: 200,
 };
 
 /**
- * MomentumDetector — señal principal del sistema.
+ * EarlyDetector — descubrimiento de tokens en fase temprana.
  *
- * Descubre tokens con tracción real usando GeckoTerminal (trending pools)
- * y los analiza para generar un momentumScore 0-100.
+ * Busca pools recién creados (últimas 72h) con señales de tracción
+ * orgánica. Alimenta la capa Satellite del sistema.
  *
- * Criterios:
- *  - Volumen creciente en múltiples timeframes
- *  - Más compras que ventas (buy pressure)
- *  - Liquidez estable en rango adecuado
- *  - Precio subiendo pero no parabólico
- *  - Par con antigüedad suficiente (no scams de 1 día)
+ * Filtros anti-scam:
+ *  - Edad mínima 1h (evita honeypots instantáneos)
+ *  - Ratio compradores/vendedores > 1.2 (compras orgánicas, no bots)
+ *  - Liquidez mínima $5K (evita pools ficticios)
+ *  - Precio no parabólico (< 200% en 24h)
  *
- * GeckoTerminal: descubrimiento (trending pools multi-cadena).
- * DexScreener:   datos de ejecución (quotes, pares individuales).
+ * Diferencia con MomentumDetector:
+ *  - Busca NEW pools, no trending pools
+ *  - Umbrales más bajos (liquidez, volumen)
+ *  - Analiza ratio buyers/sellers (no solo buys/sells)
+ *  - Premia crecimiento rápido desde base baja
  *
- * Coste: $0 (ambas APIs gratuitas).
+ * Fuente: GeckoTerminal /new_pools (gratuita).
  */
-export class MomentumDetector {
-  private dex: DexScreenerClient;
+export class EarlyDetector {
   private gecko: GeckoTerminalClient;
-  private config: MomentumConfig;
+  private dex: DexScreenerClient;
+  private config: EarlyConfig;
 
-  constructor(config?: Partial<MomentumConfig>) {
-    this.dex = new DexScreenerClient();
+  constructor(config?: Partial<EarlyConfig>) {
     this.gecko = new GeckoTerminalClient();
+    this.dex = new DexScreenerClient();
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  /**
-   * Escanea trending pools en GeckoTerminal (multi-cadena) y filtra
-   * por momentum. Devuelve señales ordenadas por score descendente
-   * junto con el total de pools escaneados.
-   */
-  async scan(): Promise<MomentumScanResult> {
+  async scan(): Promise<EarlyScanResult> {
     const { pools, tokens, errors } =
-      await this.gecko.getTrendingPoolsMultiChain(this.config.networks);
+      await this.gecko.getNewPoolsMultiChain(this.config.networks);
 
     const seen = new Set<string>();
-    const signals: MomentumSignal[] = [];
+    const signals: EarlySignal[] = [];
 
     for (const pool of pools) {
       const pair = this.geckoPoolToDexPair(pool, tokens);
@@ -102,42 +107,23 @@ export class MomentumDetector {
       if (seen.has(key)) continue;
       seen.add(key);
 
-      const signal = this.analyzePair(pair);
+      const signal = this.analyzeEarlyPair(pair, pool);
       if (signal) signals.push(signal);
     }
 
-    signals.sort((a, b) => b.momentumScore - a.momentumScore);
+    signals.sort((a, b) => b.earlyScore - a.earlyScore);
 
     return { signals, poolsScanned: pools.length, networkErrors: errors };
   }
 
-  /**
-   * Analiza un token específico por address + network (vía DexScreener).
-   */
   async analyzeToken(
     tokenAddress: string,
     network: string
-  ): Promise<MomentumSignal | null> {
+  ): Promise<EarlySignal | null> {
     const pair = await this.dex.getBestPair(network, tokenAddress);
     if (!pair) return null;
-    return this.analyzePair(pair);
+    return this.analyzeEarlyPair(pair, null);
   }
-
-  /**
-   * Analiza una lista de tokens (vía DexScreener).
-   */
-  async analyzeTokens(
-    tokens: { address: string; network: string }[]
-  ): Promise<MomentumSignal[]> {
-    const signals: MomentumSignal[] = [];
-    for (const t of tokens) {
-      const s = await this.analyzeToken(t.address, t.network);
-      if (s) signals.push(s);
-    }
-    return signals.sort((a, b) => b.momentumScore - a.momentumScore);
-  }
-
-  // ----- Conversion GeckoTerminal → DexPair -----
 
   private geckoPoolToDexPair(
     pool: GeckoTerminalPool,
@@ -208,9 +194,10 @@ export class MomentumDetector {
     };
   }
 
-  // ----- Análisis -----
-
-  private analyzePair(pair: DexPair): MomentumSignal | null {
+  private analyzeEarlyPair(
+    pair: DexPair,
+    pool: GeckoTerminalPool | null
+  ): EarlySignal | null {
     const liquidityUsd = pair.liquidity?.usd ?? 0;
     const volume24h = pair.volume?.h24 ?? 0;
     const price = parseFloat(pair.priceUsd) || 0;
@@ -226,8 +213,10 @@ export class MomentumDetector {
     }
 
     const pairAgeMs = pair.pairCreatedAt ? Date.now() - pair.pairCreatedAt : 0;
-    const pairAgeDays = pairAgeMs / (24 * 60 * 60 * 1000);
-    if (pairAgeDays < this.config.minPairAgeDays) return null;
+    const pairAgeHours = pairAgeMs / (60 * 60 * 1000);
+
+    if (pairAgeHours > this.config.maxPairAgeHours) return null;
+    if (pairAgeHours < this.config.minPairAgeHours) return null;
 
     const priceChange24h = pair.priceChange?.h24 ?? 0;
     if (Math.abs(priceChange24h) > this.config.maxPriceChange24h) return null;
@@ -237,20 +226,23 @@ export class MomentumDetector {
     const buyPressure =
       txns24h.sells > 0
         ? txns24h.buys / txns24h.sells
-        : txns24h.buys > 0
-          ? 5
-          : 0;
+        : txns24h.buys > 0 ? 5 : 0;
 
     if (buyPressure < this.config.minBuyPressure) return null;
 
-    const volumeChange = this.calcVolumeAcceleration(pair);
-    const momentumScore = this.calcMomentumScore(pair, buyPressure, volumeChange, pairAgeDays);
+    const buyerSellerRatio = this.calcBuyerSellerRatio(pool);
+    if (buyerSellerRatio < this.config.minBuyerSellerRatio) return null;
 
-    if (momentumScore < this.config.minMomentumScore) return null;
+    const volumeChange = this.calcVolumeGrowth(pair);
+    const earlyScore = this.calcEarlyScore(
+      pair, pool, buyPressure, buyerSellerRatio, volumeChange, pairAgeHours
+    );
 
-    const tier: MomentumSignal["tier"] =
-      momentumScore >= 80 ? "strong" :
-      momentumScore >= 65 ? "moderate" : "weak";
+    if (earlyScore < this.config.minEarlyScore) return null;
+
+    const tier: EarlySignal["tier"] =
+      earlyScore >= 75 ? "high_potential" :
+      earlyScore >= 60 ? "moderate_potential" : "speculative";
 
     return {
       tokenAddress: pair.baseToken.address,
@@ -262,80 +254,114 @@ export class MomentumDetector {
       volume24h,
       volumeChange,
       buyPressure,
+      buyerSellerRatio,
       priceChange1h: pair.priceChange?.h1 ?? 0,
       priceChange6h: pair.priceChange?.h6 ?? 0,
       priceChange24h,
       txCount24h,
-      pairAge: pairAgeDays,
-      momentumScore,
+      pairAgeHours,
+      earlyScore,
       tier,
       bestPair: pair,
     };
   }
 
   /**
-   * Aceleración de volumen: compara volumen en timeframes crecientes.
-   * Si vol_1h/vol_6h > vol_6h/vol_24h → acelerando (bueno).
+   * Ratio de compradores únicos vs vendedores únicos.
+   * Disponible en GeckoTerminal pero no en DexScreener.
+   * Un ratio alto indica interés orgánico diversificado.
    */
-  private calcVolumeAcceleration(pair: DexPair): number {
+  private calcBuyerSellerRatio(pool: GeckoTerminalPool | null): number {
+    if (!pool) return 1;
+    const h24 = pool.attributes.transactions.h24;
+    if (h24.sellers <= 0) return h24.buyers > 0 ? 5 : 1;
+    return h24.buyers / h24.sellers;
+  }
+
+  /**
+   * Crecimiento de volumen: compara ventanas cortas vs largas.
+   * Para early tokens, crecimiento rápido es una señal fuerte.
+   */
+  private calcVolumeGrowth(pair: DexPair): number {
     const v1h = pair.volume?.h1 ?? 0;
     const v6h = pair.volume?.h6 ?? 0;
     const v24h = pair.volume?.h24 ?? 0;
 
     if (v24h <= 0) return 0;
-    if (v6h <= 0) return v1h > 0 ? 2 : 0;
+    if (v6h <= 0) return v1h > 0 ? 3 : 0;
 
     const recentRate = v1h / (v6h / 6);
-    const olderRate = v6h / (v24h / 24);
-
-    if (olderRate <= 0) return recentRate > 1 ? 2 : 0;
-
-    return recentRate / olderRate;
+    return Math.min(recentRate, 10);
   }
 
   /**
-   * Score compuesto 0-100.
+   * Score compuesto 0-100 para tokens tempranos.
    *
    * Ponderación:
-   *  - Buy pressure: 25%
-   *  - Volume acceleration: 20%
-   *  - Price momentum (gradual, no parabólico): 20%
-   *  - Liquidez relativa al volumen (salud): 15%
-   *  - Actividad (tx count): 10%
-   *  - Madurez del par: 10%
+   *  - Buy pressure (txns): 20%
+   *  - Buyer/seller ratio (unique wallets): 20%
+   *  - Volume growth: 20%
+   *  - Organic activity patterns: 15%
+   *  - Liquidity growth signal: 15%
+   *  - Age sweet spot (6h-48h): 10%
    */
-  private calcMomentumScore(
+  private calcEarlyScore(
     pair: DexPair,
+    pool: GeckoTerminalPool | null,
     buyPressure: number,
-    volumeAccel: number,
-    pairAgeDays: number
+    buyerSellerRatio: number,
+    volumeGrowth: number,
+    pairAgeHours: number
   ): number {
-    const bpScore = Math.min(buyPressure * 8, 25);
-    const vaScore = Math.min(volumeAccel * 8, 20);
+    // Buy pressure (0-20)
+    const bpScore = Math.min(buyPressure * 6, 20);
 
-    const pc1h = pair.priceChange?.h1 ?? 0;
-    const pc6h = pair.priceChange?.h6 ?? 0;
-    let priceScore = 0;
-    if (pc1h > 0 && pc1h < 15 && pc6h > 0 && pc6h < 40) {
-      priceScore = Math.min((pc1h + pc6h / 3) * 1.5, 20);
-    } else if (pc1h > 0) {
-      priceScore = 5;
+    // Buyer/seller ratio — unique wallets buying > selling (0-20)
+    const bsScore = Math.min(buyerSellerRatio * 7, 20);
+
+    // Volume growth (0-20)
+    const vgScore = Math.min(volumeGrowth * 5, 20);
+
+    // Organic activity: many small transactions (0-15)
+    let organicScore = 0;
+    if (pool) {
+      const h24 = pool.attributes.transactions.h24;
+      const totalBuyers = h24.buyers;
+      const totalBuys = h24.buys;
+      const avgBuysPerBuyer = totalBuyers > 0 ? totalBuys / totalBuyers : 0;
+      if (avgBuysPerBuyer >= 1 && avgBuysPerBuyer <= 3 && totalBuyers >= 20) {
+        organicScore = 15;
+      } else if (totalBuyers >= 10) {
+        organicScore = 10;
+      } else if (totalBuyers >= 5) {
+        organicScore = 5;
+      }
+    } else {
+      const txs = (pair.txns?.h24?.buys ?? 0) + (pair.txns?.h24?.sells ?? 0);
+      organicScore = txs >= 50 ? 10 : txs >= 20 ? 6 : 2;
     }
 
-    const liqVolRatio = (pair.liquidity?.usd ?? 0) / Math.max(pair.volume?.h24 ?? 1, 1);
-    const liqScore = liqVolRatio >= 2 ? 15 : liqVolRatio >= 0.5 ? 10 : liqVolRatio >= 0.2 ? 5 : 0;
+    // Liquidity relative to age (0-15)
+    const liqPerHour = pairAgeHours > 0
+      ? (pair.liquidity?.usd ?? 0) / pairAgeHours
+      : 0;
+    let liqGrowthScore = 0;
+    if (liqPerHour >= 5000) liqGrowthScore = 15;
+    else if (liqPerHour >= 1000) liqGrowthScore = 10;
+    else if (liqPerHour >= 200) liqGrowthScore = 5;
 
-    const txs = (pair.txns?.h24?.buys ?? 0) + (pair.txns?.h24?.sells ?? 0);
-    const txScore = txs >= 500 ? 10 : txs >= 100 ? 7 : txs >= 30 ? 4 : 1;
-
-    const maturityScore = pairAgeDays >= 30 ? 10 : pairAgeDays >= 7 ? 7 : pairAgeDays >= 2 ? 4 : 0;
+    // Age sweet spot (0-10): 6h-48h is ideal
+    let ageScore = 0;
+    if (pairAgeHours >= 6 && pairAgeHours <= 48) ageScore = 10;
+    else if (pairAgeHours >= 2 && pairAgeHours <= 72) ageScore = 6;
+    else ageScore = 2;
 
     return Math.round(
-      bpScore + vaScore + priceScore + liqScore + txScore + maturityScore
+      bpScore + bsScore + vgScore + organicScore + liqGrowthScore + ageScore
     );
   }
 
-  getConfig(): Readonly<MomentumConfig> {
+  getConfig(): Readonly<EarlyConfig> {
     return this.config;
   }
 }

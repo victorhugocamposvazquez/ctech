@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { MomentumDetector } from "./momentum-detector";
+import { EarlyDetector } from "./early-detector";
 import { ConfluenceEngine } from "./confluence-engine";
 import type { ConfluenceResult } from "./confluence-engine";
 import { PositionManager } from "./position-manager";
@@ -18,6 +19,8 @@ export interface CycleResult {
   regime: string;
   poolsScanned: number;
   tokensScanned: number;
+  earlyPoolsScanned: number;
+  earlyCandidates: number;
   signalsGenerated: number;
   tradesOpened: number;
   tradesClosed: number;
@@ -30,6 +33,7 @@ interface EntryResult {
   symbol: string;
   layer: string;
   confidence: number;
+  signalSource: string;
   executed: boolean;
   reason: string;
 }
@@ -58,6 +62,7 @@ interface PositionSizingDecision {
  */
 export class Orchestrator {
   private momentum: MomentumDetector;
+  private early: EarlyDetector;
   private confluence: ConfluenceEngine;
   private positions: PositionManager;
   private tokenHealth: TokenHealthChecker;
@@ -78,6 +83,7 @@ export class Orchestrator {
     }
 
     this.momentum = new MomentumDetector();
+    this.early = new EarlyDetector();
     this.confluence = new ConfluenceEngine(supabase, userId);
     this.positions = new PositionManager(supabase);
     this.tokenHealth = new TokenHealthChecker(supabase, arkham);
@@ -96,6 +102,8 @@ export class Orchestrator {
       regime: "unknown",
       poolsScanned: 0,
       tokensScanned: 0,
+      earlyPoolsScanned: 0,
+      earlyCandidates: 0,
       signalsGenerated: 0,
       tradesOpened: 0,
       tradesClosed: 0,
@@ -113,75 +121,120 @@ export class Orchestrator {
       result.errors.push(`Régimen: ${errMsg(err)}`);
     }
 
-    // --- 2. Escanear momentum (GeckoTerminal trending → filtro) ---
+    const riskState = await this.getRiskState();
+    const processedTokens = new Set<string>();
+
+    // --- 2. Pipeline TRENDING (MomentumDetector → Core/Satellite) ---
     let momentumSignals: Awaited<ReturnType<MomentumDetector["scan"]>>["signals"] = [];
     try {
       const scanResult = await this.momentum.scan();
       momentumSignals = scanResult.signals;
       result.poolsScanned = scanResult.poolsScanned;
       result.tokensScanned = scanResult.signals.length;
+      for (const ne of scanResult.networkErrors) {
+        result.errors.push(`GeckoTerminal trending: ${ne}`);
+      }
     } catch (err) {
       result.errors.push(`Momentum scan: ${errMsg(err)}`);
     }
 
-    // --- 3+4+5+6. Evaluar cada candidato ---
-    const riskState = await this.getRiskState();
-
     for (const signal of momentumSignals) {
       try {
+        const key = `${signal.network}:${signal.tokenAddress}`;
+        processedTokens.add(key);
+
         let health = null;
         try {
           health = await this.tokenHealth.checkToken(
-            signal.tokenAddress,
-            signal.network,
-            this.userId
+            signal.tokenAddress, signal.network, this.userId
           );
-        } catch {
-          // token health falla → sigue sin él
-        }
+        } catch { /* sigue sin health */ }
 
-        const confluenceResult = await this.confluence.evaluate(
-          signal,
-          health,
-          regimeSnapshot ?? null
+        const conf = await this.confluence.evaluate(
+          signal, health, regimeSnapshot ?? null
         );
-
-        if (!confluenceResult) continue;
+        if (!conf) continue;
 
         result.signalsGenerated++;
-
-        const entryResult = await this.executeEntry(confluenceResult, riskState);
-        result.entries.push(entryResult);
+        const entry = await this.executeEntry(conf, riskState);
+        result.entries.push(entry);
 
         try {
           await this.outcomeTracker.recordSignal(
-            this.userId,
-            confluenceResult,
-            entryResult.executed,
-            entryResult.executed ? null : entryResult.reason,
-            result.regime
+            this.userId, conf, entry.executed,
+            entry.executed ? null : entry.reason, result.regime
           );
-        } catch {
-          // No bloquear el ciclo si falla el tracking
-        }
+        } catch { /* no bloquear */ }
 
-        if (entryResult.executed) {
+        if (entry.executed) {
           result.tradesOpened++;
-          await this.registerOpenedTrade(riskState, confluenceResult.layer);
+          await this.registerOpenedTrade(riskState, conf.layer);
         }
       } catch (err) {
         result.errors.push(`${signal.tokenSymbol}: ${errMsg(err)}`);
       }
     }
 
-    // --- 7. Actualizar outcomes de señales pasadas ---
+    // --- 3. Pipeline EARLY (EarlyDetector → Satellite preferente) ---
+    let earlySignals: Awaited<ReturnType<EarlyDetector["scan"]>>["signals"] = [];
+    try {
+      const earlyScan = await this.early.scan();
+      earlySignals = earlyScan.signals;
+      result.earlyPoolsScanned = earlyScan.poolsScanned;
+      result.earlyCandidates = earlyScan.signals.length;
+      for (const ne of earlyScan.networkErrors) {
+        result.errors.push(`GeckoTerminal new_pools: ${ne}`);
+      }
+    } catch (err) {
+      result.errors.push(`Early scan: ${errMsg(err)}`);
+    }
+
+    for (const signal of earlySignals) {
+      try {
+        const key = `${signal.network}:${signal.tokenAddress}`;
+        if (processedTokens.has(key)) continue;
+        processedTokens.add(key);
+
+        let health = null;
+        try {
+          health = await this.tokenHealth.checkToken(
+            signal.tokenAddress, signal.network, this.userId
+          );
+        } catch { /* sigue sin health */ }
+
+        const conf = await this.confluence.evaluateEarly(
+          signal, health, regimeSnapshot ?? null
+        );
+        if (!conf) continue;
+
+        result.signalsGenerated++;
+        const entry = await this.executeEntry(conf, riskState);
+        result.entries.push(entry);
+
+        try {
+          await this.outcomeTracker.recordSignal(
+            this.userId, conf, entry.executed,
+            entry.executed ? null : entry.reason, result.regime
+          );
+        } catch { /* no bloquear */ }
+
+        if (entry.executed) {
+          result.tradesOpened++;
+          await this.registerOpenedTrade(riskState, conf.layer);
+        }
+      } catch (err) {
+        result.errors.push(`Early ${signal.tokenSymbol}: ${errMsg(err)}`);
+      }
+    }
+
+    // --- 4. Actualizar outcomes de señales pasadas ---
     try {
       await this.outcomeTracker.updatePendingOutcomes();
     } catch (err) {
       result.errors.push(`Outcome tracking: ${errMsg(err)}`);
     }
 
-    // --- 8. Gestionar posiciones abiertas ---
+    // --- 5. Gestionar posiciones abiertas ---
     try {
       const exits = await this.positions.checkPositions(this.userId);
       result.exits = exits;
@@ -208,6 +261,7 @@ export class Orchestrator {
         symbol: conf.token,
         layer: conf.layer,
         confidence: conf.confidence,
+        signalSource: conf.signalSource,
         executed: false,
         reason: verdict.reason ?? "Rechazado por RiskGate",
       };
@@ -225,6 +279,7 @@ export class Orchestrator {
         symbol: conf.token,
         layer: conf.layer,
         confidence: conf.confidence,
+        signalSource: conf.signalSource,
         executed: false,
         reason: "Sizing adaptativo devolvió tamaño <= 0",
       };
@@ -237,6 +292,7 @@ export class Orchestrator {
         symbol: conf.token,
         layer: conf.layer,
         confidence: conf.confidence,
+        signalSource: conf.signalSource,
         executed: false,
         reason: brokerResult.reason ?? "PaperBroker rechazó",
       };
@@ -248,6 +304,7 @@ export class Orchestrator {
       symbol: conf.token,
       layer: conf.layer,
       confidence: conf.confidence,
+      signalSource: conf.signalSource,
       executed: true,
       reason: `Ejecutado ($${conf.order.amountUsd.toFixed(2)}) — ${conf.reasons.join(" | ")}`,
     };
@@ -260,7 +317,9 @@ export class Orchestrator {
     const confidence = Math.max(0, Math.min(100, conf.confidence));
     const confidenceFactor = 0.35 + (confidence / 100) * 0.65;
 
-    const liquidityUsd = Math.max(conf.sources.momentum?.liquidityUsd ?? 0, 0);
+    const liquidityUsd = Math.max(
+      conf.sources.momentum?.liquidityUsd ?? conf.sources.early?.liquidityUsd ?? 0, 0
+    );
     const targetLiquidityFloor = 250_000;
     const rawLiquidityFactor = liquidityUsd / targetLiquidityFloor;
     const liquidityFactor = Math.max(0.4, Math.min(rawLiquidityFactor, 1));
@@ -309,9 +368,10 @@ export class Orchestrator {
         ...trade.metadata,
         tokenAddress: conf.tokenAddress,
         network: conf.network,
+        signalSource: conf.signalSource,
         confidence: conf.confidence,
-        entryVolume24h: conf.sources.momentum?.volume24h,
-        entryLiquidity: conf.sources.momentum?.liquidityUsd,
+        entryVolume24h: conf.sources.momentum?.volume24h ?? conf.sources.early?.volume24h,
+        entryLiquidity: conf.sources.momentum?.liquidityUsd ?? conf.sources.early?.liquidityUsd,
       },
     });
   }

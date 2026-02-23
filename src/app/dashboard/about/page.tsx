@@ -44,7 +44,7 @@ export default function AboutPage() {
 
         <div className="mt-6 space-y-6">
           <Block
-            title="1. Escaneo de Mercado (Momentum Detection)"
+            title="1. Escaneo de Mercado — Trending (Momentum Detection)"
             description="Cada 15 minutos, el sistema consulta GeckoTerminal
               (CoinGecko on-chain) para descubrir los trending pools reales
               de Ethereum, Base, Solana y Arbitrum — hasta 20 pools por red,
@@ -52,19 +52,32 @@ export default function AboutPage() {
               volumen, ratio compras/ventas (buy pressure), aceleración de
               volumen multi-timeframe y antigüedad del par (>2 días). Genera
               un momentum score 0-100. Solo los que superan 55 pasan al
-              siguiente filtro. DexScreener se mantiene para datos de
-              ejecución (quotes, pares individuales). Coste: $0."
+              siguiente filtro. Alimenta preferentemente la capa Core.
+              Coste: $0."
           />
           <Block
-            title="2. Validación de Token (Token Health)"
+            title="2. Escaneo de Mercado — Early Detection"
+            description="En paralelo al trending, el sistema escanea pools
+              recién creados (últimas 72h) buscando tokens en fase temprana
+              con potencial. Usa GeckoTerminal /new_pools. Filtros anti-scam:
+              liquidez mínima $5K pero creciendo, ratio buyers/sellers únicos
+              > 1.2 (compras orgánicas de muchos wallets, no bots), edad
+              mínima 1h, precio no parabólico (<200% en 24h), y patrón de
+              actividad orgánica (muchas compras pequeñas > pocas grandes).
+              Genera un early score 0-100. Alimenta la capa Satellite.
+              Coste: $0."
+          />
+          <Block
+            title="3. Validación de Token (Token Health)"
             description="Antes de operar, evalúa la salud del token: liquidez
               real del pool, volumen 24h, spread, concentración de holders
               (top 10) y risk flags del contrato (honeypot, taxes ocultos,
-              pares muy nuevos, sin ventas). Si el token no pasa un umbral
-              mínimo de salud (60/100), se descarta automáticamente."
+              sin ventas). Para trending: umbral 60/100. Para early: umbral
+              40/100 pero con veto absoluto en flags críticos (no_sells,
+              zero_price → honeypot probable)."
           />
           <Block
-            title="3. Contexto de Mercado (Régimen)"
+            title="4. Contexto de Mercado (Régimen)"
             description="Detecta el régimen macro (risk-on, risk-off o neutral)
               combinando el Fear & Greed Index, dominancia de BTC y volumen
               total del mercado — todo con APIs gratuitas. En mercados
@@ -72,26 +85,26 @@ export default function AboutPage() {
               En risk-on amplifica la confianza."
           />
           <Block
-            title="4. Confluencia de Señales"
-            description="El cerebro del sistema. Combina 4 capas independientes:
-              momentum (máx 40 pts), wallet confluence (máx 25 pts), token
-              health (máx 20 pts) y régimen (máx 15 pts). Genera un
-              confidence score 0-100. Solo opera si alcanza 50+ (Satellite)
-              o 75+ (Core). Una señal que solo tiene momentum débil nunca
-              pasa. La señal más fuerte: 3+ wallets con buen score comprando
-              el mismo token en menos de 6 horas."
+            title="5. Confluencia de Señales + Wallet Intelligence"
+            description="El cerebro del sistema. Dos pipelines de scoring:
+              Para trending: momentum (40 pts) + wallets (25 pts) + health
+              (20 pts) + régimen (15 pts). Para early: early score (35 pts)
+              + wallets con BOOST x1.5 (30 pts) + health (15 pts) + organic
+              patterns (10 pts) + régimen (10 pts). Si smart wallets compran
+              un token recién nacido, esa es la señal más potente del sistema.
+              Umbrales: 50+ Satellite, 75+ Core."
           />
           <Block
-            title="5. Estrategia Dual: Core + Satellite"
-            description="Core (80% del riesgo): operaciones en tokens líquidos
-              con alta probabilidad, riesgo por trade 0.5% del capital.
-              Satellite (20% del riesgo): pocas operaciones de alta
-              asimetría, riesgo 0.25%. Tamaño de posición adaptativo: escala
-              con la confianza de la señal y la liquidez del pool, con límite
-              de impacto máximo al pool (0.5% Core, 0.3% Satellite)."
+            title="6. Estrategia Dual: Core + Satellite"
+            description="Core (80% del riesgo): tokens trending con alta
+              confluencia, riesgo por trade 0.5% del capital.
+              Satellite (20% del riesgo): tokens tempranos con potencial
+              asimétrico, riesgo 0.25%. Un solo acierto early puede
+              compensar 10 pérdidas. Tamaño de posición adaptativo: escala
+              con la confianza de la señal y la liquidez del pool."
           />
           <Block
-            title="6. Gestión de Riesgo (Risk Gate)"
+            title="7. Gestión de Riesgo (Risk Gate)"
             description="Cada operación pasa por el Risk Gate. Reglas no
               negociables: pérdida diaria > 2% → pausa total; pérdida
               semanal > 6% → pausa total; 3 pérdidas seguidas en Satellite
@@ -99,7 +112,7 @@ export default function AboutPage() {
               cada día (00:00 UTC) y cada semana (lunes)."
           />
           <Block
-            title="7. Ejecución Simulada (Paper Trading)"
+            title="8. Ejecución Simulada (Paper Trading)"
             description="El Paper Broker opera con precios reales de DexScreener
               y simula slippage, spread, gas y latencia proporcionales a la
               liquidez del pool. Gestión de posiciones abiertas con trailing
@@ -107,22 +120,20 @@ export default function AboutPage() {
               volumen/liquidez y take profit escalonado."
           />
           <Block
-            title="8. Validación Forward de Señales"
+            title="9. Validación Forward de Señales"
             description="Cada señal generada — ejecutada o no — se registra con
               su precio de entrada. Automáticamente, el sistema vuelve a
               consultar el precio real del token a 1h, 6h, 24h, 48h y 7 días.
-              Calcula hit rate y PnL medio por ventana temporal, por layer y
-              por régimen de mercado. Esto mide objetivamente si el motor
-              genera señales con valor predictivo real."
+              Calcula hit rate y PnL medio por ventana temporal, por layer,
+              por señal source (trending vs early) y por régimen de mercado."
           />
           <Block
-            title="9. Orquestación Automática"
-            description="El motor se ejecuta cada 15 minutos vía GitHub Actions
-              (gratuito). Vercel mantiene el cron diario de risk reset.
-              Cada ciclo: detecta régimen → escanea momentum → evalúa salud
-              → calcula confluencia → ejecuta trades → actualiza outcomes de
-              señales pasadas → gestiona posiciones abiertas. Todo automático,
-              24/7, coste $0."
+            title="10. Orquestación Automática — Doble Pipeline"
+            description="Cada ciclo ejecuta dos pipelines en secuencia:
+              1) Trending → MomentumDetector → ConfluenceEngine → Core/Sat.
+              2) Early → EarlyDetector → ConfluenceEngine (con wallet boost)
+              → Satellite. Deduplicación automática (si un token aparece en
+              ambos, solo se evalúa una vez). Todo automático, 24/7, $0."
           />
         </div>
       </section>
@@ -183,6 +194,22 @@ export default function AboutPage() {
         </p>
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
+          <ChangelogEntry
+            version="0.9.0"
+            date="23 feb 2026"
+            title="Early Detection + Wallet Boost: Doble Pipeline de Descubrimiento"
+            items={[
+              "EarlyDetector: nuevo módulo que escanea pools recién creados (últimas 72h) en busca de tokens en fase temprana con tracción orgánica.",
+              "Filtros anti-scam para early: liquidez mínima $5K, edad mínima 1h, ratio buyers/sellers > 1.2, patrón de compras orgánico, veto en flags críticos (no_sells, zero_price).",
+              "Wallet Boost para early signals: si smart wallets compran un token temprano, la confianza se multiplica x1.5 — la señal más fuerte del sistema.",
+              "ConfluenceEngine con evaluateEarly(): scoring separado para tokens tempranos con umbrales más bajos de health (40 vs 60) pero más exigentes en anti-scam.",
+              "Orchestrator con doble pipeline: Trending → Core/Satellite + Early → Satellite. Deduplicación automática por token.",
+              "Dashboard muestra trending pools + early pools escaneados y candidatos por separado.",
+              "Errores de GeckoTerminal ahora visibles en el dashboard — antes se tragaban silenciosamente.",
+              "About actualizado con 10 bloques (nuevo: Early Detection, Wallet Intelligence integrada).",
+              "Coste total: sigue $0.",
+            ]}
+          />
           <ChangelogEntry
             version="0.8.0"
             date="23 feb 2026"
