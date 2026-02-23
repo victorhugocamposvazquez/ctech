@@ -358,6 +358,18 @@ export class Orchestrator {
     conf: ConfluenceResult,
     riskState: RiskState
   ): Promise<EntryResult> {
+    const realModeGuardError = this.validateRealModeSafety(conf);
+    if (realModeGuardError) {
+      return {
+        symbol: conf.token,
+        layer: conf.layer,
+        confidence: conf.confidence,
+        signalSource: conf.signalSource,
+        executed: false,
+        reason: realModeGuardError,
+      };
+    }
+
     const verdict = this.riskGate.evaluate(riskState, conf.layer);
 
     if (!verdict.allowed) {
@@ -418,6 +430,37 @@ export class Orchestrator {
       executed: true,
       reason: `Ejecutado ($${conf.order.amountUsd.toFixed(2)}) — ${conf.reasons.join(" | ")}`,
     };
+  }
+
+  /**
+   * Warmup filters are intentionally more permissive for paper simulation.
+   * If execution mode is not paper in the future, apply strict hard gates
+   * so relaxed discovery settings never leak into live trading.
+   */
+  private validateRealModeSafety(conf: ConfluenceResult): string | null {
+    if (conf.order.executionMode === "paper") return null;
+
+    const liquidityUsd = Math.max(
+      conf.sources.momentum?.liquidityUsd ?? conf.sources.early?.liquidityUsd ?? 0,
+      0
+    );
+    if (liquidityUsd < 30_000) {
+      return "Hard gate live: liquidez < $30K";
+    }
+
+    const health = conf.sources.tokenHealth?.healthScore ?? 0;
+    if (health < 60) {
+      return "Hard gate live: token health < 60";
+    }
+
+    if (conf.layer === "core" && conf.confidence < 75) {
+      return "Hard gate live: confianza core < 75";
+    }
+    if (conf.layer === "satellite" && conf.confidence < 60) {
+      return "Hard gate live: confianza satellite < 60";
+    }
+
+    return null;
   }
 
   private calculateAdaptivePositionSize(

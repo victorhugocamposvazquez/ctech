@@ -55,11 +55,11 @@ const DEFAULT_CONFIG: EarlyConfig = {
   minLiquidityUsd: 10_000,
   maxLiquidityUsd: 2_000_000,
   minVolume24h: 5_000,
-  minBuyPressure: 1.4,
-  minBuyerSellerRatio: 1.4,
-  minEarlyScore: 50,
+  minBuyPressure: 1.2,
+  minBuyerSellerRatio: 1.1,
+  minEarlyScore: 42,
   maxPairAgeHours: 72,
-  minPairAgeHours: 2,
+  minPairAgeHours: 1,
   maxPriceChange24h: 200,
   source: "birdeye",
 };
@@ -322,7 +322,9 @@ export class EarlyDetector {
    * Un ratio alto indica interés orgánico diversificado.
    */
   private calcBuyerSellerRatio(pool: GeckoTerminalPool | null): number {
-    if (!pool) return 1;
+    // Birdeye discovery path doesn't provide Gecko pool transactions shape.
+    // Use a neutral value so early signals are not blocked by missing metadata.
+    if (!pool) return 1.2;
     const h24 = pool.attributes.transactions.h24;
     if (h24.sellers <= 0) return h24.buyers > 0 ? 5 : 1;
     return h24.buyers / h24.sellers;
