@@ -53,14 +53,14 @@ export interface EarlyConfig {
 
 const DEFAULT_CONFIG: EarlyConfig = {
   networks: ["solana"],
-  minLiquidityUsd: 3_000,
+  minLiquidityUsd: 500,
   maxLiquidityUsd: 2_000_000,
-  minVolume24h: 2_000,
+  minVolume24h: 800,
   minBuyPressure: 1.1,
   minBuyerSellerRatio: 1.1,
   minEarlyScore: 42,
   maxPairAgeHours: 72,
-  minPairAgeHours: 1,
+  minPairAgeHours: 0.25,
   maxPriceChange24h: 400,
   source: "birdeye",
 };

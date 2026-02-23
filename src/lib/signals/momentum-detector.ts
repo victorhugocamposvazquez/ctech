@@ -50,10 +50,10 @@ const DEFAULT_CONFIG: MomentumConfig = {
   minLiquidityUsd: 10_000,
   maxLiquidityUsd: 50_000_000,
   minVolume24h: 5_000,
-  minBuyPressure: 1.1,
-  minMomentumScore: 45,
-  minPairAgeDays: 0.25,
-  maxPriceChange24h: 180,
+  minBuyPressure: 1.0,
+  minMomentumScore: 38,
+  minPairAgeDays: 0.10,
+  maxPriceChange24h: 260,
   source: "birdeye",
 };
 
