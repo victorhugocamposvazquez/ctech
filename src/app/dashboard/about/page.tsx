@@ -156,6 +156,19 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="0.4.0"
+            date="23 feb 2026"
+            title="Market Intelligence: Token Health + QuoteFetcher + Régimen de Mercado"
+            items={[
+              "DexScreenerClient: cliente para DexScreener API (gratis, sin API key, 60 req/min) — precio, liquidez, volumen y pares de DEX en tiempo real.",
+              "TokenHealthChecker: evalúa salud de tokens combinando DexScreener (liquidez, volumen, spread, antigüedad) + Arkham holders (concentración top 10). Genera health_score 0-100 con detección de risk flags (low_liquidity, no_sells, very_new_pair, etc.).",
+              "DexScreenerQuoteFetcher: implementación de QuoteFetcher que conecta precios reales de DEX con el PaperBroker — las simulaciones ahora usan datos de mercado real.",
+              "RegimeDetector: detecta régimen de mercado (risk_on / risk_off / neutral) usando Fear & Greed Index + BTC dominance + volumen total — todo gratis, sin Glassnode.",
+              "Auto-registro de tokens: si un token no existe en token_registry, se crea automáticamente al evaluar su salud.",
+              "Coste mensual de APIs: $0 para DexScreener, Fear & Greed y CoinGecko. Solo Arkham requiere plan (custom).",
+            ]}
+          />
+          <ChangelogEntry
             version="0.3.0"
             date="23 feb 2026"
             title="Arkham Pipeline: Wallet Intelligence + Signal Generation"

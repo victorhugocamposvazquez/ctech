@@ -107,7 +107,7 @@ export interface ArkhamTokenHoldersResponse {
 
 // --------------- Query params ---------------
 
-export interface TransfersQuery {
+export type TransfersQuery = {
   base: string;
   chains?: string;
   flow?: "in" | "out" | "self" | "all";
@@ -121,9 +121,9 @@ export interface TransfersQuery {
   sortDir?: "asc" | "desc";
   limit?: number;
   offset?: number;
-}
+};
 
-export interface SwapsQuery {
+export type SwapsQuery = {
   base: string;
   chains?: string;
   flow?: "in" | "out" | "all";
@@ -137,4 +137,4 @@ export interface SwapsQuery {
   sortDir?: "asc" | "desc";
   limit?: number;
   offset?: number;
-}
+};

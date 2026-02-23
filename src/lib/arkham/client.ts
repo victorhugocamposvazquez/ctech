@@ -84,7 +84,7 @@ export class ArkhamClient {
 
   private async get<T>(
     path: string,
-    params?: Record<string, unknown>
+    params?: Record<string, string | number | boolean | undefined | null>
   ): Promise<T> {
     await this.throttle();
 
