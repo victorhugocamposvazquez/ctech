@@ -265,7 +265,7 @@ export class EarlyDetector {
     pool: GeckoTerminalPool | null
   ): EarlySignal | null {
     const liquidityUsd = pair.liquidity?.usd ?? 0;
-    const volume24h = pair.volume?.h24 ?? 0;
+    const volume24h = this.getEffectiveVolume24h(pair);
     const price = parseFloat(pair.priceUsd) || 0;
 
     if (liquidityUsd < this.config.minLiquidityUsd) return null;
@@ -278,8 +278,7 @@ export class EarlyDetector {
       return null;
     }
 
-    const pairAgeMs = pair.pairCreatedAt ? Date.now() - pair.pairCreatedAt : 0;
-    const pairAgeHours = pairAgeMs / (60 * 60 * 1000);
+    const pairAgeHours = this.getEffectivePairAgeHours(pair);
 
     if (pairAgeHours > this.config.maxPairAgeHours) return null;
     if (pairAgeHours < this.config.minPairAgeHours) return null;
@@ -355,7 +354,7 @@ export class EarlyDetector {
   private calcVolumeGrowth(pair: DexPair): number {
     const v1h = pair.volume?.h1 ?? 0;
     const v6h = pair.volume?.h6 ?? 0;
-    const v24h = pair.volume?.h24 ?? 0;
+    const v24h = this.getEffectiveVolume24h(pair);
 
     if (v24h <= 0) return 0;
     if (v6h <= 0) return v1h > 0 ? 3 : 0;
@@ -440,7 +439,7 @@ export class EarlyDetector {
     pool: GeckoTerminalPool | null
   ): string | null {
     const liquidityUsd = pair.liquidity?.usd ?? 0;
-    const volume24h = pair.volume?.h24 ?? 0;
+    const volume24h = this.getEffectiveVolume24h(pair);
     const price = parseFloat(pair.priceUsd) || 0;
     if (liquidityUsd < this.config.minLiquidityUsd) return "low_liquidity";
     if (liquidityUsd > this.config.maxLiquidityUsd) return "high_liquidity";
@@ -452,8 +451,7 @@ export class EarlyDetector {
       return "network_filtered";
     }
 
-    const pairAgeMs = pair.pairCreatedAt ? Date.now() - pair.pairCreatedAt : 0;
-    const pairAgeHours = pairAgeMs / (60 * 60 * 1000);
+    const pairAgeHours = this.getEffectivePairAgeHours(pair);
     if (pairAgeHours > this.config.maxPairAgeHours) return "too_old_pair";
     if (pairAgeHours < this.config.minPairAgeHours) return "too_new_pair";
 
@@ -480,5 +478,29 @@ export class EarlyDetector {
     if (earlyScore < this.config.minEarlyScore) return "low_early_score";
 
     return null;
+  }
+
+  /**
+   * Some providers/routes don't populate h24 reliably for very new pools.
+   * Fallback to 24x h1 to avoid false "low_volume" negatives.
+   */
+  private getEffectiveVolume24h(pair: DexPair): number {
+    const v24h = pair.volume?.h24 ?? 0;
+    if (v24h > 0) return v24h;
+    const v1h = pair.volume?.h1 ?? 0;
+    if (v1h > 0) return v1h * 24;
+    return 0;
+  }
+
+  /**
+   * Dex routes may return pairCreatedAt=0 for some tokens.
+   * Use a neutral fallback age to avoid classifying unknown-age pools as "too_new".
+   */
+  private getEffectivePairAgeHours(pair: DexPair): number {
+    if (pair.pairCreatedAt && pair.pairCreatedAt > 0) {
+      const ms = Date.now() - pair.pairCreatedAt;
+      return ms / (60 * 60 * 1000);
+    }
+    return 6;
   }
 }
