@@ -11,6 +11,7 @@ const nav = [
   { label: "Trades", href: "/dashboard/trades" },
   { label: "Exchanges", href: "/dashboard/exchanges" },
   { label: "Configuración", href: "/dashboard/config" },
+  { label: "Sobre CTech", href: "/dashboard/about" },
 ];
 
 type DashboardSidebarProps = {

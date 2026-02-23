@@ -1,0 +1,245 @@
+export default function AboutPage() {
+  return (
+    <div className="space-y-10 max-w-4xl">
+      {/* ========== HERO / PRESENTACIÓN ========== */}
+      <section className="rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-[#0f1a45] via-[#131f54] to-[#0d1638] p-8 sm:p-10 shadow-[0_24px_60px_rgba(6,8,25,0.6)]">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          Soy CTech.
+        </h1>
+        <p className="mt-3 text-base sm:text-lg leading-relaxed text-cyan-100/90">
+          Creado por{" "}
+          <span className="font-semibold text-white">Hugo Campos Vázquez</span>{" "}
+          con la ayuda de{" "}
+          <span className="text-cyan-300">GPT 5.3 &ndash; Codex</span>,{" "}
+          <span className="text-indigo-300">Opus 4.6</span>,{" "}
+          <span className="text-emerald-300">Arkham</span>,{" "}
+          <span className="text-amber-300">Glassnode</span> y{" "}
+          <span className="text-rose-300">Dune</span>.
+        </p>
+      </section>
+
+      {/* ========== QUÉ ES CTECH ========== */}
+      <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-8 shadow-[0_18px_40px_rgba(6,8,25,0.45)]">
+        <h2 className="text-lg font-semibold text-white uppercase tracking-wide">
+          Qué es CTech
+        </h2>
+        <p className="mt-4 text-sm sm:text-base leading-relaxed text-slate-300">
+          CTech es un sistema autónomo de copy-trading especializado en tokens
+          DeFi. Combina inteligencia de wallets on-chain, validación de salud de
+          tokens, análisis de régimen de mercado y un motor de ejecución con
+          gestión de riesgo estricta para generar beneficio de forma consistente.
+        </p>
+        <p className="mt-3 text-sm sm:text-base leading-relaxed text-slate-300">
+          No es un bot que lanza operaciones a ciegas. Cada decisión pasa por
+          múltiples capas de filtrado y validación antes de ejecutarse, y el
+          sistema aprende de sus propios resultados para mejorar con cada ciclo.
+        </p>
+      </section>
+
+      {/* ========== CÓMO FUNCIONA ========== */}
+      <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-8 shadow-[0_18px_40px_rgba(6,8,25,0.45)]">
+        <h2 className="text-lg font-semibold text-white uppercase tracking-wide">
+          Cómo funciona
+        </h2>
+
+        <div className="mt-6 space-y-6">
+          <Block
+            title="1. Wallet Intelligence (Arkham)"
+            description="CTech identifica y monitoriza wallets con track record
+              demostrado en tokens DeFi. No copia a cualquiera: cada wallet
+              recibe un score basado en win-rate, profit factor, drawdown y
+              consistencia temporal. Solo las wallets que superan un umbral
+              mínimo generan señales operativas."
+          />
+          <Block
+            title="2. Validación de Token (Dune + DEX Data)"
+            description="Antes de operar, el sistema evalúa la salud del token:
+              liquidez real del pool, volumen 24 h, spread, concentración de
+              holders y flags de riesgo del contrato (honeypot, taxes ocultos,
+              pausas). Si el token no pasa, la operación se descarta
+              automáticamente."
+          />
+          <Block
+            title="3. Contexto de Mercado (Glassnode)"
+            description="El sistema detecta el régimen macro (risk-on, risk-off
+              o neutral) analizando dominancia de BTC, volatilidad total,
+              funding medio y sentimiento. En entornos hostiles reduce exposición
+              o pausa la capa agresiva, protegiendo el capital."
+          />
+          <Block
+            title="4. Estrategia Dual: Core + Satellite"
+            description="Core (80 % del riesgo): operaciones en tokens líquidos
+              con alta probabilidad, RR moderado (1:1.5 – 1:2.5), riesgo
+              por trade 0.5 %. Genera beneficio diario estable. Satellite
+              (20 % del riesgo): pocas operaciones de alta asimetría (RR 1:5 –
+              1:10+), riesgo 0.15 – 0.25 %, buscando rentabilidades potentes.
+              Los dos bolsillos tienen presupuesto de pérdida independiente."
+          />
+          <Block
+            title="5. Gestión de Riesgo (Risk Gate)"
+            description="Cada operación pasa por el Risk Gate antes de ejecutarse.
+              Reglas no negociables: pérdida diaria > 2 % → pausa total;
+              pérdida semanal > 6 % → pausa total; 3 pérdidas seguidas en
+              Satellite → cooldown de 24 h. El sistema nunca compensa
+              pérdidas de Satellite aumentando tamaño en Core."
+          />
+          <Block
+            title="6. Ejecución Realista (Paper → Live)"
+            description="El Paper Broker opera con datos de mercado en tiempo real
+              y simula slippage, spread, gas y latencia de forma proporcional a
+              la liquidez del pool. Mismo pipeline para paper, shadow y live:
+              solo cambia el broker final. El sistema debe demostrar 100-200
+              operaciones consistentes en paper antes de activar capital real."
+          />
+          <Block
+            title="7. Aprendizaje Continuo"
+            description="Cada semana el sistema recalcula scores de wallets y
+              umbrales de token health según resultados netos. Solo promueve
+              una nueva versión del modelo si supera a la anterior en
+              expectancy, profit factor y max drawdown. Sin mejora clara, se
+              mantiene la versión actual."
+          />
+        </div>
+      </section>
+
+      {/* ========== MÉTRICAS CLAVE ========== */}
+      <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-8 shadow-[0_18px_40px_rgba(6,8,25,0.45)]">
+        <h2 className="text-lg font-semibold text-white uppercase tracking-wide">
+          Métricas clave que monitoriza
+        </h2>
+        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-300">
+          <Metric label="Expectancy neta / trade" />
+          <Metric label="Profit factor" />
+          <Metric label="Max drawdown" />
+          <Metric label="Sharpe / Sortino" />
+          <Metric label="% meses positivos" />
+          <Metric label="Slippage medio" />
+          <Metric label="Coste por operación" />
+          <Metric label="Estabilidad por régimen" />
+        </ul>
+      </section>
+
+      {/* ========== STACK TECNOLÓGICO ========== */}
+      <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-8 shadow-[0_18px_40px_rgba(6,8,25,0.45)]">
+        <h2 className="text-lg font-semibold text-white uppercase tracking-wide">
+          Stack tecnológico
+        </h2>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {[
+            "Next.js 15",
+            "TypeScript",
+            "Tailwind CSS",
+            "Supabase",
+            "Arkham API",
+            "Dune Analytics",
+            "Glassnode API",
+            "Vercel",
+          ].map((tech) => (
+            <span
+              key={tech}
+              className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300"
+            >
+              {tech}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* ========== CHANGELOG ========== */}
+      <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-8 shadow-[0_18px_40px_rgba(6,8,25,0.45)]">
+        <h2 className="text-lg font-semibold text-white uppercase tracking-wide">
+          Changelog
+        </h2>
+        <p className="mt-1 text-xs text-slate-400">
+          Historial de hitos del sistema, del más reciente al más antiguo.
+        </p>
+
+        <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
+          <ChangelogEntry
+            version="0.2.0"
+            date="23 feb 2026"
+            title="Engine: Risk Gate + Paper Broker + modelo de datos completo"
+            items={[
+              "7 tablas nuevas: tracked_wallets, wallet_scores, wallet_movements, token_registry, token_health_snapshots, market_regimes, risk_state.",
+              "Campos nuevos en trades: execution_mode (paper/live/shadow), layer (core/satellite), slippage, gas, latencia, motivo de entrada/salida, scores al momento de operar.",
+              "Módulo RiskGate: evaluación pre-trade con kill switches (pérdida diaria -2 %, semanal -6 %, 3 pérdidas consecutivas satellite → cooldown 24 h).",
+              "Módulo PaperBroker: ejecución simulada con slippage proporcional a liquidez, gas estimado por red, latencia realista.",
+              "Tipos TypeScript compartidos del engine (OrderRequest, FillResult, TradeRecord, RiskConfig, etc.).",
+              "Arquitectura dual Core (80 % riesgo, estabilidad) + Satellite (20 % riesgo, alta asimetría).",
+            ]}
+          />
+          <ChangelogEntry
+            version="0.1.0"
+            date="22 feb 2026"
+            title="MVP: Auth + Dashboard + Señales + Trades"
+            items={[
+              "Autenticación con Supabase (email + contraseña).",
+              "Dashboard con KPIs: señales hoy, trades hoy, PnL acumulado.",
+              "API: POST /api/signals, POST /api/trades/manual, GET /api/dashboard/kpis.",
+              "Modelo de datos inicial: profiles, exchange_connections, signals, trades.",
+              "Layout con sidebar, header responsive y deploy en Vercel.",
+            ]}
+          />
+        </ol>
+      </section>
+    </div>
+  );
+}
+
+function Block({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5">
+      <h3 className="text-sm font-semibold text-cyan-200">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-slate-400">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function Metric({ label }: { label: string }) {
+  return (
+    <li className="flex items-center gap-2">
+      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shrink-0" />
+      {label}
+    </li>
+  );
+}
+
+function ChangelogEntry({
+  version,
+  date,
+  title,
+  items,
+}: {
+  version: string;
+  date: string;
+  title: string;
+  items: string[];
+}) {
+  return (
+    <li className="ml-6">
+      <span className="absolute -left-[7px] mt-1.5 h-3.5 w-3.5 rounded-full border-2 border-cyan-400 bg-[#131b43]" />
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <span className="rounded-full bg-cyan-400/10 border border-cyan-300/20 px-2 py-0.5 text-xs font-semibold text-cyan-300">
+          v{version}
+        </span>
+        <span className="text-xs text-slate-500">{date}</span>
+      </div>
+      <h3 className="mt-1.5 text-sm font-semibold text-white">{title}</h3>
+      <ul className="mt-2 space-y-1">
+        {items.map((item, i) => (
+          <li key={i} className="text-xs leading-relaxed text-slate-400">
+            &bull; {item}
+          </li>
+        ))}
+      </ul>
+    </li>
+  );
+}
