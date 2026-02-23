@@ -112,6 +112,25 @@ Este repo ya incluye `vercel.json` con `framework: nextjs`. Además, en Vercel r
 - **Build Command**: `next build` (o por defecto)
 - **Output Directory**: vacío / por defecto (no `public`)
 
+## Scheduling de ciclos (Vercel Free + GitHub Actions)
+
+Para mantener compatibilidad con Vercel Hobby:
+
+- `vercel.json` deja solo el cron diario `0 0 * * *` para `/api/cron/risk-reset`.
+- El ciclo de trading cada 15 min se ejecuta desde GitHub Actions: `.github/workflows/cycle-cron.yml`.
+
+### Secrets necesarios en GitHub
+
+En tu repo de GitHub, configura:
+
+- `CTECH_BASE_URL` → URL pública de tu app (ej. `https://ctech.vercel.app`)
+- `CRON_SECRET` → mismo valor que usas en producción para proteger `/api/cron/*`
+
+El workflow llama:
+
+- `GET /api/cron/cycle?secret=...` cada 15 minutos
+- también se puede lanzar manualmente con `workflow_dispatch`
+
 ## Stack
 
 - **Next.js 15** (App Router), **TypeScript**, **Tailwind CSS**
@@ -147,6 +166,5 @@ Este repo ya incluye `vercel.json` con `framework: nextjs`. Además, en Vercel r
 
 ## Próximos pasos
 
-- Cron/worker para ejecutar ciclos automáticamente.
 - Loop de mejora continua (reentrenamiento semanal de scores y umbrales).
 - UI para visualizar señales, posiciones y rendimiento.

@@ -1,0 +1,36 @@
+name: CTech Cycle Scheduler
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /api/cron/cycle
+        env:
+          CTECH_BASE_URL: ${{ secrets.CTECH_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CTECH_BASE_URL" ]; then
+            echo "Missing required secret: CTECH_BASE_URL"
+            exit 1
+          fi
+
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Missing required secret: CRON_SECRET"
+            exit 1
+          fi
+
+          HTTP_STATUS=$(curl -sS -o response.json -w "%{http_code}" \
+            -X GET "${CTECH_BASE_URL%/}/api/cron/cycle?secret=${CRON_SECRET}")
+
+          echo "HTTP status: $HTTP_STATUS"
+          cat response.json
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "Cycle trigger failed"
+            exit 1
+          fi

@@ -156,6 +156,19 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="0.6.0"
+            date="23 feb 2026"
+            title="Ejecución Automática + APIs de Consulta + Risk Reset"
+            items={[
+              "Vercel Cron: ciclo del motor cada 15 minutos automáticamente (GET /api/cron/cycle).",
+              "Risk reset diario: PnL, contadores de trades y pausas expiradas se resetean a las 00:00 UTC. Reset semanal los lunes (PnL semanal, pérdidas consecutivas).",
+              "GET /api/positions: posiciones abiertas, cerradas o todas — con filtros y paginación.",
+              "GET /api/performance: métricas completas de rendimiento — expectancy, profit factor, win rate, max drawdown, desglose Core vs Satellite, estado de riesgo actual.",
+              "POST /api/cycle: ejecución manual de un ciclo completo del motor.",
+              "Protección de crons con CRON_SECRET en producción.",
+            ]}
+          />
+          <ChangelogEntry
             version="0.5.0"
             date="23 feb 2026"
             title="Motor de Señales v2: Momentum + Confluencia + Gestión de Posiciones + Orquestador"
