@@ -99,6 +99,16 @@ export default function AboutPage() {
               expectancy, profit factor y max drawdown. Sin mejora clara, se
               mantiene la versión actual."
           />
+          <Block
+            title="8. Orquestación y Scheduling Híbrido"
+            description="El motor se ejecuta automáticamente cada 15 minutos
+              mediante GitHub Actions llamando GET /api/cron/cycle con
+              autenticación por CRON_SECRET. En Vercel se mantiene el cron
+              diario de risk reset (00:00 UTC) en /api/cron/risk-reset para
+              reiniciar contadores y pausas de riesgo. Esta arquitectura
+              mantiene la automatización completa con coste mínimo en planes
+              free."
+          />
         </div>
       </section>
 
@@ -160,7 +170,7 @@ export default function AboutPage() {
             date="23 feb 2026"
             title="Ejecución Automática + APIs de Consulta + Risk Reset"
             items={[
-              "Vercel Cron: ciclo del motor cada 15 minutos automáticamente (GET /api/cron/cycle).",
+              "Scheduler híbrido: GitHub Actions ejecuta el ciclo cada 15 minutos (GET /api/cron/cycle) y Vercel mantiene el cron diario de risk reset.",
               "Risk reset diario: PnL, contadores de trades y pausas expiradas se resetean a las 00:00 UTC. Reset semanal los lunes (PnL semanal, pérdidas consecutivas).",
               "GET /api/positions: posiciones abiertas, cerradas o todas — con filtros y paginación.",
               "GET /api/performance: métricas completas de rendimiento — expectancy, profit factor, win rate, max drawdown, desglose Core vs Satellite, estado de riesgo actual.",
