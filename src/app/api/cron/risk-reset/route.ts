@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * GET /api/cron/risk-reset — ejecutado por Vercel Cron a las 00:00 UTC diario.
@@ -19,7 +19,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  let supabase;
+  try {
+    supabase = createAdminClient();
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
   const now = new Date();
   const isMonday = now.getUTCDay() === 1;
 
@@ -37,7 +45,7 @@ export async function GET(req: Request) {
     dailyUpdate.last_weekly_reset_at = now.toISOString();
   }
 
-  const { error: resetError, count } = await supabase
+  const { data: resetRows, error: resetError } = await supabase
     .from("risk_state")
     .update(dailyUpdate)
     .neq("user_id", "00000000-0000-0000-0000-000000000000")
@@ -59,7 +67,7 @@ export async function GET(req: Request) {
     isMonday,
     dailyReset: !resetError,
     weeklyReset: isMonday && !resetError,
-    usersReset: count ?? 0,
+    usersReset: resetRows?.length ?? 0,
     unpauseError: unpauseError?.message ?? null,
   });
 }
@@ -69,5 +77,9 @@ function verifyCronAuth(req: Request): boolean {
   if (!secret) return true;
 
   const authHeader = req.headers.get("authorization");
-  return authHeader === `Bearer ${secret}`;
+  if (authHeader === `Bearer ${secret}`) return true;
+
+  const url = new URL(req.url);
+  const querySecret = url.searchParams.get("secret");
+  return querySecret === secret;
 }

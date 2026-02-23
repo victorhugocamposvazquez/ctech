@@ -218,6 +218,7 @@ export class ConfluenceEngine {
       .ilike("token_address", tokenAddress)
       .eq("network", network)
       .eq("direction", "buy")
+      .eq("tracked_wallets.user_id", this.userId)
       .gte("detected_at", windowStart);
 
     if (!movements || movements.length === 0) return null;

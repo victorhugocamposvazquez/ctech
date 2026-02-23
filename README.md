@@ -21,6 +21,7 @@ SaaS de copy trading con señales, ejecución automática y autoaprendizaje. Nex
    Edita `.env.local` y rellena:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (necesaria para crons server-to-server)
 
 4. **Desarrollo**
    ```bash
@@ -50,6 +51,9 @@ Las rutas bajo `/dashboard` requieren sesión; si no estás logueado te redirige
 - `GET /api/wallets` → lista wallets tracked del usuario (con último score).
 - `POST /api/wallets` → añade/actualiza una wallet al tracking.
 - `POST /api/scan` → ejecuta ciclo completo: escaneo de swaps → scoring de wallets → generación de señales.
+
+### Simulación
+- `POST /api/simulation/bootstrap` → prepara el entorno de paper trading (risk_state + wallets opcionales + primer ciclo opcional).
 
 ### Ejemplos rápidos
 
@@ -128,7 +132,8 @@ En tu repo de GitHub, configura:
 
 El workflow llama:
 
-- `GET /api/cron/cycle?secret=...` cada 15 minutos
+- `GET /api/cron/cycle` cada 15 minutos
+- con header `Authorization: Bearer $CRON_SECRET`
 - también se puede lanzar manualmente con `workflow_dispatch`
 
 ### Monitorización de fallos del scheduler
@@ -174,3 +179,40 @@ El workflow llama:
 
 - Loop de mejora continua (reentrenamiento semanal de scores y umbrales).
 - UI para visualizar señales, posiciones y rendimiento.
+
+## Arranque rápido de simulación (paper trading)
+
+1. Arranca la app y autentícate con tu usuario.
+2. Inicializa simulación:
+
+```bash
+curl -X POST http://localhost:3000/api/simulation/bootstrap \
+  -H "Content-Type: application/json" \
+  -d '{
+    "initialCapital": 10000,
+    "resetState": true,
+    "runFirstCycle": true,
+    "trackedWallets": [
+      { "address": "0x0000000000000000000000000000000000000000", "network": "ethereum", "label": "wallet-ejemplo" }
+    ]
+  }'
+```
+
+> Nota: este endpoint requiere sesión autenticada de Supabase (cookie del navegador). Si haces la llamada por `curl`, debes incluir cookies de sesión válidas.
+>
+> Alternativa rápida desde el navegador (ya logueado): abre DevTools Console y ejecuta:
+>
+> ```js
+> fetch("/api/simulation/bootstrap", {
+>   method: "POST",
+>   headers: { "Content-Type": "application/json" },
+>   body: JSON.stringify({ initialCapital: 10000, resetState: true, runFirstCycle: true }),
+> }).then((r) => r.json()).then(console.log);
+> ```
+
+3. Consulta resultados:
+   - `GET /api/positions?status=all`
+   - `GET /api/performance`
+4. Operación continua:
+   - scheduler GitHub Actions cada 15 minutos (`/api/cron/cycle`)
+   - reset diario de riesgo por Vercel cron (`/api/cron/risk-reset`)

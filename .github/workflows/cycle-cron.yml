@@ -29,12 +29,13 @@ jobs:
             exit 1
           fi
 
-          endpoint="${CTECH_BASE_URL%/}/api/cron/cycle?secret=${CRON_SECRET}"
+          endpoint="${CTECH_BASE_URL%/}/api/cron/cycle"
           ok=0
 
           for attempt in 1 2 3; do
             echo "Attempt $attempt/3 -> $endpoint"
             HTTP_STATUS=$(curl -sS --max-time 25 -o response.json -w "%{http_code}" \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
               -X GET "$endpoint")
 
             echo "HTTP status: $HTTP_STATUS"

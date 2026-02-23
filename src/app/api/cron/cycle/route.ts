@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { Orchestrator } from "@/lib/signals/orchestrator";
 
 /**
@@ -13,7 +13,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  let supabase;
+  try {
+    supabase = createAdminClient();
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
 
   const { data: users } = await supabase
     .from("risk_state")
@@ -51,5 +59,9 @@ function verifyCronAuth(req: Request): boolean {
   if (!secret) return true; // dev mode sin secret → permitir
 
   const authHeader = req.headers.get("authorization");
-  return authHeader === `Bearer ${secret}`;
+  if (authHeader === `Bearer ${secret}`) return true;
+
+  const url = new URL(req.url);
+  const querySecret = url.searchParams.get("secret");
+  return querySecret === secret;
 }

@@ -32,6 +32,14 @@ interface EntryResult {
   reason: string;
 }
 
+interface PositionSizingDecision {
+  amountUsd: number;
+  confidenceFactor: number;
+  liquidityFactor: number;
+  liquidityCapUsd: number;
+  maxByRiskGateUsd: number;
+}
+
 /**
  * Orchestrator — pipeline completo end-to-end.
  *
@@ -179,7 +187,22 @@ export class Orchestrator {
       };
     }
 
-    conf.order.amountUsd = verdict.maxPositionUsd;
+    const sizing = this.calculateAdaptivePositionSize(conf, verdict.maxPositionUsd);
+    conf.order.amountUsd = sizing.amountUsd;
+    conf.order.metadata = {
+      ...conf.order.metadata,
+      positionSizing: sizing,
+    };
+
+    if (conf.order.amountUsd <= 0) {
+      return {
+        symbol: conf.token,
+        layer: conf.layer,
+        confidence: conf.confidence,
+        executed: false,
+        reason: "Sizing adaptativo devolvió tamaño <= 0",
+      };
+    }
 
     const brokerResult = await this.broker.execute(conf.order, riskState);
 
@@ -200,7 +223,38 @@ export class Orchestrator {
       layer: conf.layer,
       confidence: conf.confidence,
       executed: true,
-      reason: `Ejecutado — ${conf.reasons.join(" | ")}`,
+      reason: `Ejecutado ($${conf.order.amountUsd.toFixed(2)}) — ${conf.reasons.join(" | ")}`,
+    };
+  }
+
+  private calculateAdaptivePositionSize(
+    conf: ConfluenceResult,
+    maxByRiskGateUsd: number
+  ): PositionSizingDecision {
+    const confidence = Math.max(0, Math.min(100, conf.confidence));
+    const confidenceFactor = 0.35 + (confidence / 100) * 0.65;
+
+    const liquidityUsd = Math.max(conf.sources.momentum?.liquidityUsd ?? 0, 0);
+    const targetLiquidityFloor = 250_000;
+    const rawLiquidityFactor = liquidityUsd / targetLiquidityFloor;
+    const liquidityFactor = Math.max(0.4, Math.min(rawLiquidityFactor, 1));
+
+    const maxPoolImpactPct = conf.layer === "core" ? 0.005 : 0.003;
+    const liquidityCapUsd = liquidityUsd > 0
+      ? liquidityUsd * maxPoolImpactPct
+      : maxByRiskGateUsd * 0.25;
+
+    const rawSize = maxByRiskGateUsd * confidenceFactor * liquidityFactor;
+    const sized = Math.min(rawSize, liquidityCapUsd, maxByRiskGateUsd);
+    const minTicketUsd = conf.layer === "core" ? 25 : 15;
+    const amountUsd = sized >= minTicketUsd ? sized : 0;
+
+    return {
+      amountUsd: Number(amountUsd.toFixed(2)),
+      confidenceFactor: Number(confidenceFactor.toFixed(4)),
+      liquidityFactor: Number(liquidityFactor.toFixed(4)),
+      liquidityCapUsd: Number(liquidityCapUsd.toFixed(2)),
+      maxByRiskGateUsd: Number(maxByRiskGateUsd.toFixed(2)),
     };
   }
 
