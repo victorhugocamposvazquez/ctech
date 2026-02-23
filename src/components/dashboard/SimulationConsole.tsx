@@ -65,6 +65,16 @@ type CycleSummary = {
   errors?: string[];
 };
 
+type SystemStatus = {
+  ready: boolean;
+  envs: Record<string, boolean>;
+  dbConnected: boolean;
+  tablesReady: boolean;
+  userAuthenticated: boolean;
+  riskStateExists: boolean;
+  nextSteps: string[];
+};
+
 export default function SimulationConsole() {
   const [capital, setCapital] = useState("10000");
   const [resetState, setResetState] = useState(true);
@@ -86,10 +96,21 @@ export default function SimulationConsole() {
   const [performance, setPerformance] = useState<PerformanceResponse | null>(null);
   const [positions, setPositions] = useState<PositionsResponse | null>(null);
   const [lastCycle, setLastCycle] = useState<CycleSummary | null>(null);
+  const [status, setStatus] = useState<SystemStatus | null>(null);
 
   useEffect(() => {
+    void checkStatus();
     void refreshAll();
   }, []);
+
+  async function checkStatus() {
+    try {
+      const res = await fetch("/api/status");
+      if (res.ok) setStatus(await res.json());
+    } catch {
+      // silencioso
+    }
+  }
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -252,6 +273,39 @@ export default function SimulationConsole() {
 
   return (
     <div className="space-y-5">
+      {status && !status.ready && (
+        <section className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5 space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-200">
+            Configuración pendiente
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+            {Object.entries(status.envs).map(([key, ok]) => (
+              <div key={key} className={`rounded-lg border px-2 py-1.5 ${ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-rose-400/30 bg-rose-400/10 text-rose-200"}`}>
+                {key.replace(/^NEXT_PUBLIC_/, "")}
+              </div>
+            ))}
+            <div className={`rounded-lg border px-2 py-1.5 ${status.dbConnected ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-rose-400/30 bg-rose-400/10 text-rose-200"}`}>
+              DB conectada
+            </div>
+            <div className={`rounded-lg border px-2 py-1.5 ${status.tablesReady ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-rose-400/30 bg-rose-400/10 text-rose-200"}`}>
+              Tablas creadas
+            </div>
+          </div>
+          <ul className="space-y-1">
+            {status.nextSteps.map((step, i) => (
+              <li key={i} className="text-xs text-amber-100">&bull; {step}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {status?.ready && (
+        <section className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-4 py-2.5 flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs text-emerald-200">Sistema configurado y listo para operar.</span>
+        </section>
+      )}
+
       <section className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-5 space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
           Control de simulación

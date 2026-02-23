@@ -44,70 +44,83 @@ export default function AboutPage() {
 
         <div className="mt-6 space-y-6">
           <Block
-            title="1. Wallet Intelligence (Arkham)"
-            description="CTech identifica y monitoriza wallets con track record
-              demostrado en tokens DeFi. No copia a cualquiera: cada wallet
-              recibe un score basado en win-rate, profit factor, drawdown y
-              consistencia temporal. Solo las wallets que superan un umbral
-              mínimo generan señales operativas."
+            title="1. Escaneo de Mercado (Momentum Detection)"
+            description="Cada 15 minutos, el sistema escanea automáticamente
+              DexScreener buscando tokens DeFi con tracción real en Ethereum,
+              Base, Solana y Arbitrum. Filtra por liquidez ($50K–$50M),
+              volumen, ratio compras/ventas, aceleración de volumen y
+              antigüedad del par (>2 días). Genera un momentum score 0-100
+              para cada token. Solo los que superan 55 pasan al siguiente
+              filtro. Coste: $0."
           />
           <Block
-            title="2. Validación de Token (Dune + DEX Data)"
-            description="Antes de operar, el sistema evalúa la salud del token:
-              liquidez real del pool, volumen 24 h, spread, concentración de
-              holders y flags de riesgo del contrato (honeypot, taxes ocultos,
-              pausas). Si el token no pasa, la operación se descarta
-              automáticamente."
+            title="2. Validación de Token (Token Health)"
+            description="Antes de operar, evalúa la salud del token: liquidez
+              real del pool, volumen 24h, spread, concentración de holders
+              (top 10) y risk flags del contrato (honeypot, taxes ocultos,
+              pares muy nuevos, sin ventas). Si el token no pasa un umbral
+              mínimo de salud (60/100), se descarta automáticamente."
           />
           <Block
-            title="3. Contexto de Mercado (Glassnode)"
-            description="El sistema detecta el régimen macro (risk-on, risk-off
-              o neutral) analizando dominancia de BTC, volatilidad total,
-              funding medio y sentimiento. En entornos hostiles reduce exposición
-              o pausa la capa agresiva, protegiendo el capital."
+            title="3. Contexto de Mercado (Régimen)"
+            description="Detecta el régimen macro (risk-on, risk-off o neutral)
+              combinando el Fear & Greed Index, dominancia de BTC y volumen
+              total del mercado — todo con APIs gratuitas. En mercados
+              risk-off penaliza las señales y puede pausar la capa agresiva.
+              En risk-on amplifica la confianza."
           />
           <Block
-            title="4. Estrategia Dual: Core + Satellite"
-            description="Core (80 % del riesgo): operaciones en tokens líquidos
-              con alta probabilidad, RR moderado (1:1.5 – 1:2.5), riesgo
-              por trade 0.5 %. Genera beneficio diario estable. Satellite
-              (20 % del riesgo): pocas operaciones de alta asimetría (RR 1:5 –
-              1:10+), riesgo 0.15 – 0.25 %, buscando rentabilidades potentes.
-              Los dos bolsillos tienen presupuesto de pérdida independiente."
+            title="4. Confluencia de Señales"
+            description="El cerebro del sistema. Combina 4 capas independientes:
+              momentum (máx 40 pts), wallet confluence (máx 25 pts), token
+              health (máx 20 pts) y régimen (máx 15 pts). Genera un
+              confidence score 0-100. Solo opera si alcanza 50+ (Satellite)
+              o 75+ (Core). Una señal que solo tiene momentum débil nunca
+              pasa. La señal más fuerte: 3+ wallets con buen score comprando
+              el mismo token en menos de 6 horas."
           />
           <Block
-            title="5. Gestión de Riesgo (Risk Gate)"
-            description="Cada operación pasa por el Risk Gate antes de ejecutarse.
-              Reglas no negociables: pérdida diaria > 2 % → pausa total;
-              pérdida semanal > 6 % → pausa total; 3 pérdidas seguidas en
-              Satellite → cooldown de 24 h. El sistema nunca compensa
-              pérdidas de Satellite aumentando tamaño en Core."
+            title="5. Estrategia Dual: Core + Satellite"
+            description="Core (80% del riesgo): operaciones en tokens líquidos
+              con alta probabilidad, riesgo por trade 0.5% del capital.
+              Satellite (20% del riesgo): pocas operaciones de alta
+              asimetría, riesgo 0.25%. Tamaño de posición adaptativo: escala
+              con la confianza de la señal y la liquidez del pool, con límite
+              de impacto máximo al pool (0.5% Core, 0.3% Satellite)."
           />
           <Block
-            title="6. Ejecución Realista (Paper → Live)"
-            description="El Paper Broker opera con datos de mercado en tiempo real
-              y simula slippage, spread, gas y latencia de forma proporcional a
-              la liquidez del pool. Mismo pipeline para paper, shadow y live:
-              solo cambia el broker final. El sistema debe demostrar 100-200
-              operaciones consistentes en paper antes de activar capital real."
+            title="6. Gestión de Riesgo (Risk Gate)"
+            description="Cada operación pasa por el Risk Gate. Reglas no
+              negociables: pérdida diaria > 2% → pausa total; pérdida
+              semanal > 6% → pausa total; 3 pérdidas seguidas en Satellite
+              → cooldown 24h. Los contadores se resetean automáticamente
+              cada día (00:00 UTC) y cada semana (lunes)."
           />
           <Block
-            title="7. Aprendizaje Continuo"
-            description="Cada semana el sistema recalcula scores de wallets y
-              umbrales de token health según resultados netos. Solo promueve
-              una nueva versión del modelo si supera a la anterior en
-              expectancy, profit factor y max drawdown. Sin mejora clara, se
-              mantiene la versión actual."
+            title="7. Ejecución Simulada (Paper Trading)"
+            description="El Paper Broker opera con precios reales de DexScreener
+              y simula slippage, spread, gas y latencia proporcionales a la
+              liquidez del pool. Gestión de posiciones abiertas con trailing
+              stop dinámico, tiempo máximo de holding, salida por caída de
+              volumen/liquidez y take profit escalonado."
           />
           <Block
-            title="8. Orquestación y Scheduling Híbrido"
-            description="El motor se ejecuta automáticamente cada 15 minutos
-              mediante GitHub Actions llamando GET /api/cron/cycle con
-              autenticación por CRON_SECRET. En Vercel se mantiene el cron
-              diario de risk reset (00:00 UTC) en /api/cron/risk-reset para
-              reiniciar contadores y pausas de riesgo. Esta arquitectura
-              mantiene la automatización completa con coste mínimo en planes
-              free."
+            title="8. Validación Forward de Señales"
+            description="Cada señal generada — ejecutada o no — se registra con
+              su precio de entrada. Automáticamente, el sistema vuelve a
+              consultar el precio real del token a 1h, 6h, 24h, 48h y 7 días.
+              Calcula hit rate y PnL medio por ventana temporal, por layer y
+              por régimen de mercado. Esto mide objetivamente si el motor
+              genera señales con valor predictivo real."
+          />
+          <Block
+            title="9. Orquestación Automática"
+            description="El motor se ejecuta cada 15 minutos vía GitHub Actions
+              (gratuito). Vercel mantiene el cron diario de risk reset.
+              Cada ciclo: detecta régimen → escanea momentum → evalúa salud
+              → calcula confluencia → ejecuta trades → actualiza outcomes de
+              señales pasadas → gestiona posiciones abiertas. Todo automático,
+              24/7, coste $0."
           />
         </div>
       </section>
@@ -140,9 +153,11 @@ export default function AboutPage() {
             "TypeScript",
             "Tailwind CSS",
             "Supabase",
-            "Arkham API",
-            "Dune Analytics",
-            "Glassnode API",
+            "DexScreener API",
+            "Arkham API (opcional)",
+            "CoinGecko API",
+            "Fear & Greed Index",
+            "GitHub Actions",
             "Vercel",
           ].map((tech) => (
             <span
@@ -165,6 +180,22 @@ export default function AboutPage() {
         </p>
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
+          <ChangelogEntry
+            version="0.7.0"
+            date="23 feb 2026"
+            title="Validación Forward + Consola de Simulación + Status Check"
+            items={[
+              "Signal Outcome Tracker: cada señal generada (ejecutada o rechazada) se registra y se trackea a 1h, 6h, 24h, 48h y 7 días para medir hit rate real.",
+              "Tabla signal_outcomes con precios reales post-señal y PnL hipotético por ventana temporal.",
+              "Dashboard Validación (/dashboard/validacion): hit rate por ventana, desglose Core vs Satellite, desglose por régimen, tabla de señales recientes con outcomes.",
+              "Dashboard Simulación (/dashboard/simulacion): bootstrap de simulación, run cycle manual, métricas de rendimiento, tabla de posiciones, auto-refresh.",
+              "GET /api/status: verificación de configuración del sistema (envs, DB, tablas, usuario, risk_state) con pasos pendientes.",
+              "Widget de estado en Simulación: muestra visualmente qué está configurado y qué falta antes de poder operar.",
+              "Sizing adaptativo: tamaño de posición escala con confianza de señal y liquidez del pool, con cap de impacto al pool.",
+              "Crons con cliente admin (service role): los ciclos automáticos ya no dependen de cookies de sesión.",
+              "Sección 'Cómo funciona' actualizada con los 9 bloques reales del sistema.",
+            ]}
+          />
           <ChangelogEntry
             version="0.6.0"
             date="23 feb 2026"
