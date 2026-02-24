@@ -156,11 +156,27 @@ type PositionRow = {
   pnl_pct: number | null;
   opened_at: string;
   closed_at: string | null;
+  metadata?: Record<string, unknown>;
 };
 
 type PositionsResponse = {
   count: number;
   positions: PositionRow[];
+};
+
+type LivePriceRow = {
+  id: string;
+  symbol: string;
+  tokenAddress: string;
+  network: string;
+  dexUrl: string;
+  entryPrice: number;
+  currentPrice: number;
+  pnlPct: number;
+  priceChange24h: number;
+  priceChange1h: number;
+  liquidityUsd: number;
+  openedAt: string;
 };
 
 type CycleSummary = {
@@ -239,6 +255,8 @@ export default function SimulationConsole() {
   const [sensitivityResult, setSensitivityResult] = useState<SensitivityReport | null>(null);
   const [capitalResult, setCapitalResult] = useState<CapitalScalingReport | null>(null);
   const [loadingAdvanced, setLoadingAdvanced] = useState<string | null>(null);
+  const [livePrices, setLivePrices] = useState<LivePriceRow[] | null>(null);
+  const [loadingLivePrices, setLoadingLivePrices] = useState(false);
 
   useEffect(() => {
     void checkStatus();
@@ -294,10 +312,30 @@ export default function SimulationConsole() {
       setPerformance(perfData);
       setCycles(cyclesData);
       setPositions(posData);
+      const hasOpen = (posData?.positions ?? []).some((p) => p.status === "open");
+      if (hasOpen) void fetchLivePrices();
+      else setLivePrices(null);
     } catch (err) {
       setLastError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoadingData(false);
+    }
+  }
+
+  async function fetchLivePrices() {
+    setLoadingLivePrices(true);
+    try {
+      const res = await fetch("/api/positions/live-prices");
+      if (res.ok) {
+        const data = await res.json();
+        setLivePrices(data.positions ?? []);
+      } else {
+        setLivePrices(null);
+      }
+    } catch {
+      setLivePrices(null);
+    } finally {
+      setLoadingLivePrices(false);
     }
   }
 
@@ -983,48 +1021,109 @@ export default function SimulationConsole() {
 
       <section className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="xl:col-span-2 rounded-2xl border border-white/10 bg-[#131b43]/90 p-5">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
-            Posiciones
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              Posiciones
+            </h3>
+            {(positions?.positions ?? []).some((p) => p.status === "open") && (
+              <button
+                type="button"
+                onClick={() => void fetchLivePrices()}
+                disabled={loadingLivePrices}
+                className="rounded-lg border border-cyan-400/40 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium text-cyan-200 hover:bg-cyan-400/20 disabled:opacity-60"
+              >
+                {loadingLivePrices ? "Actualizando…" : "Refrescar precios"}
+              </button>
+            )}
+          </div>
           <div className="mt-3 overflow-x-auto">
             <table className="min-w-full text-xs">
               <thead>
                 <tr className="text-slate-400">
                   <th className="text-left py-2 pr-3">Symbol</th>
+                  <th className="text-left py-2 pr-3">Contrato</th>
                   <th className="text-left py-2 pr-3">Layer</th>
                   <th className="text-left py-2 pr-3">Estado</th>
                   <th className="text-left py-2 pr-3">Entry</th>
+                  <th className="text-left py-2 pr-3">Actual</th>
                   <th className="text-left py-2 pr-3">Exit</th>
                   <th className="text-left py-2 pr-3">PnL</th>
+                  <th className="text-left py-2 pr-3">24h</th>
                   <th className="text-left py-2 pr-3">Abierto</th>
                 </tr>
               </thead>
               <tbody>
                 {positions?.positions?.length ? (
-                  positions.positions.map((p) => (
-                    <tr key={p.id} className="border-t border-white/5 text-slate-200">
-                      <td className="py-2 pr-3">{p.symbol}</td>
-                      <td className="py-2 pr-3">{p.layer}</td>
-                      <td className="py-2 pr-3">{p.status}</td>
-                      <td className="py-2 pr-3">{Number(p.entry_price ?? 0).toFixed(6)}</td>
-                      <td className="py-2 pr-3">
-                        {p.exit_price == null ? "-" : Number(p.exit_price).toFixed(6)}
-                      </td>
-                      <td
-                        className={`py-2 pr-3 ${
-                          Number(p.pnl_abs ?? 0) >= 0 ? "text-emerald-300" : "text-rose-300"
-                        }`}
-                      >
-                        {p.pnl_abs == null ? "-" : Number(p.pnl_abs).toFixed(2)}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {new Date(p.opened_at).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))
+                  positions.positions.map((p) => {
+                    const live = livePrices?.find((lp) => lp.id === p.id);
+                    const tokenAddr = live?.tokenAddress ?? String((p.metadata as Record<string, unknown>)?.tokenAddress ?? "");
+                    const network = live?.network ?? String((p.metadata as Record<string, unknown>)?.network ?? "solana");
+                    const dexUrl = live?.dexUrl || (tokenAddr ? `https://dexscreener.com/${network}/${tokenAddr}` : "");
+                    const currentPrice = live?.currentPrice ?? (p.status === "open" ? null : p.exit_price);
+                    const pnlVal = live ? live.pnlPct : (p.pnl_pct != null ? Number(p.pnl_pct) * 100 : null);
+                    return (
+                      <tr key={p.id} className="border-t border-white/5 text-slate-200">
+                        <td className="py-2 pr-3 font-medium">{p.symbol}</td>
+                        <td className="py-2 pr-3 max-w-[100px] truncate" title={tokenAddr || "-"}>
+                          {tokenAddr ? (
+                            <a
+                              href={dexUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-cyan-300 hover:underline truncate block"
+                            >
+                              {tokenAddr.slice(0, 6)}…{tokenAddr.slice(-4)}
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">{p.layer}</td>
+                        <td className="py-2 pr-3">
+                          <span className={p.status === "open" ? "text-amber-300" : "text-slate-400"}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3">{Number(p.entry_price ?? 0).toFixed(6)}</td>
+                        <td className="py-2 pr-3">
+                          {currentPrice != null ? Number(currentPrice).toFixed(6) : "-"}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {p.exit_price == null ? "-" : Number(p.exit_price).toFixed(6)}
+                        </td>
+                        <td
+                          className={`py-2 pr-3 font-medium ${
+                            pnlVal != null
+                              ? pnlVal >= 0
+                                ? "text-emerald-300"
+                                : "text-rose-300"
+                              : ""
+                          }`}
+                        >
+                          {pnlVal != null
+                            ? `${pnlVal >= 0 ? "+" : ""}${pnlVal.toFixed(2)}%`
+                            : p.pnl_abs != null
+                              ? Number(p.pnl_abs).toFixed(2)
+                              : "-"}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {live?.priceChange24h != null ? (
+                            <span className={live.priceChange24h >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                              {live.priceChange24h >= 0 ? "+" : ""}{live.priceChange24h.toFixed(1)}%
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">
+                          {new Date(p.opened_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td className="py-3 text-slate-400" colSpan={7}>
+                    <td className="py-3 text-slate-400" colSpan={10}>
                       Sin posiciones para el filtro actual.
                     </td>
                   </tr>
