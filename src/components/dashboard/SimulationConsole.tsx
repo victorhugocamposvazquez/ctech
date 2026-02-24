@@ -633,7 +633,43 @@ export default function SimulationConsole() {
           </p>
         )}
       </section>
-
+      <div className="rounded-2xl border border-white/10 bg-[#131b43]/90 p-5">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-300">
+              Último ciclo
+            </h3>
+            {lastCycle ? (
+              <ul className="mt-3 space-y-1 text-xs text-slate-300">
+                <li>Timestamp: {String(lastCycle.timestamp ?? "-")}</li>
+                <li>Régimen: {String(lastCycle.regime ?? "-")}</li>
+                <li>Trending pools: {lastCycle.poolsScanned ?? 0} escaneados &rarr; {lastCycle.tokensScanned ?? 0} candidatos</li>
+                <li>Early pools: {lastCycle.earlyPoolsScanned ?? 0} escaneados &rarr; {lastCycle.earlyCandidates ?? 0} candidatos</li>
+                <li>Señales con confluencia: {lastCycle.signalsGenerated ?? 0}</li>
+                <li>Trades abiertos: {lastCycle.tradesOpened ?? 0}</li>
+                <li>Trades cerrados: {lastCycle.tradesClosed ?? 0}</li>
+                <li>Errores: {(lastCycle.errors ?? []).length}</li>
+                {(lastCycle.errors ?? []).length > 0 && (
+                  <li className="mt-2 space-y-1">
+                    {(lastCycle.errors ?? []).map((e, i) => (
+                      <p key={i} className="text-rose-300 break-all">{e}</p>
+                    ))}
+                  </li>
+                )}
+                {lastCycle.calibration && (
+                  <li className="mt-2 pt-2 border-t border-white/5">
+                    <span className="text-cyan-300">Auto-calibración:</span>{" "}
+                    Mom &ge;{lastCycle.calibration.momentumThreshold},
+                    Early &ge;{lastCycle.calibration.earlyThreshold},
+                    Core &ge;{lastCycle.calibration.coreMinConf},
+                    Sat &ge;{lastCycle.calibration.satMinConf}
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="mt-3 text-xs text-slate-400">
+                Aún no hay ejecución en esta sesión.
+              </p>
+            )}
+          </div>  
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {kpis?.map((kpi) => (
           <div
