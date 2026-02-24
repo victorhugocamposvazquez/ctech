@@ -12,7 +12,7 @@ concurrency:
 jobs:
   trigger-cycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Trigger /api/cron/cycle
         env:
@@ -34,7 +34,7 @@ jobs:
 
           for attempt in 1 2 3; do
             echo "Attempt $attempt/3 -> $endpoint"
-            HTTP_STATUS=$(curl -sS --max-time 60 -o response.json -w "%{http_code}" \
+            HTTP_STATUS=$(curl -sS --max-time 180 -o response.json -w "%{http_code}" \
               -H "Authorization: Bearer ${CRON_SECRET}" \
               -X GET "$endpoint")
 
