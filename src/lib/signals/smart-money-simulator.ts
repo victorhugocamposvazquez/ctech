@@ -185,6 +185,8 @@ export class SmartMoneySimulator {
       (walletRows ?? []).map((r: { id: string; address: string }) => [r.address, r.id])
     );
 
+    await this.ensureWalletScores(supabase, walletRows ?? []);
+
     const rows = movements
       .filter((m) => addressToId.has(m.walletId))
       .map((m) => ({
@@ -202,6 +204,47 @@ export class SmartMoneySimulator {
     }
 
     return rows.length;
+  }
+
+  /**
+   * Garantiza que cada wallet simulada tenga un wallet_score >= 70
+   * para que checkWalletConfluence pueda detectar confluencia.
+   */
+  private async ensureWalletScores(
+    supabase: SupabaseClient,
+    walletRows: { id: string; address: string }[]
+  ): Promise<void> {
+    const now = new Date();
+    const periodEnd = now.toISOString();
+    const periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    for (const row of walletRows) {
+      const wallet = this.wallets.find((w) => w.id === row.address);
+      if (!wallet) continue;
+
+      const { data: existing } = await supabase
+        .from("wallet_scores")
+        .select("id")
+        .eq("wallet_id", row.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) continue;
+
+      const overallScore = Math.max(70, Math.round(wallet.winRate * 100));
+      await supabase.from("wallet_scores").insert({
+        wallet_id: row.id,
+        period_start: periodStart,
+        period_end: periodEnd,
+        total_trades: 0,
+        win_rate: wallet.winRate,
+        profit_factor: 1.5,
+        avg_pnl_pct: 5,
+        max_drawdown_pct: 8,
+        consistency_score: overallScore,
+        overall_score: overallScore,
+      });
+    }
   }
 
   private calcStyleMatch(

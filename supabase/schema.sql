@@ -217,6 +217,15 @@ using (
   )
 );
 
+drop policy if exists "wallet_scores_insert_via_wallet" on public.wallet_scores;
+create policy "wallet_scores_insert_via_wallet" on public.wallet_scores for insert
+with check (
+  exists (
+    select 1 from public.tracked_wallets tw
+    where tw.id = wallet_id and tw.user_id = auth.uid()
+  )
+);
+
 -- ==================== wallet_movements ====================
 
 create table if not exists public.wallet_movements (
