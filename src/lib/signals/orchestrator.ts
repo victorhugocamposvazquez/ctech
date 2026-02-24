@@ -501,7 +501,10 @@ export class Orchestrator {
 
     const rawSize = maxByRiskGateUsd * confidenceFactor * liquidityFactor;
     const sized = Math.min(rawSize, liquidityCapUsd, maxByRiskGateUsd);
-    const minTicketUsd = conf.layer === "core" ? 25 : 15;
+    const isPaper = conf.order.executionMode === "paper";
+    const minTicketUsd = isPaper
+      ? (conf.layer === "core" ? 10 : 5)
+      : (conf.layer === "core" ? 25 : 15);
     const amountUsd = sized >= minTicketUsd ? sized : 0;
 
     return {
