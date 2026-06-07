@@ -29,6 +29,7 @@ type InfraResponse = {
   artifact: { contractName: string; compilerVersion: string; optimizationRuns: number };
   explorerApiConfigured: boolean;
   treasuryEnvConfigured: boolean;
+  treasuryPanelConfigured?: boolean;
   networks: NetworkStatus[];
 };
 
@@ -140,9 +141,10 @@ export default function EvmContractsPanel({ visible }: Props) {
         </button>
       </div>
 
-      {!data?.treasuryEnvConfigured && (
+      {!data?.treasuryEnvConfigured && !data?.treasuryPanelConfigured && (
         <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Falta <code className="text-amber-50">EVM_LAB_TREASURY_PRIVATE_KEY</code> en el servidor.
+          Configura la treasury en el panel superior o en{" "}
+          <code className="text-amber-50">EVM_LAB_TREASURY_PRIVATE_KEY</code>.
         </div>
       )}
 

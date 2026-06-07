@@ -7,6 +7,7 @@ import {
   FLASH_DURATION_MIN_MINUTES,
 } from "@/lib/labs/flash-duration";
 import FlashUSDTLab from "./FlashUSDTLab";
+import EvmTreasuryPanel from "./EvmTreasuryPanel";
 import EvmContractsPanel from "./EvmContractsPanel";
 
 type LabRole = "student" | "instructor" | "admin";
@@ -143,6 +144,7 @@ export default function SecurityLabConsole() {
 
   return (
     <div className="space-y-6">
+      {canBecomeInstructor && <EvmTreasuryPanel visible={canBecomeInstructor} />}
       {canBecomeInstructor && <EvmContractsPanel visible={canBecomeInstructor} />}
 
       {error && (

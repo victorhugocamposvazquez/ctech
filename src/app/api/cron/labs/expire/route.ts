@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { burnFlashUsdt, clearFlashCredit } from "@/lib/evm/flash-usdt-lab";
 import type { LabInjectionMode } from "@/lib/labs/types";
+import { resolveEvmLabContext } from "@/lib/evm/lab-context";
 import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
-import { resolveLabContractAddress } from "@/lib/evm/contract-registry";
 
 /**
  * GET /api/cron/labs/expire — expira inyecciones (burn modo 1, clearFlash modo 2).
@@ -54,8 +54,7 @@ export async function GET(req: Request) {
       | null;
     const session = Array.isArray(sessionRaw) ? sessionRaw[0] : sessionRaw;
     const network = (parseEvmNetwork(session?.network) ?? "bsc") as EvmNetwork;
-    const labContractAddress = await resolveLabContractAddress(admin, network);
-    const evmOptions = labContractAddress ? { labContractAddress } : undefined;
+    const { evmOptions } = await resolveEvmLabContext(admin, network);
     const mode = (injection.injection_mode ?? "fake_token") as LabInjectionMode;
 
     if (!walletAddress) {

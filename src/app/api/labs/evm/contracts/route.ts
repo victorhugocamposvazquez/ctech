@@ -6,9 +6,9 @@ import { EVM_NETWORK_META, type EvmNetwork } from "@/lib/evm/network";
 import {
   fetchActiveLabContract,
   getEnvLabContractAddress,
-  isTreasuryConfigured,
   resolveLabContractAddress,
 } from "@/lib/evm/contract-registry";
+import { isTreasuryReady, resolveTreasuryCredentials } from "@/lib/evm/treasury-registry";
 import { getExplorerContractUrl } from "@/lib/evm/chain-config";
 import {
   getTreasuryNativeBalance,
@@ -48,19 +48,21 @@ export async function GET(req: Request) {
   }
 
   const artifact = getFlashUsdTLabArtifact();
+  const treasuryCreds = await resolveTreasuryCredentials(admin);
+  const treasuryReadyGlobal = await isTreasuryReady(admin);
   const networks = [];
 
   for (const id of NETWORKS) {
     const meta = EVM_NETWORK_META[id];
-    const treasuryReady = isTreasuryConfigured(id);
+    const treasuryReady = treasuryReadyGlobal;
     const envContract = getEnvLabContractAddress(id);
     const dbContract = await fetchActiveLabContract(admin, id);
     const resolved = await resolveLabContractAddress(admin, id);
 
     let treasury = null;
-    if (treasuryReady) {
+    if (treasuryCreds?.address) {
       try {
-        treasury = await getTreasuryNativeBalance(id);
+        treasury = await getTreasuryNativeBalance(id, treasuryCreds.address);
       } catch {
         treasury = null;
       }
@@ -105,6 +107,8 @@ export async function GET(req: Request) {
     },
     explorerApiConfigured: isExplorerVerificationAvailable(),
     treasuryEnvConfigured: Boolean(process.env.EVM_LAB_TREASURY_PRIVATE_KEY),
+    treasuryPanelConfigured: treasuryCreds?.source === "panel",
+    treasuryActiveSource: treasuryCreds?.source ?? "none",
     networks,
   });
 }

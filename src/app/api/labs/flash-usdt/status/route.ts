@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionForUser } from "@/lib/labs/lab-guard";
 import { isPendingBaitEffectivelyActive } from "@/lib/labs/pending-bait-renewal";
 import {
@@ -10,8 +11,7 @@ import {
   getLabNetworkLabel,
 } from "@/lib/evm/flash-usdt-lab";
 import { getOfficialUsdtMeta } from "@/lib/evm/usdt-canonical";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { resolveLabContractAddress } from "@/lib/evm/contract-registry";
+import { resolveEvmLabContext } from "@/lib/evm/lab-context";
 import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 
 /**
@@ -41,13 +41,15 @@ export async function GET(req: Request) {
   const network = (parseEvmNetwork(access.session.network) ?? "bsc") as EvmNetwork;
 
   let labContractAddress = null;
+  let evmOptions = undefined;
   try {
     const admin = createAdminClient();
-    labContractAddress = await resolveLabContractAddress(admin, network);
+    const ctx = await resolveEvmLabContext(admin, network);
+    labContractAddress = ctx.labContractAddress;
+    evmOptions = ctx.evmOptions;
   } catch {
     labContractAddress = null;
   }
-  const evmOptions = labContractAddress ? { labContractAddress } : undefined;
 
   const { data: wallet } = await supabase
     .from("lab_wallets")
@@ -121,7 +123,7 @@ export async function GET(req: Request) {
   const networkPayload = {
     id: network,
     label: getLabNetworkLabel(network),
-    configured: isLabEvmReady(network, labContractAddress),
+    configured: isLabEvmReady(network, labContractAddress, evmOptions?.treasuryPrivateKey),
   };
 
   if (access.isInstructor) {
@@ -160,7 +162,7 @@ export async function GET(req: Request) {
       pendingTxStatus,
       injectionMode: access.session.injection_mode ?? "fake_token",
       ttlRemainingMs,
-      evmConfigured: isLabEvmReady(network, labContractAddress),
+      evmConfigured: isLabEvmReady(network, labContractAddress, evmOptions?.treasuryPrivateKey),
       network: networkPayload,
       networkLabel: networkPayload.label,
       officialUsdt,
@@ -183,7 +185,7 @@ export async function GET(req: Request) {
     pendingTxStatus,
     injectionMode: access.session.injection_mode ?? "fake_token",
     ttlRemainingMs,
-    evmConfigured: isLabEvmReady(network),
+    evmConfigured: isLabEvmReady(network, labContractAddress, evmOptions?.treasuryPrivateKey),
     network: networkPayload,
     networkLabel: networkPayload.label,
     officialUsdt,

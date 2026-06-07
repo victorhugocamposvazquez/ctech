@@ -21,9 +21,10 @@ export function getTreasuryAddress(network: EvmNetwork): Address | null {
 }
 
 export async function getTreasuryNativeBalance(
-  network: EvmNetwork
+  network: EvmNetwork,
+  addressOverride?: Address
 ): Promise<{ address: Address; balance: string; symbol: string } | null> {
-  const address = getTreasuryAddress(network);
+  const address = addressOverride ?? getTreasuryAddress(network);
   if (!address) return null;
 
   const publicClient = getPublicClient(network);
@@ -33,7 +34,8 @@ export async function getTreasuryNativeBalance(
 }
 
 export async function deployFlashUsdTLab(
-  network: EvmNetwork
+  network: EvmNetwork,
+  treasuryPrivateKey?: `0x${string}` | null
 ): Promise<{
   success: boolean;
   contractAddress?: Address;
@@ -42,13 +44,13 @@ export async function deployFlashUsdTLab(
   txExplorerUrl?: string;
   error?: string;
 }> {
-  if (!getTreasuryPrivateKeyForNetwork(network)) {
-    return { success: false, error: "Treasury no configurada (EVM_LAB_TREASURY_PRIVATE_KEY)" };
+  if (!treasuryPrivateKey && !getTreasuryPrivateKeyForNetwork(network)) {
+    return { success: false, error: "Treasury no configurada" };
   }
 
   try {
     const artifact = getFlashUsdTLabArtifact();
-    const walletClient = getWalletClient(network);
+    const walletClient = getWalletClient(network, treasuryPrivateKey);
     const publicClient = getPublicClient(network);
 
     const hash = await walletClient.deployContract({

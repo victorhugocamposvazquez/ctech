@@ -120,11 +120,12 @@ const CHAINS: Record<EvmNetwork, Chain> = {
 
 export function isEvmConfigured(
   network?: EvmNetwork,
-  labContractAddress?: string | null
+  labContractAddress?: string | null,
+  treasuryPrivateKey?: `0x${string}` | null
 ): boolean {
   if (network) {
     return Boolean(
-      getTreasuryPrivateKeyForNetwork(network) &&
+      (getTreasuryPrivateKeyForNetwork(network) || treasuryPrivateKey) &&
         (getLabContractAddressForNetwork(network) || labContractAddress)
     );
   }
@@ -142,7 +143,8 @@ export function getLabContractAddress(
   return addr as Address;
 }
 
-function getPrivateKey(network: EvmNetwork): `0x${string}` {
+function getPrivateKey(network: EvmNetwork, override?: `0x${string}` | null): `0x${string}` {
+  if (override) return override;
   let pk = getTreasuryPrivateKeyForNetwork(network) ?? "";
   if (!pk.startsWith("0x")) pk = `0x${pk}`;
   return pk as `0x${string}`;
@@ -164,8 +166,11 @@ export function getPublicClient(network: EvmNetwork) {
   });
 }
 
-export function getWalletClient(network: EvmNetwork) {
-  const account = privateKeyToAccount(getPrivateKey(network));
+export function getWalletClient(
+  network: EvmNetwork,
+  privateKeyOverride?: `0x${string}` | null
+) {
+  const account = privateKeyToAccount(getPrivateKey(network, privateKeyOverride));
   return createWalletClient({
     account,
     chain: getChain(network),

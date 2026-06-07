@@ -2,9 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Address } from "viem";
 import {
   getLabContractAddressForNetwork,
-  getTreasuryPrivateKeyForNetwork,
   type EvmNetwork,
 } from "./network";
+import { isTreasuryEnvConfigured } from "./treasury-registry";
 
 export type LabEvmContractRow = {
   id: string;
@@ -20,8 +20,8 @@ export type LabEvmContractRow = {
   compiler_version: string | null;
 };
 
-export function isTreasuryConfigured(network: EvmNetwork): boolean {
-  return Boolean(getTreasuryPrivateKeyForNetwork(network));
+export function isTreasuryConfigured(_network?: EvmNetwork): boolean {
+  return isTreasuryEnvConfigured();
 }
 
 export function getEnvLabContractAddress(network: EvmNetwork): string | undefined {
@@ -57,7 +57,8 @@ export async function isNetworkOperational(
   admin: SupabaseClient,
   network: EvmNetwork
 ): Promise<boolean> {
-  if (!isTreasuryConfigured(network)) return false;
+  const { resolveTreasuryCredentials } = await import("./treasury-registry");
+  if (!(await resolveTreasuryCredentials(admin))) return false;
   const address = await resolveLabContractAddress(admin, network);
   return Boolean(address);
 }

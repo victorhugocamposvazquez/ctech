@@ -5,7 +5,8 @@ import {
   getDefaultEvmNetwork,
   type EvmNetwork,
 } from "@/lib/evm/network";
-import { isNetworkOperational, isTreasuryConfigured } from "@/lib/evm/contract-registry";
+import { isNetworkOperational } from "@/lib/evm/contract-registry";
+import { isTreasuryReady } from "@/lib/evm/treasury-registry";
 
 /**
  * GET /api/labs/evm-config — redes EVM disponibles para crear sesiones.
@@ -22,8 +23,10 @@ export async function GET() {
 
   const enabled: EvmNetwork[] = [];
 
+  const treasuryReady = admin ? await isTreasuryReady(admin) : false;
+
   for (const id of networksList) {
-    if (!isTreasuryConfigured(id)) continue;
+    if (!treasuryReady) continue;
     if (admin) {
       if (await isNetworkOperational(admin, id)) enabled.push(id);
     } else if (networksList.includes(id)) {

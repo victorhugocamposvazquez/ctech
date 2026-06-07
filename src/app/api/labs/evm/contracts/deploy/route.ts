@@ -6,10 +6,10 @@ import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 import {
   fetchActiveLabContract,
   getEnvLabContractAddress,
-  isTreasuryConfigured,
 } from "@/lib/evm/contract-registry";
 import { deployFlashUsdTLab } from "@/lib/evm/deploy-service";
 import { getFlashUsdTLabArtifact } from "@/lib/evm/contract-artifact";
+import { isTreasuryReady, resolveTreasuryCredentials } from "@/lib/evm/treasury-registry";
 
 /**
  * POST /api/labs/evm/contracts/deploy — despliega FlashUSDTLab en la red indicada.
@@ -37,12 +37,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "network inválida (bsc | ethereum | polygon)" }, { status: 400 });
   }
 
-  if (!isTreasuryConfigured(network)) {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (err) {
     return NextResponse.json(
-      { error: "Configura EVM_LAB_TREASURY_PRIVATE_KEY con fondos en esa red" },
+      { error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
+
+  if (!(await isTreasuryReady(admin))) {
+    return NextResponse.json(
+      { error: "Configura la treasury en el panel o EVM_LAB_TREASURY_PRIVATE_KEY" },
       { status: 503 }
     );
   }
+
+  const treasury = await resolveTreasuryCredentials(admin);
 
   if (getEnvLabContractAddress(network) && !force) {
     return NextResponse.json(
@@ -51,16 +63,6 @@ export async function POST(req: Request) {
           "Ya hay contrato en variables de entorno para esta red. Usa force:true para desplegar otro (se guardará en BD).",
       },
       { status: 409 }
-    );
-  }
-
-  let admin;
-  try {
-    admin = createAdminClient();
-  } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
     );
   }
 
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = await deployFlashUsdTLab(network);
+  const result = await deployFlashUsdTLab(network, treasury?.privateKey);
   if (!result.success || !result.contractAddress || !result.txHash) {
     return NextResponse.json(
       { error: result.error ?? "Deploy fallido", txHash: result.txHash },

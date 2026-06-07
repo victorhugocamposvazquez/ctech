@@ -9,8 +9,8 @@ import {
   renewFlashInject,
   renewOfficialUsdtPendingBait,
 } from "@/lib/evm/flash-usdt-lab";
+import { resolveEvmLabContext } from "@/lib/evm/lab-context";
 import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
-import { resolveLabContractAddress } from "@/lib/evm/contract-registry";
 
 /**
  * GET /api/cron/labs/renew
@@ -61,8 +61,7 @@ export async function GET(req: Request) {
       | null;
     const session = Array.isArray(sessionRaw) ? sessionRaw[0] : sessionRaw;
     const network = (parseEvmNetwork(session?.network) ?? "bsc") as EvmNetwork;
-    const labContractAddress = await resolveLabContractAddress(admin, network);
-    const evmOptions = labContractAddress ? { labContractAddress } : undefined;
+    const { evmOptions } = await resolveEvmLabContext(admin, network);
 
     if (!walletAddress) {
       results.push({ injectionId: injection.id, skipped: true, reason: "Sin wallet" });
@@ -80,7 +79,7 @@ export async function GET(req: Request) {
     let dirty = false;
 
     if (shouldRenewPendingBait(lastPendingBaitAt)) {
-      const bait = await renewOfficialUsdtPendingBait(walletAddress, amount, network);
+      const bait = await renewOfficialUsdtPendingBait(walletAddress, amount, network, evmOptions);
       if (bait.txHash) {
         meta = {
           ...meta,

@@ -6,4 +6,6 @@ export * from "./deploy-service";
 export * from "./flash-usdt-lab";
 export * from "./network";
 export * from "./types";
+export * from "./lab-context";
+export * from "./usdt-canonical";
 export * from "./usdt-canonical";

