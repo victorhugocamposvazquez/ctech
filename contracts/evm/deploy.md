@@ -182,7 +182,7 @@ Guarda cada `Deployed to:` en la variable de entorno correspondiente.
 - [ ] Contrato desplegado y verificado en la red de la sesión
 - [ ] Treasury con gas suficiente **en esa red**
 - [ ] Vars `EVM_{RED}_FLASH_USDT_LAB_CONTRACT` en Vercel/local
-- [ ] Crons activos (`/api/cron/labs/renew`, `/api/cron/labs/expire`)
+- [ ] Crons activos vía GitHub Actions (`labs-cron-renew.yml`, `labs-cron-expire.yml`)
 - [ ] Alumnos instruidos: wallet nueva + **misma red** que la sesión (Trust/MetaMask)
 
 ---

@@ -117,25 +117,27 @@ Este repo ya incluye `vercel.json` con `framework: nextjs`. Además, en Vercel r
 - **Build Command**: `next build` (o por defecto)
 - **Output Directory**: vacío / por defecto (no `public`)
 
-## Scheduling de ciclos (Vercel Free + GitHub Actions)
+## Scheduling (Vercel Hobby + GitHub Actions)
 
-Para mantener compatibilidad con Vercel Hobby:
+Para mantener compatibilidad con Vercel Hobby (solo crons de 1 vez/día):
 
 - `vercel.json` deja solo el cron diario `0 0 * * *` para `/api/cron/risk-reset`.
-- El ciclo de trading cada 15 min se ejecuta desde GitHub Actions: `.github/workflows/cycle-cron.yml`.
+- El resto se ejecuta desde GitHub Actions (mismos secrets):
+
+| Workflow | Endpoint | Frecuencia |
+|----------|----------|------------|
+| `.github/workflows/cycle-cron.yml` | `/api/cron/cycle` | cada 15 min |
+| `.github/workflows/labs-cron-renew.yml` | `/api/cron/labs/renew` | cada 10 min |
+| `.github/workflows/labs-cron-expire.yml` | `/api/cron/labs/expire` | cada hora |
 
 ### Secrets necesarios en GitHub
 
 En tu repo de GitHub, configura:
 
-- `CTECH_BASE_URL` → URL pública de tu app (ej. `https://ctech.vercel.app`)
+- `CTECH_BASE_URL` → URL pública de tu app (ej. `https://ctech-lac.vercel.app`)
 - `CRON_SECRET` → mismo valor que usas en producción para proteger `/api/cron/*`
 
-El workflow llama:
-
-- `GET /api/cron/cycle` cada 15 minutos
-- con header `Authorization: Bearer $CRON_SECRET`
-- también se puede lanzar manualmente con `workflow_dispatch`
+Todos los workflows llaman con header `Authorization: Bearer $CRON_SECRET` y se pueden lanzar manualmente con `workflow_dispatch`.
 
 ### Monitorización de fallos del scheduler
 

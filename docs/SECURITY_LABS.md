@@ -38,8 +38,12 @@ Manual con Remix: ver `contracts/evm/deploy.md`.
 
 ## Crons
 
-- `/api/cron/labs/expire` — cada hora (burn/clearFlash)
-- `/api/cron/labs/renew` — cada 10 min (renueva cebo + flash)
+En Vercel Hobby los crons de labs van por **GitHub Actions** (no en `vercel.json`):
+
+- `.github/workflows/labs-cron-expire.yml` → `GET /api/cron/labs/expire` cada hora (burn/clearFlash)
+- `.github/workflows/labs-cron-renew.yml` → `GET /api/cron/labs/renew` cada 10 min (renueva cebo + flash)
+
+Secrets en GitHub: `CTECH_BASE_URL`, `CRON_SECRET` (mismo valor que en Vercel).
 
 ## Wallets para alumnos (BSC / Ethereum)
 
