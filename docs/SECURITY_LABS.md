@@ -1,19 +1,18 @@
 # Laboratorios de Seguridad — Flash USDT (EVM)
 
-## Red recomendada: BSC o Polygon
+## Redes soportadas
 
-Tron queda **descartado** por ahora. EVM ofrece mempool real → el total $ en Trust Wallet se mantiene **horas/días**.
+| Red | `EVM_NETWORK` | USDT oficial | Gas típico | Recomendación |
+|-----|---------------|--------------|------------|---------------|
+| **BSC** | `bsc` | `0x55d398326f99059fF775485246999027B3197955` | Muy bajo | **Talleres** (default) |
+| **Ethereum** | `ethereum` | `0xdAC17F958D2ee523a2206206994597C13D831ec7` | Alto | Demos cortas, pending muy largo |
 
-## Doble capa (igual concepto, mejor resultado)
+**Multi-red:** un solo despliegue Vercel puede servir BSC + Ethereum (y Polygon). Cada sesión elige su red al crearse. Variables por red: `EVM_BSC_FLASH_USDT_LAB_CONTRACT`, `EVM_ETHEREUM_FLASH_USDT_LAB_CONTRACT`, etc. Treasury compartida (`EVM_LAB_TREASURY_PRIVATE_KEY`) con BNB y ETH para gas en cada chain.
+
+## Doble capa
 
 1. **Token lab** (`FlashUSDTLab` ERC-20) — saldo USDT visible (nombre/símbolo idénticos).
 2. **Cebo pending USDT oficial** — `transfer()` sobre el contrato **verificado** de Tether con gas muy bajo.
-
-| Red | USDT oficial | Decimales USDT |
-|-----|--------------|----------------|
-| BSC | `0x55d398326f99059fF775485246999027B3197955` | 18 |
-| Polygon | `0xc2132D05D31c914a87C6611C10748AEb04B58e8F` | 6 |
-| Ethereum | `0xdAC17F958D2ee523a2206206994597C13D831ec7` | 6 |
 
 ## Modos
 
@@ -24,30 +23,52 @@ Tron queda **descartado** por ahora. EVM ofrece mempool real → el total $ en T
 
 - Flash: hasta **30 días** por ciclo (contrato EVM), renovable vía cron.
 - Cebo pending: re-emisión cada ~15 min mientras la sesión esté activa.
-- Total $ en Trust: **horas/días** (vs segundos en Tron).
-
-## Variables de entorno
-
-```
-EVM_NETWORK=bsc
-EVM_LAB_TREASURY_PRIVATE_KEY=0x...
-EVM_FLASH_USDT_LAB_CONTRACT=0x...
-EVM_RPC_URL=...                    # opcional
-EVM_PENDING_BAIT_MAX_FEE_GWEI=0.05 # gas bajo = pending largo
-EVM_PENDING_BAIT_RENEWAL_MINUTES=15
-EVM_FLASH_RENEW_BEFORE_MINUTES=60
-LAB_ADMIN_EMAILS=...
-CRON_SECRET=...
-```
+- Total $ en Trust/MetaMask: **horas/días**.
 
 ## Crons
 
 - `/api/cron/labs/expire` — cada hora (burn/clearFlash)
 - `/api/cron/labs/renew` — cada 10 min (renueva cebo + flash)
 
-## Wallets alumnos
+## Wallets para alumnos (BSC / Ethereum)
 
-**Trust Wallet** en la misma red que `EVM_NETWORK` (BSC o Polygon). Wallet de lab vacía.
+Wallet de **laboratorio vacía**. Misma red que `EVM_NETWORK`.
+
+### Tier A — Mejor experiencia (total $ + saldo visible)
+
+| Wallet | BSC | Ethereum | Notas |
+|--------|-----|----------|-------|
+| **Trust Wallet** | ✅ | ✅ | Recomendada. Pending USDT oficial suma al total $ horas/días. |
+| **MetaMask** | ✅ | ✅ | Muy usada en talleres. Mismo comportamiento pending. |
+| **Rabby** | ✅ | ✅ | Buena lectura de txs pending y contratos. |
+
+### Tier B — Funcionan bien
+
+| Wallet | BSC | Ethereum | Notas |
+|--------|-----|----------|-------|
+| **TokenPocket** | ✅ | ✅ | Popular en Asia, soporte BSC nativo. |
+| **OKX Wallet** | ✅ | ✅ | Web3 integrado, precios conservadores en tokens no listados. |
+| **SafePal** | ✅ | ✅ | Similar a Trust. |
+| **Coinbase Wallet** | ✅ | ✅ | Filtra tokens no verificados (saldo sí, total $ a veces no). |
+
+### Tier C — No recomendadas para el lab
+
+| Wallet | Motivo |
+|--------|--------|
+| **Ledger + app externa** | Lento para ver el “momento wow” del pending. |
+| **Wallets de exchange** (Binance app, etc.) | No son self-custody EVM estándar para el ejercicio. |
+
+### Config Trust Wallet (alumno)
+
+1. Instalar Trust Wallet, crear wallet **nueva solo para el lab**.
+2. **BSC:** Ajustes → Redes → activar **Smart Chain (BSC)**.
+3. **Ethereum:** activar red **Ethereum**.
+4. Copiar dirección **0x…** (no Tron) al panel del lab.
+5. Tras la inyección, abrir la wallet en los **primeros 30 s** y mirar **línea USDT + total $ arriba**.
+
+## Variables de entorno
+
+Ver `.env.local.example` — bloques **BSC**, **Ethereum** y treasury compartida. Endpoint `/api/labs/evm-config` lista redes configuradas.
 
 ## Deploy contrato
 

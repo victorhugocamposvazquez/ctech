@@ -1,5 +1,5 @@
 import type { Address } from "viem";
-import { getEvmNetwork, type EvmNetwork } from "./network";
+import { getDefaultEvmNetwork, type EvmNetwork } from "./network";
 
 const USDT_BY_NETWORK: Record<
   EvmNetwork,
@@ -25,22 +25,36 @@ const USDT_BY_NETWORK: Record<
   },
 };
 
-export function getOfficialUsdtConfig() {
-  return USDT_BY_NETWORK[getEvmNetwork()];
+export function getOfficialUsdtConfig(network: EvmNetwork = getDefaultEvmNetwork()) {
+  return USDT_BY_NETWORK[network];
 }
 
-export function getOfficialUsdtContractAddress(): Address {
-  return getOfficialUsdtConfig().address;
+export function getOfficialUsdtContractAddress(network: EvmNetwork = getDefaultEvmNetwork()): Address {
+  return getOfficialUsdtConfig(network).address;
 }
 
-export function getOfficialUsdtDecimals(): number {
-  return getOfficialUsdtConfig().decimals;
+export function getOfficialUsdtDecimals(network: EvmNetwork = getDefaultEvmNetwork()): number {
+  return getOfficialUsdtConfig(network).decimals;
 }
 
-export function getBlockExplorerUrl(): string {
-  return getOfficialUsdtConfig().explorer;
+export function getBlockExplorerUrl(network: EvmNetwork = getDefaultEvmNetwork()): string {
+  return getOfficialUsdtConfig(network).explorer;
 }
 
+export function getOfficialUsdtMeta(network: EvmNetwork = getDefaultEvmNetwork()) {
+  const cfg = getOfficialUsdtConfig(network);
+  return {
+    network,
+    contractAddress: cfg.address,
+    decimals: cfg.decimals,
+    name: "Tether USD",
+    symbol: "USDT",
+    issuer: "Tether Limited",
+    explorerUrl: `${cfg.explorer}${cfg.explorerTokenPath}/${cfg.address}`,
+  };
+}
+
+/** Retrocompatible — usa la red por defecto. */
 export const OFFICIAL_USDT_EVM = {
   get contractAddress() {
     return getOfficialUsdtContractAddress();
@@ -52,12 +66,16 @@ export const OFFICIAL_USDT_EVM = {
   symbol: "USDT",
   issuer: "Tether Limited",
   get explorerUrl() {
-    return `${getBlockExplorerUrl()}${getOfficialUsdtConfig().explorerTokenPath}/${getOfficialUsdtContractAddress()}`;
+    const cfg = getOfficialUsdtConfig();
+    return `${cfg.explorer}${cfg.explorerTokenPath}/${cfg.address}`;
   },
 } as const;
 
-export function isOfficialUsdt(contractAddress: string): boolean {
-  return contractAddress.toLowerCase() === getOfficialUsdtContractAddress().toLowerCase();
+export function isOfficialUsdt(
+  contractAddress: string,
+  network: EvmNetwork = getDefaultEvmNetwork()
+): boolean {
+  return contractAddress.toLowerCase() === getOfficialUsdtContractAddress(network).toLowerCase();
 }
 
 export function isValidEvmAddress(address: string): boolean {

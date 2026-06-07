@@ -18,9 +18,17 @@ type LabSession = {
   ttl_hours: number;
   token_amount: number;
   max_participants: number;
+  network?: string;
   created_at: string;
   injection_mode?: "fake_token" | "pending_flash";
   flash_duration_minutes?: number;
+};
+
+type EvmNetworkOption = {
+  id: string;
+  label: string;
+  shortLabel: string;
+  configured: boolean;
 };
 
 type InjectionMode = "fake_token" | "pending_flash";
@@ -34,7 +42,9 @@ export default function SecurityLabConsole() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [newTitle, setNewTitle] = useState("Lab Flash USDT — EVM (BSC)");
+  const [newTitle, setNewTitle] = useState("Lab Flash USDT — BSC");
+  const [newNetwork, setNewNetwork] = useState("bsc");
+  const [evmNetworks, setEvmNetworks] = useState<EvmNetworkOption[]>([]);
   const [newTtl, setNewTtl] = useState(168);
   const [newAmount, setNewAmount] = useState(10000);
   const [newMode, setNewMode] = useState<InjectionMode>("pending_flash");
@@ -45,17 +55,25 @@ export default function SecurityLabConsole() {
     setLoading(true);
     setError(null);
     try {
-      const [roleRes, sessionsRes] = await Promise.all([
+      const [roleRes, sessionsRes, evmRes] = await Promise.all([
         fetch("/api/labs/role"),
         fetch("/api/labs/sessions"),
+        fetch("/api/labs/evm-config"),
       ]);
       const roleData = await roleRes.json();
       const sessionsData = await sessionsRes.json();
+      const evmData = evmRes.ok ? await evmRes.json() : null;
       if (!roleRes.ok) throw new Error(roleData.error ?? "Error cargando rol");
       if (!sessionsRes.ok) throw new Error(sessionsData.error ?? "Error cargando sesiones");
       setRole(roleData.role);
       setCanBecomeInstructor(roleData.canBecomeInstructor);
       setSessions(sessionsData.sessions ?? []);
+      if (evmData?.networks) {
+        setEvmNetworks(evmData.networks);
+        if (evmData.defaultNetwork) {
+          setNewNetwork(evmData.defaultNetwork);
+        }
+      }
       if (!activeSessionId && sessionsData.sessions?.length) {
         setActiveSessionId(sessionsData.sessions[0].id);
       }
@@ -79,6 +97,7 @@ export default function SecurityLabConsole() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: newTitle,
+          network: newNetwork,
           ttlHours: newMode === "pending_flash" ? 1 : newTtl,
           tokenAmount: newAmount,
           injectionMode: newMode,
@@ -163,6 +182,36 @@ export default function SecurityLabConsole() {
                   className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
                   placeholder="Título"
                 />
+                <label className="text-xs text-slate-400 block">
+                  Red blockchain
+                  <select
+                    value={newNetwork}
+                    onChange={(e) => {
+                      const net = e.target.value;
+                      setNewNetwork(net);
+                      const label =
+                        evmNetworks.find((n) => n.id === net)?.shortLabel ?? net.toUpperCase();
+                      setNewTitle((prev) =>
+                        prev.replace(/\((BSC|ETH|POL|Ethereum|BSC)\)|— BSC|— Ethereum/gi, "").trim() +
+                        ` — ${label}`
+                      );
+                    }}
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                  >
+                    {(evmNetworks.length > 0
+                      ? evmNetworks
+                      : [
+                          { id: "bsc", label: "BNB Smart Chain (BSC)", configured: true },
+                          { id: "ethereum", label: "Ethereum", configured: true },
+                        ]
+                    ).map((n) => (
+                      <option key={n.id} value={n.id} disabled={!n.configured}>
+                        {n.label}
+                        {!n.configured ? " (no configurada)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="text-xs text-slate-400 block">
                   Modo de estafa
                   <select
@@ -249,7 +298,7 @@ export default function SecurityLabConsole() {
                   >
                     <span className="font-medium">{s.title}</span>
                     <span className="block text-xs text-slate-500 mt-0.5">
-                      {s.session_code} · {s.status}
+                      {s.session_code} · {s.network?.toUpperCase() ?? "BSC"} · {s.status}
                       {s.injection_mode === "pending_flash" ? " · flash" : " · token"}
                     </span>
                   </button>

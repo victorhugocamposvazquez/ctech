@@ -1,13 +1,36 @@
 import type { LabStep, StepCompletionResult, VerificationReport } from "./types";
-import type { LabInjectionMode } from "./types";
-import { isOfficialUsdt } from "@/lib/evm/usdt-canonical";
+import type { LabInjectionMode, LabNetwork } from "./types";
+import { getBlockExplorerUrl, getOfficialUsdtMeta, isOfficialUsdt } from "@/lib/evm/usdt-canonical";
+import { getEvmNetworkLabel } from "@/lib/evm/network";
 import { getScenarioByMode, getScenarioSteps } from "./scenario-registry";
 
 export { getScenarioSteps };
 
+export function localizeStepsForNetwork(steps: LabStep[], network: LabNetwork): LabStep[] {
+  const official = getOfficialUsdtMeta(network);
+  const explorer = getBlockExplorerUrl(network);
+  const label = getEvmNetworkLabel(network);
+  const explorerName =
+    network === "bsc" ? "BscScan" : network === "ethereum" ? "Etherscan" : "Polygonscan";
+  const dexName = network === "bsc" ? "PancakeSwap" : "Uniswap";
+
+  return steps.map((step) => ({
+    ...step,
+    description: step.description
+      .replace(/0x[a-fA-F0-9]{40}/g, official.contractAddress)
+      .replace(/BSC\/Polygon/gi, label)
+      .replace(/BscScan\/Polygonscan/gi, explorerName)
+      .replace(/PancakeSwap\/Uniswap/gi, dexName),
+    linkTemplate: step.linkTemplate
+      ? step.linkTemplate.replace(/^https:\/\/[^/]+/, explorer)
+      : step.linkTemplate,
+  }));
+}
+
 export function evaluateStep(
   step: LabStep,
-  response: Record<string, unknown>
+  response: Record<string, unknown>,
+  network?: LabNetwork
 ): StepCompletionResult {
   switch (step.type) {
     case "info":
@@ -30,7 +53,7 @@ export function evaluateStep(
           feedback: "Debes introducir la dirección del contrato del token.",
         };
       }
-      const isOfficial = isOfficialUsdt(contractAddress);
+      const isOfficial = isOfficialUsdt(contractAddress, network);
       if (isOfficial) {
         return {
           stepId: step.id,
@@ -52,7 +75,15 @@ export function evaluateStep(
       };
     }
 
-    case "link":
+    case "link": {
+      const explorerName =
+        network === "bsc"
+          ? "BscScan"
+          : network === "ethereum"
+            ? "Etherscan"
+            : network === "polygon"
+              ? "Polygonscan"
+              : "el explorador de bloques";
       return {
         stepId: step.id,
         score: response.visited ? step.maxScore : Math.floor(step.maxScore * 0.5),
@@ -60,8 +91,9 @@ export function evaluateStep(
         correct: Boolean(response.visited),
         feedback: response.visited
           ? "Has revisado el explorador. Busca estado Failed, Pending o contrato no verificado."
-          : "Abre BscScan/Polygonscan y verifica el estado de la transacción.",
+          : `Abre ${explorerName} y verifica el estado de la transacción.`,
       };
+    }
 
     case "quiz": {
       const selectedId = String(response.selectedOptionId ?? "");

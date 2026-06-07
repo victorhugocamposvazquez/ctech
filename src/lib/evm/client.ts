@@ -11,7 +11,15 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { bsc, mainnet, polygon } from "viem/chains";
-import { getEvmNetwork } from "./network";
+import {
+  getDefaultEvmNetwork,
+  getLabContractAddressForNetwork,
+  getRpcUrlForNetwork,
+  getTreasuryPrivateKeyForNetwork,
+  isAnyEvmNetworkConfigured,
+  isEvmNetworkConfigured,
+  type EvmNetwork,
+} from "./network";
 
 export const LAB_TOKEN_DECIMALS = 6;
 
@@ -104,52 +112,53 @@ export const ERC20_ABI = [
   },
 ] as const;
 
-const CHAINS: Record<ReturnType<typeof getEvmNetwork>, Chain> = {
+const CHAINS: Record<EvmNetwork, Chain> = {
   bsc,
   polygon,
   ethereum: mainnet,
 };
 
-export function isEvmConfigured(): boolean {
-  return Boolean(
-    process.env.EVM_LAB_TREASURY_PRIVATE_KEY && process.env.EVM_FLASH_USDT_LAB_CONTRACT
-  );
+export function isEvmConfigured(network?: EvmNetwork): boolean {
+  if (network) return isEvmNetworkConfigured(network);
+  return isAnyEvmNetworkConfigured();
 }
 
-export function getLabContractAddress(): Address {
-  const addr = process.env.EVM_FLASH_USDT_LAB_CONTRACT;
-  if (!addr) throw new Error("EVM_FLASH_USDT_LAB_CONTRACT no configurada");
+export function getLabContractAddress(network: EvmNetwork = getDefaultEvmNetwork()): Address {
+  const addr = getLabContractAddressForNetwork(network);
+  if (!addr) {
+    throw new Error(`EVM_${network.toUpperCase()}_FLASH_USDT_LAB_CONTRACT no configurada`);
+  }
   return addr as Address;
 }
 
-function getPrivateKey(): `0x${string}` {
-  let pk = process.env.EVM_LAB_TREASURY_PRIVATE_KEY ?? "";
+function getPrivateKey(network: EvmNetwork): `0x${string}` {
+  let pk = getTreasuryPrivateKeyForNetwork(network) ?? "";
   if (!pk.startsWith("0x")) pk = `0x${pk}`;
   return pk as `0x${string}`;
 }
 
-export function getChain(): Chain {
-  return CHAINS[getEvmNetwork()];
+export function getChain(network: EvmNetwork): Chain {
+  return CHAINS[network];
 }
 
-function getRpcUrl(): string {
-  if (process.env.EVM_RPC_URL) return process.env.EVM_RPC_URL;
-  return getChain().rpcUrls.default.http[0]!;
+function resolveRpcUrl(network: EvmNetwork): string {
+  if (getRpcUrlForNetwork(network)) return getRpcUrlForNetwork(network)!;
+  return getChain(network).rpcUrls.default.http[0]!;
 }
 
-export function getPublicClient() {
+export function getPublicClient(network: EvmNetwork) {
   return createPublicClient({
-    chain: getChain(),
-    transport: http(getRpcUrl()),
+    chain: getChain(network),
+    transport: http(resolveRpcUrl(network)),
   });
 }
 
-export function getWalletClient() {
-  const account = privateKeyToAccount(getPrivateKey());
+export function getWalletClient(network: EvmNetwork) {
+  const account = privateKeyToAccount(getPrivateKey(network));
   return createWalletClient({
     account,
-    chain: getChain(),
-    transport: http(getRpcUrl()),
+    chain: getChain(network),
+    transport: http(resolveRpcUrl(network)),
   });
 }
 

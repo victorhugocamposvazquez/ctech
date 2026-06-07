@@ -9,6 +9,7 @@ import {
   renewFlashInject,
   renewOfficialUsdtPendingBait,
 } from "@/lib/evm/flash-usdt-lab";
+import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 
 /**
  * GET /api/cron/labs/renew
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
   const { data: active, error } = await admin
     .from("lab_injections")
     .select(
-      "id, session_id, wallet_id, amount, status, injection_mode, expires_at, pending_tx_hash, metadata, lab_wallets(wallet_address), lab_sessions(flash_duration_minutes, status)"
+      "id, session_id, wallet_id, amount, status, injection_mode, expires_at, pending_tx_hash, metadata, lab_wallets(wallet_address), lab_sessions(flash_duration_minutes, status, network)"
     )
     .in("status", ["injected", "pending_flash"])
     .is("burned_at", null)
@@ -54,10 +55,11 @@ export async function GET(req: Request) {
     const walletAddress = wallet?.wallet_address;
 
     const sessionRaw = injection.lab_sessions as
-      | { flash_duration_minutes: number; status: string }
-      | { flash_duration_minutes: number; status: string }[]
+      | { flash_duration_minutes: number; status: string; network: string }
+      | { flash_duration_minutes: number; status: string; network: string }[]
       | null;
     const session = Array.isArray(sessionRaw) ? sessionRaw[0] : sessionRaw;
+    const network = (parseEvmNetwork(session?.network) ?? "bsc") as EvmNetwork;
 
     if (!walletAddress) {
       results.push({ injectionId: injection.id, skipped: true, reason: "Sin wallet" });
@@ -71,11 +73,11 @@ export async function GET(req: Request) {
     const amount = Number(injection.amount);
     const flashDurationMinutes = Number(session?.flash_duration_minutes ?? 30);
 
-    const entry: Record<string, unknown> = { injectionId: injection.id, mode };
+    const entry: Record<string, unknown> = { injectionId: injection.id, mode, network };
     let dirty = false;
 
     if (shouldRenewPendingBait(lastPendingBaitAt)) {
-      const bait = await renewOfficialUsdtPendingBait(walletAddress, amount);
+      const bait = await renewOfficialUsdtPendingBait(walletAddress, amount, network);
       if (bait.txHash) {
         meta = {
           ...meta,
@@ -100,7 +102,12 @@ export async function GET(req: Request) {
       shouldRenewFlash(flashExpiresAt) &&
       session?.status !== "expired"
     ) {
-      const renewed = await renewFlashInject(walletAddress, amount, flashDurationMinutes);
+      const renewed = await renewFlashInject(
+        walletAddress,
+        amount,
+        flashDurationMinutes,
+        network
+      );
       if (renewed.success && renewed.flashExpiresAt) {
         meta = {
           ...meta,

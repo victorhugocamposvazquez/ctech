@@ -9,7 +9,8 @@ import {
   isLabEvmReady,
   getLabNetworkLabel,
 } from "@/lib/evm/flash-usdt-lab";
-import { OFFICIAL_USDT_EVM } from "@/lib/evm/usdt-canonical";
+import { getOfficialUsdtMeta } from "@/lib/evm/usdt-canonical";
+import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 
 /**
  * GET /api/labs/flash-usdt/status?sessionId=
@@ -35,6 +36,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
+  const network = (parseEvmNetwork(access.session.network) ?? "bsc") as EvmNetwork;
+
   const { data: wallet } = await supabase
     .from("lab_wallets")
     .select("*")
@@ -52,12 +55,12 @@ export async function GET(req: Request) {
 
   let txStatus = null;
   if (userInjection?.tx_hash) {
-    txStatus = await getTxStatus(userInjection.tx_hash);
+    txStatus = await getTxStatus(userInjection.tx_hash, network);
   }
 
   let pendingTxStatus = null;
   if (userInjection?.pending_tx_hash) {
-    pendingTxStatus = await getTxStatus(userInjection.pending_tx_hash);
+    pendingTxStatus = await getTxStatus(userInjection.pending_tx_hash, network);
   }
 
   const pendingBaitActive =
@@ -85,8 +88,8 @@ export async function GET(req: Request) {
       null;
 
     [balance, usdtOverview] = await Promise.all([
-      getFlashUsdtBalance(wallet.wallet_address),
-      getWalletUsdtOverview(wallet.wallet_address, {
+      getFlashUsdtBalance(wallet.wallet_address, network),
+      getWalletUsdtOverview(wallet.wallet_address, network, {
         simulatedLabAmount: simulatedAmount,
         injectionMode,
         flashExpiresAt,
@@ -101,6 +104,13 @@ export async function GET(req: Request) {
   const ttlRemainingMs = expiresAt
     ? Math.max(0, new Date(expiresAt).getTime() - now)
     : null;
+
+  const officialUsdt = getOfficialUsdtMeta(network);
+  const networkPayload = {
+    id: network,
+    label: getLabNetworkLabel(network),
+    configured: isLabEvmReady(network),
+  };
 
   if (access.isInstructor) {
     const { data: completions } = await supabase
@@ -138,9 +148,10 @@ export async function GET(req: Request) {
       pendingTxStatus,
       injectionMode: access.session.injection_mode ?? "fake_token",
       ttlRemainingMs,
-      evmConfigured: isLabEvmReady(),
-      networkLabel: getLabNetworkLabel(),
-      officialUsdt: OFFICIAL_USDT_EVM,
+      evmConfigured: isLabEvmReady(network),
+      network: networkPayload,
+      networkLabel: networkPayload.label,
+      officialUsdt,
       participantProgress,
       totalEnrolled: enrolledWallets?.length ?? 0,
       totalInjected: (injections ?? []).filter((i) =>
@@ -160,8 +171,9 @@ export async function GET(req: Request) {
     pendingTxStatus,
     injectionMode: access.session.injection_mode ?? "fake_token",
     ttlRemainingMs,
-    evmConfigured: isLabEvmReady(),
-    networkLabel: getLabNetworkLabel(),
-    officialUsdt: OFFICIAL_USDT_EVM,
+    evmConfigured: isLabEvmReady(network),
+    network: networkPayload,
+    networkLabel: networkPayload.label,
+    officialUsdt,
   });
 }

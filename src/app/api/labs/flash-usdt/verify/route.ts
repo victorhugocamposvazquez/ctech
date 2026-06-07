@@ -5,12 +5,14 @@ import {
   evaluateStep,
   getScenarioSteps,
   getStepById,
+  localizeStepsForNetwork,
 } from "@/lib/labs/verification-checklist";
 import { getSessionForUser, logLabAudit, getClientIp } from "@/lib/labs/lab-guard";
-import type { LabInjectionMode } from "@/lib/labs/types";
-import { OFFICIAL_USDT_EVM } from "@/lib/evm/usdt-canonical";
-import { isLabEvmReady } from "@/lib/evm/flash-usdt-lab";
+import type { LabInjectionMode, LabNetwork } from "@/lib/labs/types";
+import { getOfficialUsdtMeta } from "@/lib/evm/usdt-canonical";
+import { isLabEvmReady, getLabNetworkLabel } from "@/lib/evm/flash-usdt-lab";
 import { getLabContractAddress } from "@/lib/evm/client";
+import { parseEvmNetwork } from "@/lib/evm/network";
 
 /**
  * GET  /api/labs/flash-usdt/verify?sessionId= — steps + progress + report
@@ -37,8 +39,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
+  const network = (parseEvmNetwork(access.session.network) ?? "bsc") as LabNetwork;
   const injectionMode = (access.session.injection_mode ?? "fake_token") as LabInjectionMode;
-  const steps = getScenarioSteps(injectionMode);
+  const steps = localizeStepsForNetwork(getScenarioSteps(injectionMode), network);
   const { data: completions } = await supabase
     .from("lab_step_completions")
     .select("*")
@@ -54,18 +57,25 @@ export async function GET(req: Request) {
   }));
 
   const report = buildVerificationReport(stepResults);
+  const official = getOfficialUsdtMeta(network);
 
-  const labContract = isLabEvmReady()
-    ? getLabContractAddress()
-    : process.env.EVM_FLASH_USDT_LAB_CONTRACT ?? "PENDIENTE_DESPLIEGUE";
+  let labContract = "PENDIENTE_DESPLIEGUE";
+  try {
+    if (isLabEvmReady(network)) {
+      labContract = getLabContractAddress(network);
+    }
+  } catch {
+    labContract = process.env.EVM_FLASH_USDT_LAB_CONTRACT ?? "PENDIENTE_DESPLIEGUE";
+  }
 
   return NextResponse.json({
     steps,
     injectionMode,
+    network: { id: network, label: getLabNetworkLabel(network) },
     completions: completions ?? [],
     report,
     comparison: {
-      official: OFFICIAL_USDT_EVM,
+      official,
       lab: {
         contractAddress: labContract,
         note:
@@ -104,13 +114,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
+  const network = (parseEvmNetwork(access.session.network) ?? "bsc") as LabNetwork;
   const injectionMode = (access.session.injection_mode ?? "fake_token") as LabInjectionMode;
   const step = getStepById(stepId, injectionMode);
   if (!step) {
     return NextResponse.json({ error: "Paso no encontrado" }, { status: 404 });
   }
 
-  const result = evaluateStep(step, response);
+  const result = evaluateStep(step, response, network);
 
   const { error } = await supabase.from("lab_step_completions").upsert(
     {

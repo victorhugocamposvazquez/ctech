@@ -8,7 +8,13 @@ import {
   getClientIp,
 } from "@/lib/labs/lab-guard";
 import { FLASH_USDT_EVM_SCENARIO } from "@/lib/labs/scenarios/flash-usdt-evm";
-import { getEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
+import {
+  getDefaultEvmNetwork,
+  getEnabledEvmNetworks,
+  isEvmNetworkConfigured,
+  parseEvmNetwork,
+  type EvmNetwork,
+} from "@/lib/evm/network";
 import {
   clampFlashDurationMinutes,
   FLASH_DURATION_MAX_MINUTES,
@@ -106,9 +112,29 @@ export async function POST(req: Request) {
   const ttlHours = Number(body.ttlHours ?? FLASH_USDT_EVM_SCENARIO.defaultTtlHours);
   const tokenAmount = Number(body.tokenAmount ?? FLASH_USDT_EVM_SCENARIO.defaultAmount);
   const maxParticipants = Number(body.maxParticipants ?? 30);
-  const network = (["bsc", "polygon", "ethereum"].includes(body.network)
-    ? body.network
-    : getEvmNetwork()) as EvmNetwork;
+  const requestedNetwork = parseEvmNetwork(body.network);
+  const enabledNetworks = getEnabledEvmNetworks();
+  const defaultNetwork =
+    enabledNetworks.includes(getDefaultEvmNetwork())
+      ? getDefaultEvmNetwork()
+      : enabledNetworks[0] ?? getDefaultEvmNetwork();
+  const network = (requestedNetwork ?? defaultNetwork) as EvmNetwork;
+
+  if (enabledNetworks.length > 0 && !enabledNetworks.includes(network)) {
+    return NextResponse.json(
+      {
+        error: `Red ${network} no configurada en el servidor. Redes disponibles: ${enabledNetworks.join(", ")}`,
+      },
+      { status: 400 }
+    );
+  }
+
+  if (enabledNetworks.length === 0 && requestedNetwork && !isEvmNetworkConfigured(requestedNetwork)) {
+    return NextResponse.json(
+      { error: "Ninguna red EVM configurada — modo simulado solo con red por defecto" },
+      { status: 503 }
+    );
+  }
   const injectionMode = body.injectionMode === "pending_flash" ? "pending_flash" : "fake_token";
   const flashDurationMinutes = clampFlashDurationMinutes(
     Number(body.flashDurationMinutes ?? (injectionMode === "pending_flash" ? 30 : 60))

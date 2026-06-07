@@ -9,6 +9,7 @@ type Session = {
   status: string;
   ttl_hours: number;
   token_amount: number;
+  network?: string;
   injection_mode?: "fake_token" | "pending_flash";
   flash_duration_minutes?: number;
 };
@@ -63,6 +64,13 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
   const [injecting, setInjecting] = useState(false);
 
   const isPendingMode = session.injection_mode === "pending_flash";
+  const sessionNetwork = (session.network ?? "bsc").toLowerCase();
+  const networkLabel =
+    sessionNetwork === "ethereum"
+      ? "Ethereum"
+      : sessionNetwork === "polygon"
+        ? "Polygon"
+        : "BSC";
 
   const loadEnroll = useCallback(async () => {
     const res = await fetch(`/api/labs/sessions/${session.id}/enroll`);
@@ -217,6 +225,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
         <h2 className="text-lg font-semibold text-white">{session.title}</h2>
         <p className="text-sm text-slate-400 mt-1">
           Código: <span className="text-cyan-300 font-mono">{session.session_code}</span>
+          {" · "}{networkLabel}
           {" · "}{session.status}
           {" · "}{session.token_amount} USDT
           {isPendingMode
@@ -288,7 +297,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
             {consentText || "Cargando consentimiento…"}
           </div>
           <label className="block text-sm text-slate-300">
-            Dirección EVM (0x…) de tu wallet de laboratorio — Trust Wallet en BSC/Polygon
+            Dirección EVM (0x…) — Trust Wallet o MetaMask en {networkLabel}
             <input
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value.trim())}
@@ -386,7 +395,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
                 {overview.pendingBaitActive
                   ? "Cebo USDT oficial activo — el total $ se renueva cada ~15 min mientras dure la sesión. "
                   : ""}
-                Para máxima duración del total $: Trust Wallet en BSC/Polygon + cebo pending EVM.
+                Para máxima duración del total $: Trust Wallet o MetaMask en {networkLabel} (misma red que el instructor).
                 {overview.simulated ? " (modo simulado)" : ""}
               </p>
             </div>
