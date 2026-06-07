@@ -11,6 +11,7 @@ const nav = [
   { label: "Validación", href: "/dashboard/validacion" },
   { label: "Señales", href: "/dashboard/senales" },
   { label: "Trades", href: "/dashboard/trades" },
+  { label: "Laboratorios", href: "/dashboard/labs" },
   { label: "Exchanges", href: "/dashboard/exchanges" },
   { label: "Configuración", href: "/dashboard/config" },
   { label: "Sobre CTech", href: "/dashboard/about" },
