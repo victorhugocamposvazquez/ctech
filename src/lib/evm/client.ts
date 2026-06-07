@@ -118,15 +118,26 @@ const CHAINS: Record<EvmNetwork, Chain> = {
   ethereum: mainnet,
 };
 
-export function isEvmConfigured(network?: EvmNetwork): boolean {
-  if (network) return isEvmNetworkConfigured(network);
+export function isEvmConfigured(
+  network?: EvmNetwork,
+  labContractAddress?: string | null
+): boolean {
+  if (network) {
+    return Boolean(
+      getTreasuryPrivateKeyForNetwork(network) &&
+        (getLabContractAddressForNetwork(network) || labContractAddress)
+    );
+  }
   return isAnyEvmNetworkConfigured();
 }
 
-export function getLabContractAddress(network: EvmNetwork = getDefaultEvmNetwork()): Address {
-  const addr = getLabContractAddressForNetwork(network);
+export function getLabContractAddress(
+  network: EvmNetwork = getDefaultEvmNetwork(),
+  override?: string | null
+): Address {
+  const addr = override ?? getLabContractAddressForNetwork(network);
   if (!addr) {
-    throw new Error(`EVM_${network.toUpperCase()}_FLASH_USDT_LAB_CONTRACT no configurada`);
+    throw new Error(`Contrato lab no configurado para ${network}`);
   }
   return addr as Address;
 }

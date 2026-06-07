@@ -1,5 +1,7 @@
 # Despliegue FlashUSDTLab — Multi-red (BSC + Ethereum)
 
+> **Recomendado:** usa el backoffice (**Dashboard → Laboratorios → Infra EVM**) para desplegar y verificar sin Remix. Esta guía es alternativa manual.
+
 Contrato educativo ERC-20 que imita USDT. Despliégalo **una vez por red**; el backend enruta cada sesión a la chain correcta.
 
 ## Resumen
@@ -56,7 +58,14 @@ Verifica en Etherscan con los mismos parámetros (name/symbol/decimals).
 
 ## Paso 3 — Variables de entorno
 
-Copia `.env.local.example` → `.env.local` y rellena:
+Copia `.env.local.example` → `.env.local`. Mínimo para backoffice:
+
+```env
+EVM_LAB_TREASURY_PRIVATE_KEY=0x...
+EVM_EXPLORER_API_KEY=...   # opcional, para verificar en explorer
+```
+
+Tras desplegar desde el panel, **no hace falta** copiar direcciones a env (se guardan en BD). Opcionalmente puedes fijarlas en env (tienen prioridad):
 
 ```env
 # Treasury compartida (misma private key en server)

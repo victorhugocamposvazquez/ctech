@@ -8,10 +8,10 @@ import {
   getClientIp,
 } from "@/lib/labs/lab-guard";
 import { FLASH_USDT_EVM_SCENARIO } from "@/lib/labs/scenarios/flash-usdt-evm";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isNetworkOperational } from "@/lib/evm/contract-registry";
 import {
   getDefaultEvmNetwork,
-  getEnabledEvmNetworks,
-  isEvmNetworkConfigured,
   parseEvmNetwork,
   type EvmNetwork,
 } from "@/lib/evm/network";
@@ -113,26 +113,32 @@ export async function POST(req: Request) {
   const tokenAmount = Number(body.tokenAmount ?? FLASH_USDT_EVM_SCENARIO.defaultAmount);
   const maxParticipants = Number(body.maxParticipants ?? 30);
   const requestedNetwork = parseEvmNetwork(body.network);
-  const enabledNetworks = getEnabledEvmNetworks();
-  const defaultNetwork =
-    enabledNetworks.includes(getDefaultEvmNetwork())
-      ? getDefaultEvmNetwork()
-      : enabledNetworks[0] ?? getDefaultEvmNetwork();
-  const network = (requestedNetwork ?? defaultNetwork) as EvmNetwork;
-
-  if (enabledNetworks.length > 0 && !enabledNetworks.includes(network)) {
-    return NextResponse.json(
-      {
-        error: `Red ${network} no configurada en el servidor. Redes disponibles: ${enabledNetworks.join(", ")}`,
-      },
-      { status: 400 }
-    );
+  let admin = null;
+  try {
+    admin = createAdminClient();
+  } catch {
+    admin = null;
   }
 
-  if (enabledNetworks.length === 0 && requestedNetwork && !isEvmNetworkConfigured(requestedNetwork)) {
+  const operationalNetworks: EvmNetwork[] = [];
+  if (admin) {
+    for (const id of ["bsc", "ethereum", "polygon"] as EvmNetwork[]) {
+      if (await isNetworkOperational(admin, id)) operationalNetworks.push(id);
+    }
+  }
+
+  const defaultNetwork =
+    operationalNetworks.includes(getDefaultEvmNetwork())
+      ? getDefaultEvmNetwork()
+      : operationalNetworks[0] ?? getDefaultEvmNetwork();
+  const network = (requestedNetwork ?? defaultNetwork) as EvmNetwork;
+
+  if (operationalNetworks.length > 0 && !operationalNetworks.includes(network)) {
     return NextResponse.json(
-      { error: "Ninguna red EVM configurada — modo simulado solo con red por defecto" },
-      { status: 503 }
+      {
+        error: `Red ${network} no operativa. Redes listas: ${operationalNetworks.join(", ")}. Despliega el contrato en Infra EVM.`,
+      },
+      { status: 400 }
     );
   }
   const injectionMode = body.injectionMode === "pending_flash" ? "pending_flash" : "fake_token";

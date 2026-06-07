@@ -13,7 +13,8 @@ import {
   isLabEvmReady,
 } from "@/lib/evm/flash-usdt-lab";
 import { getOfficialUsdtContractAddress } from "@/lib/evm/usdt-canonical";
-import { isAnyEvmNetworkConfigured, isEvmNetworkConfigured, parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
+import { resolveLabContractAddress, isTreasuryConfigured } from "@/lib/evm/contract-registry";
+import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 import type { LabInjectionMode } from "@/lib/labs/types";
 
 /**
@@ -63,13 +64,18 @@ export async function POST(req: Request) {
   const injectionMode = (session.injection_mode ?? "fake_token") as LabInjectionMode;
   const flashDurationMinutes = Number(session.flash_duration_minutes ?? 30);
   const network = (parseEvmNetwork(session.network) ?? "bsc") as EvmNetwork;
+  const labContractAddress = await resolveLabContractAddress(admin, network);
 
-  if (!isEvmNetworkConfigured(network) && isAnyEvmNetworkConfigured()) {
+  if (isTreasuryConfigured(network) && !labContractAddress) {
     return NextResponse.json(
-      { error: `Red ${network} no configurada para inyección on-chain` },
+      {
+        error: `Red ${network} sin contrato. Despliega FlashUSDTLab desde Infra EVM en el backoffice.`,
+      },
       { status: 503 }
     );
   }
+
+  const evmOptions = labContractAddress ? { labContractAddress } : undefined;
 
   let walletsQuery = supabase
     .from("lab_wallets")
@@ -132,9 +138,10 @@ export async function POST(req: Request) {
             wallet.wallet_address,
             amount,
             flashDurationMinutes,
-            network
+            network,
+            evmOptions
           )
-        : await injectFlashUsdt(wallet.wallet_address, amount, network);
+        : await injectFlashUsdt(wallet.wallet_address, amount, network, evmOptions);
 
     if (injectResult.success) {
       const successStatus =
@@ -208,7 +215,7 @@ export async function POST(req: Request) {
       walletsProcessed: results.length,
       injectionMode,
       flashDurationMinutes,
-      evmReady: isLabEvmReady(network),
+      evmReady: isLabEvmReady(network, labContractAddress),
       network,
     },
     ip_address: getClientIp(req),
@@ -219,7 +226,7 @@ export async function POST(req: Request) {
     injectionMode,
     flashDurationMinutes,
     expiresAt,
-    evmConfigured: isLabEvmReady(network),
+    evmConfigured: isLabEvmReady(network, labContractAddress),
     network,
     results,
   });

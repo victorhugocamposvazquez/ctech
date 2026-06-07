@@ -1,5 +1,16 @@
 # Laboratorios de Seguridad — Flash USDT (EVM)
 
+## Infra EVM desde el backoffice (recomendado)
+
+En **Dashboard → Laboratorios**, sección **Infra EVM — contratos** (solo instructores):
+
+1. Configura `EVM_LAB_TREASURY_PRIVATE_KEY` + gas (BNB/ETH) en la treasury.
+2. Pulsa **Desplegar** en BSC y/o Ethereum — el contrato se guarda en Supabase automáticamente.
+3. Opcional: `EVM_EXPLORER_API_KEY` → **Verificar** en BscScan/Etherscan sin Remix.
+4. Crea sesiones eligiendo la red; las inyecciones usan el contrato desplegado.
+
+Manual con Remix: ver `contracts/evm/deploy.md`.
+
 ## Redes soportadas
 
 | Red | `EVM_NETWORK` | USDT oficial | Gas típico | Recomendación |

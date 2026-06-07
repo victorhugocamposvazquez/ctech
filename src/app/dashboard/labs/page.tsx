@@ -7,7 +7,7 @@ export default function LabsPage() {
         <h1 className="text-xl sm:text-2xl font-bold text-white">Laboratorios de Seguridad</h1>
         <p className="mt-1 text-sm sm:text-base text-slate-300">
           Simulaciones controladas para concienciar sobre estafas crypto.
-          Flash USDT en EVM (BSC/Polygon): simula estafas con pending largo y total $ inflado en Trust Wallet.
+          Flash USDT en EVM (BSC/Ethereum): despliega contratos desde el backoffice y lanza sesiones multi-red.
         </p>
       </div>
 
