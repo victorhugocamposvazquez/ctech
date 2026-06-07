@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionForUser } from "@/lib/labs/lab-guard";
+import { isPendingBaitEffectivelyActive } from "@/lib/labs/pending-bait-renewal";
 import {
   getFlashUsdtBalance,
   getTxStatus,
   getWalletUsdtOverview,
-  isLabTronReady,
-} from "@/lib/tron/flash-usdt-lab";
-import { OFFICIAL_USDT_TRON } from "@/lib/tron/usdt-canonical";
+  isLabEvmReady,
+  getLabNetworkLabel,
+} from "@/lib/evm/flash-usdt-lab";
+import { OFFICIAL_USDT_EVM } from "@/lib/evm/usdt-canonical";
 
 /**
  * GET /api/labs/flash-usdt/status?sessionId=
- * Returns injection status, on-chain balance, TTL for current user.
  */
 export async function GET(req: Request) {
   const supabase = await createClient();
@@ -49,6 +50,27 @@ export async function GET(req: Request) {
 
   const userInjection = (injections ?? []).find((i) => i.user_id === user.id);
 
+  let txStatus = null;
+  if (userInjection?.tx_hash) {
+    txStatus = await getTxStatus(userInjection.tx_hash);
+  }
+
+  let pendingTxStatus = null;
+  if (userInjection?.pending_tx_hash) {
+    pendingTxStatus = await getTxStatus(userInjection.pending_tx_hash);
+  }
+
+  const pendingBaitActive =
+    Boolean(pendingTxStatus?.pending) ||
+    isPendingBaitEffectivelyActive(
+      (userInjection?.metadata as Record<string, unknown>)?.lastPendingBaitAt as
+        | string
+        | undefined
+    );
+
+  const pendingBaitAmount =
+    pendingBaitActive && userInjection ? Number(userInjection.amount) : undefined;
+
   let balance = null;
   let usdtOverview = null;
   if (wallet) {
@@ -63,23 +85,15 @@ export async function GET(req: Request) {
       null;
 
     [balance, usdtOverview] = await Promise.all([
-      getFlashUsdtBalance(wallet.tron_address),
-      getWalletUsdtOverview(wallet.tron_address, {
+      getFlashUsdtBalance(wallet.wallet_address),
+      getWalletUsdtOverview(wallet.wallet_address, {
         simulatedLabAmount: simulatedAmount,
         injectionMode,
         flashExpiresAt,
+        pendingBaitAmount,
+        pendingBaitActive,
       }),
     ]);
-  }
-
-  let txStatus = null;
-  if (userInjection?.tx_hash) {
-    txStatus = await getTxStatus(userInjection.tx_hash);
-  }
-
-  let pendingTxStatus = null;
-  if (userInjection?.pending_tx_hash) {
-    pendingTxStatus = await getTxStatus(userInjection.pending_tx_hash);
   }
 
   const now = Date.now();
@@ -96,7 +110,7 @@ export async function GET(req: Request) {
 
     const { data: enrolledWallets } = await supabase
       .from("lab_wallets")
-      .select("id, user_id, tron_address, enrolled_at")
+      .select("id, user_id, wallet_address, enrolled_at")
       .eq("session_id", sessionId);
 
     const participantProgress = (enrolledWallets ?? []).map((w) => {
@@ -105,7 +119,7 @@ export async function GET(req: Request) {
       const injection = (injections ?? []).find((i) => i.wallet_id === w.id);
       return {
         walletId: w.id,
-        tronAddress: w.tron_address,
+        walletAddress: w.wallet_address,
         enrolledAt: w.enrolled_at,
         injectionStatus: injection?.status ?? "none",
         stepsCompleted: userCompletions.length,
@@ -124,8 +138,9 @@ export async function GET(req: Request) {
       pendingTxStatus,
       injectionMode: access.session.injection_mode ?? "fake_token",
       ttlRemainingMs,
-      tronConfigured: isLabTronReady(),
-      officialUsdt: OFFICIAL_USDT_TRON,
+      evmConfigured: isLabEvmReady(),
+      networkLabel: getLabNetworkLabel(),
+      officialUsdt: OFFICIAL_USDT_EVM,
       participantProgress,
       totalEnrolled: enrolledWallets?.length ?? 0,
       totalInjected: (injections ?? []).filter((i) =>
@@ -145,7 +160,8 @@ export async function GET(req: Request) {
     pendingTxStatus,
     injectionMode: access.session.injection_mode ?? "fake_token",
     ttlRemainingMs,
-    tronConfigured: isLabTronReady(),
-    officialUsdt: OFFICIAL_USDT_TRON,
+    evmConfigured: isLabEvmReady(),
+    networkLabel: getLabNetworkLabel(),
+    officialUsdt: OFFICIAL_USDT_EVM,
   });
 }

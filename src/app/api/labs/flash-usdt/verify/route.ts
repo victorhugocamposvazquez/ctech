@@ -8,9 +8,9 @@ import {
 } from "@/lib/labs/verification-checklist";
 import { getSessionForUser, logLabAudit, getClientIp } from "@/lib/labs/lab-guard";
 import type { LabInjectionMode } from "@/lib/labs/types";
-import { OFFICIAL_USDT_TRON } from "@/lib/tron/usdt-canonical";
-import { isLabTronReady } from "@/lib/tron/flash-usdt-lab";
-import { getLabContractAddress } from "@/lib/tron/client";
+import { OFFICIAL_USDT_EVM } from "@/lib/evm/usdt-canonical";
+import { isLabEvmReady } from "@/lib/evm/flash-usdt-lab";
+import { getLabContractAddress } from "@/lib/evm/client";
 
 /**
  * GET  /api/labs/flash-usdt/verify?sessionId= — steps + progress + report
@@ -55,9 +55,9 @@ export async function GET(req: Request) {
 
   const report = buildVerificationReport(stepResults);
 
-  const labContract = isLabTronReady()
+  const labContract = isLabEvmReady()
     ? getLabContractAddress()
-    : process.env.TRON_FLASH_USDT_LAB_CONTRACT ?? "PENDIENTE_DESPLIEGUE";
+    : process.env.EVM_FLASH_USDT_LAB_CONTRACT ?? "PENDIENTE_DESPLIEGUE";
 
   return NextResponse.json({
     steps,
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
     completions: completions ?? [],
     report,
     comparison: {
-      official: OFFICIAL_USDT_TRON,
+      official: OFFICIAL_USDT_EVM,
       lab: {
         contractAddress: labContract,
         note:

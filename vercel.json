@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/labs/expire",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/labs/renew",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

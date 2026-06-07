@@ -1,6 +1,6 @@
 import type { LabStep, StepCompletionResult, VerificationReport } from "./types";
 import type { LabInjectionMode } from "./types";
-import { isOfficialUsdt } from "@/lib/tron/usdt-canonical";
+import { isOfficialUsdt } from "@/lib/evm/usdt-canonical";
 import { getScenarioByMode, getScenarioSteps } from "./scenario-registry";
 
 export { getScenarioSteps };
@@ -59,8 +59,8 @@ export function evaluateStep(
         maxScore: step.maxScore,
         correct: Boolean(response.visited),
         feedback: response.visited
-          ? "Has revisado TronScan. Busca estado Failed, Pending o contrato no verificado."
-          : "Abre TronScan y verifica el estado de la transacción.",
+          ? "Has revisado el explorador. Busca estado Failed, Pending o contrato no verificado."
+          : "Abre BscScan/Polygonscan y verifica el estado de la transacción.",
       };
 
     case "quiz": {

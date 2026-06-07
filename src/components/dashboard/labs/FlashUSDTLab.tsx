@@ -28,6 +28,9 @@ type UsdtOverview = {
   labBalance: string;
   flashBalance?: string;
   totalDisplayed: string;
+  estimatedWalletFiatUsd?: string;
+  pendingBaitAmount?: string;
+  pendingBaitActive?: boolean;
   autoDetected: boolean;
   requiresImport: boolean;
   flashActive?: boolean;
@@ -45,7 +48,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
   const [phase, setPhase] = useState<"enroll" | "waiting" | "lab" | "done">("enroll");
   const [consentText, setConsentText] = useState("");
   const [consentVersion, setConsentVersion] = useState("1.0");
-  const [tronAddress, setTronAddress] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [enrolled, setEnrolled] = useState(false);
   const [status, setStatus] = useState<Record<string, unknown> | null>(null);
@@ -69,7 +72,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
       setConsentVersion(data.consentVersion ?? "1.0");
       if (data.enrolled) {
         setEnrolled(true);
-        setTronAddress(data.enrolled.tron_address);
+        setWalletAddress(data.enrolled.wallet_address);
         const injected =
           data.session.status === "injected" ||
           data.session.status === "expired";
@@ -121,7 +124,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tronAddress,
+          walletAddress,
           consentAccepted,
           consentVersion,
         }),
@@ -198,7 +201,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
   const txStatus = status?.txStatus as { confirmed?: boolean; pending?: boolean; failed?: boolean } | null;
   const pendingTxStatus = status?.pendingTxStatus as { confirmed?: boolean; pending?: boolean; failed?: boolean } | null;
   const participantProgress = status?.participantProgress as Array<{
-    tronAddress: string;
+    walletAddress: string;
     injectionStatus: string;
     totalScore: number;
     stepsCompleted: number;
@@ -236,9 +239,9 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
           <h3 className="text-sm font-medium text-indigo-100">Panel instructor</h3>
           <p className="text-xs text-indigo-200/70 mt-1">
             {isPendingMode
-              ? "Modo 2: flashInject() infla balanceOf temporalmente + tx pendiente/fallida. " +
-                "El saldo USDT sube y desaparece al expirar — como estafas reales."
-              : "Modo 1: transfer() TRC-20 con token falso persistente hasta el burn."}
+              ? "Modo 2: flashInject() + cebo pending USDT oficial (gas bajo). " +
+                "En EVM el total $ puede mantenerse horas/días en Trust Wallet."
+              : "Modo 1: token lab transferido + cebo pending USDT oficial para inflar el total $."}
           </p>
           <button
             type="button"
@@ -265,8 +268,8 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
                 </thead>
                 <tbody>
                   {participantProgress.map((p) => (
-                    <tr key={p.tronAddress} className="text-slate-300 border-t border-white/5">
-                      <td className="py-1.5 pr-2 font-mono">{p.tronAddress.slice(0, 8)}…</td>
+                    <tr key={p.walletAddress} className="text-slate-300 border-t border-white/5">
+                      <td className="py-1.5 pr-2 font-mono">{p.walletAddress.slice(0, 10)}…</td>
                       <td className="py-1.5 pr-2">{p.injectionStatus}</td>
                       <td className="py-1.5 pr-2">{p.stepsCompleted}</td>
                       <td className="py-1.5">{p.totalScore}</td>
@@ -285,11 +288,11 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
             {consentText || "Cargando consentimiento…"}
           </div>
           <label className="block text-sm text-slate-300">
-            Dirección Tron de tu wallet de laboratorio
+            Dirección EVM (0x…) de tu wallet de laboratorio — Trust Wallet en BSC/Polygon
             <input
-              value={tronAddress}
-              onChange={(e) => setTronAddress(e.target.value.trim())}
-              placeholder="T..."
+              value={walletAddress}
+              onChange={(e) => setWalletAddress(e.target.value.trim())}
+              placeholder="0x..."
               className="mt-1 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-sm"
             />
           </label>
@@ -305,7 +308,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
           <button
             type="button"
             onClick={handleEnroll}
-            disabled={loading || !consentAccepted || !tronAddress}
+            disabled={loading || !consentAccepted || !walletAddress}
             className="rounded-lg bg-cyan-500/30 border border-cyan-400/40 px-4 py-2 text-sm text-cyan-100 disabled:opacity-50"
           >
             Registrar wallet de laboratorio
@@ -317,7 +320,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
         <div className="text-center py-8 space-y-3">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
           <p className="text-slate-300">Esperando inyección del instructor…</p>
-          <p className="text-xs text-slate-500 font-mono">{tronAddress}</p>
+          <p className="text-xs text-slate-500 font-mono">{walletAddress}</p>
         </div>
       )}
 
@@ -325,14 +328,26 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
         <div className="space-y-5">
           {overview && (
             <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/10 p-4">
-              <h3 className="text-sm font-medium text-cyan-100">Total USDT en wallet (vista lab)</h3>
-              <p className="text-2xl font-bold text-white mt-1">{overview.totalDisplayed} USDT</p>
+              <h3 className="text-sm font-medium text-cyan-100">Total en tu wallet</h3>
+              {overview.estimatedWalletFiatUsd != null && (
+                <p className="text-2xl font-bold text-white mt-1">
+                  ≈ ${overview.estimatedWalletFiatUsd} USD
+                </p>
+              )}
+              <p className="text-lg font-semibold text-cyan-100 mt-1">
+                {overview.totalDisplayed} USDT (saldo visible)
+              </p>
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-cyan-200/80">
                 <span>USDT real: {overview.officialBalance}</span>
                 <span>
                   {isPendingMode ? "Flash activo" : "USDT lab"}:{" "}
                   {overview.flashBalance ?? overview.labBalance}
                 </span>
+                {overview.pendingBaitActive && (
+                  <span className="col-span-2 text-amber-200">
+                    Cebo pending (USDT oficial verificado): +{overview.pendingBaitAmount} USD en total wallet
+                  </span>
+                )}
               </div>
               {isPendingMode && overview.flashActive && flashMinutesLeft != null && (
                 <p className="mt-2 text-sm text-amber-200 animate-pulse">
@@ -344,21 +359,21 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
                   El flash expiró — ¿volvió tu balance al valor anterior? Eso es la estafa.
                 </p>
               )}
-              {(txStatus || pendingTxStatus) && isPendingMode && (
+              {(txStatus || pendingTxStatus) && (
                 <div className="mt-2 text-xs text-cyan-200/70 space-y-1">
                   {txStatus && (
                     <p>
-                      Tx flash:{" "}
+                      Tx lab:{" "}
                       {txStatus.confirmed ? "Confirmada" : txStatus.failed ? "Failed" : "Pending"}
                     </p>
                   )}
                   {pendingTxStatus && (
                     <p>
-                      Tx cebo (fee bajo):{" "}
+                      Cebo USDT oficial (fee bajo):{" "}
                       {pendingTxStatus.pending
-                        ? "Pending — red flag"
+                        ? "Pending — infla el total $ de la wallet"
                         : pendingTxStatus.failed
-                          ? "Failed — típico en estafas flash"
+                          ? "Failed — el total $ vuelve a bajar"
                           : "Confirmada"}
                     </p>
                   )}
@@ -366,8 +381,12 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
               )}
               <p className="mt-2 text-xs text-cyan-200/60">
                 {overview.autoDetected && !overview.requiresImport
-                  ? "Detectado automáticamente — no hace falta importar contrato"
+                  ? "Detectado automáticamente — no hace falta importar contrato. "
                   : ""}
+                {overview.pendingBaitActive
+                  ? "Cebo USDT oficial activo — el total $ se renueva cada ~15 min mientras dure la sesión. "
+                  : ""}
+                Para máxima duración del total $: Trust Wallet en BSC/Polygon + cebo pending EVM.
                 {overview.simulated ? " (modo simulado)" : ""}
               </p>
             </div>
@@ -395,12 +414,12 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
                     )}
                     {step.type === "link" && step.linkTemplate && (
                       <a
-                        href={step.linkTemplate.replace("{wallet}", tronAddress)}
+                        href={step.linkTemplate.replace("{wallet}", walletAddress)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-block text-sm text-cyan-300 underline"
                       >
-                        Abrir TronScan →
+                        Abrir explorador →
                       </a>
                     )}
                     {step.type === "quiz" && step.quizOptions && (

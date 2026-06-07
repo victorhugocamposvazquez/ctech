@@ -1,19 +1,18 @@
-export interface TronInjectResult {
+import type { Address, Hash } from "viem";
+
+export interface EvmInjectResult {
   success: boolean;
-  txHash?: string;
-  contractAddress?: string;
+  txHash?: Hash;
+  contractAddress?: Address;
   error?: string;
   simulated?: boolean;
-  /** transfer | flash_inject | pending_broadcast */
-  deliveryMethod?: "transfer" | "mint" | "flash_inject" | "pending_broadcast";
-  pendingTxHash?: string;
+  deliveryMethod?: "transfer" | "flash_inject" | "pending_broadcast";
+  pendingTxHash?: Hash;
   flashExpiresAt?: string;
 }
 
-export interface PendingFlashInjectResult extends TronInjectResult {
+export interface PendingFlashInjectResult extends EvmInjectResult {
   flashActive: boolean;
-  flashExpiresAt?: string;
-  pendingTxHash?: string;
   onChainBalance?: string;
   flashBalance?: string;
 }
@@ -23,8 +22,11 @@ export interface WalletUsdtOverview {
   labBalance: string;
   flashBalance?: string;
   totalDisplayed: string;
-  officialContract?: string;
-  labContract?: string;
+  estimatedWalletFiatUsd?: string;
+  pendingBaitAmount?: string;
+  pendingBaitActive?: boolean;
+  officialContract?: Address;
+  labContract?: Address;
   autoDetected: boolean;
   requiresImport: boolean;
   flashActive?: boolean;
@@ -32,26 +34,25 @@ export interface WalletUsdtOverview {
   simulated?: boolean;
 }
 
-export interface TronBurnResult {
+export interface EvmBurnResult {
   success: boolean;
-  txHash?: string;
+  txHash?: Hash;
   amountBurned?: string;
   error?: string;
   simulated?: boolean;
 }
 
-export interface TronBalanceResult {
+export interface EvmBalanceResult {
   balance: string;
   balanceRaw: string;
-  contractAddress: string;
+  contractAddress: Address;
   simulated?: boolean;
 }
 
-export interface TronTxStatus {
+export interface EvmTxStatus {
   confirmed: boolean;
   failed?: boolean;
   pending?: boolean;
   txHash: string;
   blockNumber?: number;
-  contractRet?: string;
 }

@@ -1,38 +1,58 @@
-# Laboratorios de Seguridad — Uso Responsable
+# Laboratorios de Seguridad — Flash USDT (EVM)
 
-## Flash USDT (Tron)
+## Red recomendada: BSC o Polygon
 
-### Modo 2 — Flash pendiente (recomendado para talleres)
+Tron queda **descartado** por ahora. EVM ofrece mempool real → el total $ en Trust Wallet se mantiene **horas/días**.
 
-Saldo USDT fantasma que aparece y desaparece. Más impactante y fiel a estafas "flash".
+## Doble capa (igual concepto, mejor resultado)
 
-### Modo 1 — Token falso
+1. **Token lab** (`FlashUSDTLab` ERC-20) — saldo USDT visible (nombre/símbolo idénticos).
+2. **Cebo pending USDT oficial** — `transfer()` sobre el contrato **verificado** de Tether con gas muy bajo.
 
-Token TRC-20 clonado transferido al alumno hasta burn manual/cron.
+| Red | USDT oficial | Decimales USDT |
+|-----|--------------|----------------|
+| BSC | `0x55d398326f99059fF775485246999027B3197955` | 18 |
+| Polygon | `0xc2132D05D31c914a87C6611C10748AEb04B58e8F` | 6 |
+| Ethereum | `0xdAC17F958D2ee523a2206206994597C13D831ec7` | 6 |
 
-### Cómo funciona la inyección
+## Modos
 
-1. El contrato `FlashUSDTLab` replica metadatos USDT (nombre, símbolo, 6 decimales).
-2. La inyección usa `injectTo()`: transferencia TRC-20 treasury → wallet del alumno.
-3. Trust Wallet, Atomic y similares **detectan automáticamente** la transferencia entrante.
-4. **No hace falta importar el contrato manualmente** — el saldo se suma al total USDT visible.
-5. Si el alumno ya tiene USDT real, el total mostrado incluye ambos (real + flash).
+- **Modo 2 (pending_flash)** — flashInject + cebo pending. Recomendado para talleres.
+- **Modo 1 (fake_token)** — injectTo persistente hasta burn.
 
-### Requisitos operativos
+## Duración
 
-- Wallet treasury con TRX para gas (~10-15 TRX por alumno)
-- Contrato desplegado en Tron mainnet (ver `contracts/tron/deploy.md`)
-- Variables de entorno configuradas en Vercel (nunca exponer private key al cliente)
-- Emails de instructores en `LAB_ADMIN_EMAILS`
+- Flash: hasta **30 días** por ciclo (contrato EVM), renovable vía cron.
+- Cebo pending: re-emisión cada ~15 min mientras la sesión esté activa.
+- Total $ en Trust: **horas/días** (vs segundos en Tron).
 
-### Salvaguardas
+## Variables de entorno
 
-- Solo direcciones registradas en sesión activa con consentimiento
-- Rate limit: 1 inyección por sesión cada 60 segundos
-- Auto-burn vía cron `/api/cron/labs/expire` (cada hora)
-- Audit log en tabla `lab_audit_log`
+```
+EVM_NETWORK=bsc
+EVM_LAB_TREASURY_PRIVATE_KEY=0x...
+EVM_FLASH_USDT_LAB_CONTRACT=0x...
+EVM_RPC_URL=...                    # opcional
+EVM_PENDING_BAIT_MAX_FEE_GWEI=0.05 # gas bajo = pending largo
+EVM_PENDING_BAIT_RENEWAL_MINUTES=15
+EVM_FLASH_RENEW_BEFORE_MINUTES=60
+LAB_ADMIN_EMAILS=...
+CRON_SECRET=...
+```
 
-### Disclaimer
+## Crons
 
-Uso exclusivamente educativo. Prohibido usar fuera de sesiones controladas.
-Los alumnos deben usar wallets de laboratorio dedicadas, nunca wallets personales con fondos reales.
+- `/api/cron/labs/expire` — cada hora (burn/clearFlash)
+- `/api/cron/labs/renew` — cada 10 min (renueva cebo + flash)
+
+## Wallets alumnos
+
+**Trust Wallet** en la misma red que `EVM_NETWORK` (BSC o Polygon). Wallet de lab vacía.
+
+## Deploy contrato
+
+Ver `contracts/evm/deploy.md`
+
+## Disclaimer
+
+Uso exclusivamente educativo. Wallets de laboratorio dedicadas, nunca personales.

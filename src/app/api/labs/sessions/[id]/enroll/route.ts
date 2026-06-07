@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   validateConsent,
-  validateTronWalletAddress,
+  validateEvmWalletAddress,
   logLabAudit,
   getClientIp,
   getSessionForUser,
@@ -98,7 +98,7 @@ export async function POST(req: Request, { params }: RouteParams) {
   }
 
   const body = await req.json();
-  const tronAddress = String(body.tronAddress ?? "").trim();
+  const walletAddress = String(body.walletAddress ?? body.evmAddress ?? "").trim();
   const consentAccepted = Boolean(body.consentAccepted);
   const consentVersion = String(body.consentVersion ?? "");
 
@@ -107,7 +107,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     return NextResponse.json({ error: consentErr }, { status: 400 });
   }
 
-  const addressErr = validateTronWalletAddress(tronAddress);
+  const addressErr = validateEvmWalletAddress(walletAddress);
   if (addressErr) {
     return NextResponse.json({ error: addressErr }, { status: 400 });
   }
@@ -128,7 +128,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     .insert({
       session_id: sessionId,
       user_id: user.id,
-      tron_address: tronAddress,
+      wallet_address: walletAddress,
       consent_accepted_at: new Date().toISOString(),
       consent_version: consentVersion,
       consent_ip: getClientIp(req),
@@ -151,7 +151,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     user_id: user.id,
     session_id: sessionId,
     action: "wallet_enrolled",
-    metadata: { tronAddress: tronAddress.slice(0, 6) + "..." },
+    metadata: { walletAddress: walletAddress.slice(0, 8) + "..." },
     ip_address: getClientIp(req),
   });
 

@@ -25,13 +25,14 @@
 ## Modo 2 — Flash pendiente / saldo fantasma
 
 - `flashInject(labWallet, amount, durationSeconds)` — emite Transfer + infla balanceOf temporalmente
+- **Cebo pending USDT oficial** — `transfer()` en contrato Tether verificado con fee bajo (automático desde backend)
 - El saldo **desaparece solo** al expirar (como estafas flash reales)
-- Opcionalmente emite tx con fee insuficiente (pending/failed en TronScan)
 - `clearFlash(labWallet)` — limpieza al expirar sesión
 
 ## Modo 1 — Token falso permanente
 
 - `injectTo(labWallet, amount)` — transfer() treasury→alumno
+- **Cebo pending USDT oficial** — mismo mecanismo para inflar total $ en wallet
 - `burnFrom(labWallet, amount)` — eliminar al expirar
 
 Ejemplo: 10 000 USDT = `10000000000` (10_000 * 10^6)

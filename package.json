@@ -15,7 +15,7 @@
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tronweb": "^6.3.0"
+    "viem": "^2.52.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

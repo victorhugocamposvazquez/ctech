@@ -34,8 +34,8 @@ export default function SecurityLabConsole() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [newTitle, setNewTitle] = useState("Lab Flash USDT — Tron");
-  const [newTtl, setNewTtl] = useState(24);
+  const [newTitle, setNewTitle] = useState("Lab Flash USDT — EVM (BSC)");
+  const [newTtl, setNewTtl] = useState(168);
   const [newAmount, setNewAmount] = useState(10000);
   const [newMode, setNewMode] = useState<InjectionMode>("pending_flash");
   const [newFlashMinutes, setNewFlashMinutes] = useState(30);
@@ -197,7 +197,7 @@ export default function SecurityLabConsole() {
                     </label>
                   ) : (
                     <label className="text-xs text-slate-400 col-span-2">
-                      Duración flash (min) — máx. {FLASH_DURATION_MAX_MINUTES} (= 7 días, límite contrato)
+                      Duración flash (min) — máx. {FLASH_DURATION_MAX_MINUTES} (= 30 días)
                       <input
                         type="number"
                         value={newFlashMinutes}

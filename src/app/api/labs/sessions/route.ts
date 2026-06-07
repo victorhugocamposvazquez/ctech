@@ -7,7 +7,8 @@ import {
   logLabAudit,
   getClientIp,
 } from "@/lib/labs/lab-guard";
-import { FLASH_USDT_TRON_SCENARIO } from "@/lib/labs/scenarios/flash-usdt-tron";
+import { FLASH_USDT_EVM_SCENARIO } from "@/lib/labs/scenarios/flash-usdt-evm";
+import { getEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
 import {
   clampFlashDurationMinutes,
   FLASH_DURATION_MAX_MINUTES,
@@ -102,9 +103,12 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const title = String(body.title ?? "Lab Flash USDT").trim();
-  const ttlHours = Number(body.ttlHours ?? FLASH_USDT_TRON_SCENARIO.defaultTtlHours);
-  const tokenAmount = Number(body.tokenAmount ?? FLASH_USDT_TRON_SCENARIO.defaultAmount);
+  const ttlHours = Number(body.ttlHours ?? FLASH_USDT_EVM_SCENARIO.defaultTtlHours);
+  const tokenAmount = Number(body.tokenAmount ?? FLASH_USDT_EVM_SCENARIO.defaultAmount);
   const maxParticipants = Number(body.maxParticipants ?? 30);
+  const network = (["bsc", "polygon", "ethereum"].includes(body.network)
+    ? body.network
+    : getEvmNetwork()) as EvmNetwork;
   const injectionMode = body.injectionMode === "pending_flash" ? "pending_flash" : "fake_token";
   const flashDurationMinutes = clampFlashDurationMinutes(
     Number(body.flashDurationMinutes ?? (injectionMode === "pending_flash" ? 30 : 60))
@@ -115,7 +119,7 @@ export async function POST(req: Request) {
     if (raw < FLASH_DURATION_MIN_MINUTES || raw > FLASH_DURATION_MAX_MINUTES) {
       return NextResponse.json(
         {
-          error: `flashDurationMinutes debe estar entre ${FLASH_DURATION_MIN_MINUTES} y ${FLASH_DURATION_MAX_MINUTES} (7 días)`,
+          error: `flashDurationMinutes debe estar entre ${FLASH_DURATION_MIN_MINUTES} y ${FLASH_DURATION_MAX_MINUTES} (30 días)`,
         },
         { status: 400 }
       );
@@ -125,7 +129,7 @@ export async function POST(req: Request) {
   const scenario =
     injectionMode === "pending_flash"
       ? { defaultTtlHours: 1, defaultAmount: 50_000 }
-      : FLASH_USDT_TRON_SCENARIO;
+      : FLASH_USDT_EVM_SCENARIO;
 
   const resolvedTtl =
     injectionMode === "pending_flash"
@@ -156,12 +160,12 @@ export async function POST(req: Request) {
       instructor_id: user.id,
       title,
       session_code: sessionCode,
-      scenario_type: "flash_usdt_tron",
+      scenario_type: "flash_usdt_evm",
       status: "open",
       ttl_hours: resolvedTtl,
       token_amount: resolvedAmount,
       max_participants: maxParticipants,
-      network: "tron",
+      network,
       injection_mode: injectionMode,
       flash_duration_minutes: flashDurationMinutes,
     })

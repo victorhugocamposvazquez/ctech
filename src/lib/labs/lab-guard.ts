@@ -1,8 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { LabRole } from "./types";
-import { isValidTronAddress } from "@/lib/tron/usdt-canonical";
-import type { LabInjectionMode } from "@/lib/labs/types";
-import { LAB_CONSENT_TEXT } from "./scenarios/flash-usdt-tron";
+import { isValidEvmAddress } from "@/lib/evm/usdt-canonical";
+import { LAB_CONSENT_TEXT } from "./scenarios/flash-usdt-evm";
 
 export { LAB_CONSENT_TEXT };
 
@@ -71,15 +70,15 @@ export async function getSessionForUser(
   return { session, isInstructor, enrollment, error: null, status: 200 as const };
 }
 
-export function validateTronWalletAddress(address: string): string | null {
-  if (!address?.trim()) return "La dirección Tron es obligatoria";
-  if (!isValidTronAddress(address)) {
-    return "Dirección Tron inválida (debe empezar por T y tener 34 caracteres base58)";
+export function validateEvmWalletAddress(address: string): string | null {
+  if (!address?.trim()) return "La dirección EVM es obligatoria";
+  if (!isValidEvmAddress(address)) {
+    return "Dirección EVM inválida (debe ser 0x seguido de 40 caracteres hex)";
   }
   return null;
 }
 
-const VALID_CONSENT_VERSIONS = ["1.0", "1.1"];
+const VALID_CONSENT_VERSIONS = ["2.0", "2.1"];
 
 export function validateConsent(
   consentAccepted: boolean,

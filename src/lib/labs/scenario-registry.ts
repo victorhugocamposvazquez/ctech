@@ -1,14 +1,14 @@
 import type { LabInjectionMode, LabScenario, LabStep } from "./types";
-import { FLASH_USDT_TRON_SCENARIO, LAB_CONSENT_TEXT } from "./scenarios/flash-usdt-tron";
+import { FLASH_USDT_EVM_SCENARIO, LAB_CONSENT_TEXT } from "./scenarios/flash-usdt-evm";
 import {
-  PENDING_FLASH_USDT_TRON_SCENARIO,
+  PENDING_FLASH_USDT_EVM_SCENARIO,
   PENDING_LAB_CONSENT_TEXT,
-} from "./scenarios/pending-flash-usdt-tron";
+} from "./scenarios/pending-flash-usdt-evm";
 
 export function getScenarioByMode(mode: LabInjectionMode): LabScenario {
   return mode === "pending_flash"
-    ? PENDING_FLASH_USDT_TRON_SCENARIO
-    : FLASH_USDT_TRON_SCENARIO;
+    ? PENDING_FLASH_USDT_EVM_SCENARIO
+    : FLASH_USDT_EVM_SCENARIO;
 }
 
 export function getScenarioSteps(mode: LabInjectionMode = "fake_token"): LabStep[] {

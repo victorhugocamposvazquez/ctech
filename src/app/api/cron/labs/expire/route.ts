@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { burnFlashUsdt, clearFlashCredit } from "@/lib/tron/flash-usdt-lab";
+import { burnFlashUsdt, clearFlashCredit } from "@/lib/evm/flash-usdt-lab";
 import type { LabInjectionMode } from "@/lib/labs/types";
 
 /**
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
   const { data: expired, error } = await admin
     .from("lab_injections")
-    .select("id, session_id, wallet_id, amount, injection_mode, lab_wallets(tron_address)")
+    .select("id, session_id, wallet_id, amount, injection_mode, lab_wallets(wallet_address)")
     .in("status", ["injected", "pending_flash"])
     .is("burned_at", null)
     .lte("expires_at", now);
@@ -38,22 +38,22 @@ export async function GET(req: Request) {
 
   for (const injection of expired ?? []) {
     const walletRaw = injection.lab_wallets as
-      | { tron_address: string }
-      | { tron_address: string }[]
+      | { wallet_address: string }
+      | { wallet_address: string }[]
       | null;
     const wallet = Array.isArray(walletRaw) ? walletRaw[0] : walletRaw;
-    const tronAddress = wallet?.tron_address;
+    const walletAddress = wallet?.wallet_address;
     const mode = (injection.injection_mode ?? "fake_token") as LabInjectionMode;
 
-    if (!tronAddress) {
+    if (!walletAddress) {
       results.push({ injectionId: injection.id, success: false, error: "Wallet no encontrada" });
       continue;
     }
 
     const burnResult =
       mode === "pending_flash"
-        ? await clearFlashCredit(tronAddress)
-        : await burnFlashUsdt(tronAddress, Number(injection.amount), "fake_token");
+        ? await clearFlashCredit(walletAddress)
+        : await burnFlashUsdt(walletAddress, Number(injection.amount), "fake_token");
 
     if (burnResult.success) {
       const expiredStatus = mode === "pending_flash" ? "flash_expired" : "burned";

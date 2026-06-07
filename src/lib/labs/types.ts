@@ -1,6 +1,8 @@
 export type LabRole = "student" | "instructor" | "admin";
 
-export type LabScenarioType = "flash_usdt_tron";
+export type LabScenarioType = "flash_usdt_evm";
+
+export type LabNetwork = "bsc" | "polygon" | "ethereum";
 
 export type LabSessionStatus =
   | "draft"
@@ -31,7 +33,7 @@ export interface LabStep {
 
 export interface LabScenario {
   type: LabScenarioType;
-  network: "tron";
+  network: LabNetwork;
   title: string;
   description: string;
   defaultTtlHours: number;
@@ -63,7 +65,7 @@ export interface LabWallet {
   id: string;
   session_id: string;
   user_id: string;
-  tron_address: string;
+  wallet_address: string;
   consent_accepted_at: string;
   consent_version: string;
   enrolled_at: string;
