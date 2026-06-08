@@ -39,6 +39,28 @@ type InfraResponse = {
   networks: NetworkStatus[];
 };
 
+type PricePoolResponse = {
+  network: string;
+  contractAddress: string;
+  pool: {
+    supported: boolean;
+    dexName?: string;
+    exists: boolean;
+    pairAddress?: string;
+    priceUsd?: number;
+    reservesLab?: string;
+    reservesUsdt?: string;
+    dexScreenerUrl?: string;
+    geckoTerminalUrl?: string;
+    error?: string;
+  };
+  walletCompat: {
+    likely: { name: string; source: string }[];
+    unlikely: { name: string; reason: string }[];
+  };
+  createPoolHint: string;
+};
+
 type Props = {
   visible: boolean;
 };
@@ -82,6 +104,27 @@ export default function EvmContractsPanel({ visible }: Props) {
   const [showRegister, setShowRegister] = useState(false);
   const [tokenName, setTokenName] = useState("Flash USDT");
   const [tokenSymbol, setTokenSymbol] = useState("fUSDT");
+  const [pricePool, setPricePool] = useState<PricePoolResponse | null>(null);
+  const [pricePoolLoading, setPricePoolLoading] = useState(false);
+
+  const loadPricePool = useCallback(async (networkId: string, hasContract: boolean) => {
+    if (networkId !== "bsc" || !hasContract) {
+      setPricePool(null);
+      return;
+    }
+    setPricePoolLoading(true);
+    try {
+      const { res, json } = await fetchJson<PricePoolResponse>(
+        `/api/labs/evm/contracts/price-pool?network=${networkId}`
+      );
+      if (res.ok) setPricePool(json);
+      else setPricePool(null);
+    } catch {
+      setPricePool(null);
+    } finally {
+      setPricePoolLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     if (!visible) return;
@@ -91,12 +134,14 @@ export default function EvmContractsPanel({ visible }: Props) {
       const { res, json } = await fetchJson<InfraResponse>("/api/labs/evm/contracts");
       if (!res.ok) throw new Error((json as unknown as { error?: string }).error ?? "Error cargando infra EVM");
       setData(json);
+      const bsc = json.networks.find((n) => n.id === "bsc");
+      await loadPricePool("bsc", Boolean(bsc?.contract.address));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [visible]);
+  }, [visible, loadPricePool]);
 
   useEffect(() => {
     load();
@@ -299,6 +344,106 @@ export default function EvmContractsPanel({ visible }: Props) {
           </p>
         )}
       </div>
+
+      {displayNetworks.some((n) => n.id === "bsc" && n.contract.address) && (
+        <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-medium text-cyan-100">Pool de precio (BSC)</h3>
+              <p className="mt-1 text-[11px] text-cyan-200/70">
+                Par fUSDT/USDT en PancakeSwap → precio on-chain ≈ $1. MetaMask, SafePal y Rabby
+                suelen mostrar el valor en el total de la wallet.
+              </p>
+            </div>
+            {pricePoolLoading && (
+              <span className="text-[10px] text-slate-400 animate-pulse">Leyendo pool…</span>
+            )}
+          </div>
+
+          {pricePool?.pool.exists ? (
+            <div className="text-xs space-y-2">
+              <p className="text-emerald-200">
+                Pool activo en {pricePool.pool.dexName} · precio ≈{" "}
+                <strong>${pricePool.pool.priceUsd?.toFixed(4) ?? "?"}</strong>/fUSDT
+              </p>
+              <p className="text-slate-400">
+                Reservas: {pricePool.pool.reservesLab} fUSDT + {pricePool.pool.reservesUsdt} USDT
+              </p>
+              {pricePool.pool.pairAddress && (
+                <p className="font-mono text-slate-500 break-all text-[10px]">
+                  Par: {pricePool.pool.pairAddress}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {pricePool.pool.dexScreenerUrl && (
+                  <a
+                    href={pricePool.pool.dexScreenerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-cyan-400/30 px-2 py-1 text-cyan-200 hover:bg-cyan-500/10"
+                  >
+                    DexScreener ↗
+                  </a>
+                )}
+                {pricePool.pool.geckoTerminalUrl && (
+                  <a
+                    href={pricePool.pool.geckoTerminalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-lg border border-cyan-400/30 px-2 py-1 text-cyan-200 hover:bg-cyan-500/10"
+                  >
+                    GeckoTerminal ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs space-y-2 text-slate-300">
+              <p className="text-amber-200">Sin pool todavía — las wallets mostrarán $0 en fUSDT.</p>
+              <p className="text-slate-400">
+                1. Envía <strong>~10 USDT reales</strong> (BEP20) a la treasury en BSC.
+              </p>
+              <p className="text-slate-400">
+                2. En local, con la clave de treasury:
+              </p>
+              <pre className="rounded-lg border border-white/10 bg-black/40 p-2 text-[10px] font-mono text-slate-200 overflow-x-auto">
+                {`EVM_LAB_TREASURY_PRIVATE_KEY=0x... \\
+EVM_BSC_FLASH_USDT_LAB_CONTRACT=${pricePool?.contractAddress ?? "0x..."} \\
+node scripts/create-price-pool.mjs --usdt 10 --price 1`}
+              </pre>
+              <p className="text-[10px] text-slate-500">
+                El script acuña fUSDT, aprueba PancakeSwap y crea el par. Indexación en wallets:
+                minutos.
+              </p>
+            </div>
+          )}
+
+          {pricePool?.walletCompat && (
+            <div className="grid gap-2 md:grid-cols-2 text-[10px]">
+              <div className="rounded-lg border border-emerald-400/20 bg-emerald-500/5 p-2">
+                <p className="font-medium text-emerald-200 mb-1">Suelen mostrar precio</p>
+                <ul className="text-slate-400 space-y-0.5">
+                  {pricePool.walletCompat.likely.map((w) => (
+                    <li key={w.name}>
+                      {w.name} <span className="text-slate-500">({w.source})</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-lg border border-amber-400/20 bg-amber-500/5 p-2">
+                <p className="font-medium text-amber-200 mb-1">No fiables</p>
+                <ul className="text-slate-400 space-y-0.5">
+                  {pricePool.walletCompat.unlikely.map((w) => (
+                    <li key={w.name}>
+                      {w.name} — {w.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {displayNetworks.map((net) => (
