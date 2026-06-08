@@ -211,6 +211,10 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
   const overview = status?.usdtOverview as UsdtOverview | undefined;
   const txStatus = status?.txStatus as { confirmed?: boolean; pending?: boolean; failed?: boolean } | null;
   const pendingTxStatus = status?.pendingTxStatus as { confirmed?: boolean; pending?: boolean; failed?: boolean } | null;
+  const labContractAddress =
+    (status?.injection as { contract_address?: string } | undefined)?.contract_address ??
+    (status?.balance as { contractAddress?: string } | undefined)?.contractAddress ??
+    null;
   const participantProgress = status?.participantProgress as Array<{
     walletAddress: string;
     injectionStatus: string;
@@ -418,6 +422,45 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
                 Para máxima duración del total $: Trust Wallet o MetaMask en {networkLabel} (misma red que el instructor).
                 {overview.simulated ? " (modo simulado)" : ""}
               </p>
+              {isPendingMode && overview.flashActive && (
+                <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100/90 space-y-2">
+                  <p className="font-medium text-amber-200">¿No ves nada en Trust Wallet?</p>
+                  <ol className="list-decimal list-inside space-y-1 text-amber-100/80">
+                    <li>
+                      Red <strong>BNB Smart Chain (BSC)</strong> — no Ethereum ni BNB Beacon Chain.
+                    </li>
+                    <li>
+                      La dirección inscrita debe coincidir exactamente:{" "}
+                      <span className="font-mono break-all">{walletAddress}</span>
+                    </li>
+                    <li>
+                      Modo 2 usa un <strong>contrato lab distinto</strong> al USDT oficial. Trust no lo
+                      muestra solo: Ajustes → Cripto → + → pega el contrato lab.
+                    </li>
+                    {labContractAddress && (
+                      <li>
+                        Contrato lab:{" "}
+                        <span className="font-mono break-all">{labContractAddress}</span>
+                      </li>
+                    )}
+                    <li>
+                      El total $ arriba solo sube si el cebo pending está en mempool. Si no aparece
+                      «Cebo USDT oficial: Pending», la treasury necesita USDT real para el cebo (el flash
+                      on-chain sí está confirmado).
+                    </li>
+                  </ol>
+                  {labContractAddress && sessionNetwork === "bsc" && (
+                    <a
+                      href={`https://bscscan.com/token/${labContractAddress}?a=${walletAddress}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-amber-300 underline"
+                    >
+                      Ver saldo flash en BscScan →
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

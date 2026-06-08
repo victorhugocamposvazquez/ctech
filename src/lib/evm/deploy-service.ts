@@ -1,13 +1,14 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { privateKeyToAccount } from "viem/accounts";
-import { formatEther, type Address, type Hash } from "viem";
+import { encodeAbiParameters, formatEther, type Address, type Hash } from "viem";
 import { getFlashUsdTLabArtifact } from "./contract-artifact";
 import { EVM_CHAIN_IDS, getExplorerContractUrl, getExplorerTxUrl } from "./chain-config";
 import { getPublicClient, getWalletClient } from "./client";
 import type { EvmNetwork } from "./network";
 import { getTreasuryPrivateKeyForNetwork } from "./network";
 import { normalizePrivateKey } from "./treasury-registry";
+import { resolveLabTokenMeta, type LabTokenMeta } from "./lab-token-config";
 
 export function getTreasuryAddress(network: EvmNetwork): Address | null {
   const pk = getTreasuryPrivateKeyForNetwork(network);
@@ -33,6 +34,15 @@ export async function getTreasuryNativeBalance(
   return { address, balance: formatEther(wei), symbol };
 }
 
+async function withRpcTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} — RPC lento (>${ms}ms). Configura EVM_BSC_RPC_URL en Vercel.`)), ms)
+    ),
+  ]);
+}
+
 function resolveDeployKey(treasuryPrivateKey?: `0x${string}` | null): `0x${string}` | null {
   return (
     treasuryPrivateKey ??
@@ -43,11 +53,13 @@ function resolveDeployKey(treasuryPrivateKey?: `0x${string}` | null): `0x${strin
 /** Envía la tx de deploy y devuelve al instante (evita timeout en Vercel). */
 export async function startFlashUsdTLabDeploy(
   network: EvmNetwork,
-  treasuryPrivateKey?: `0x${string}` | null
+  treasuryPrivateKey?: `0x${string}` | null,
+  tokenMeta?: { name?: string | null; symbol?: string | null }
 ): Promise<{
   success: boolean;
   txHash?: Hash;
   txExplorerUrl?: string;
+  tokenMeta?: LabTokenMeta;
   error?: string;
 }> {
   const resolvedKey = resolveDeployKey(treasuryPrivateKey);
@@ -55,19 +67,26 @@ export async function startFlashUsdTLabDeploy(
     return { success: false, error: "Treasury no configurada" };
   }
 
+  const meta = resolveLabTokenMeta(tokenMeta);
+
   try {
     const artifact = getFlashUsdTLabArtifact();
     const walletClient = getWalletClient(network, resolvedKey);
-    const hash = await walletClient.deployContract({
-      abi: artifact.abi,
-      bytecode: artifact.bytecode,
-      args: [],
-    });
+    const hash = await withRpcTimeout(
+      walletClient.deployContract({
+        abi: artifact.abi,
+        bytecode: artifact.bytecode,
+        args: [meta.name, meta.symbol],
+      }),
+      7_000,
+      "Deploy"
+    );
 
     return {
       success: true,
       txHash: hash,
       txExplorerUrl: getExplorerTxUrl(network, hash),
+      tokenMeta: meta,
     };
   } catch (err) {
     return {
@@ -129,7 +148,8 @@ export async function confirmFlashUsdTLabDeploy(
 /** Deploy síncrono (cron/scripts). */
 export async function deployFlashUsdTLab(
   network: EvmNetwork,
-  treasuryPrivateKey?: `0x${string}` | null
+  treasuryPrivateKey?: `0x${string}` | null,
+  tokenMeta?: { name?: string | null; symbol?: string | null }
 ): Promise<{
   success: boolean;
   contractAddress?: Address;
@@ -138,7 +158,7 @@ export async function deployFlashUsdTLab(
   txExplorerUrl?: string;
   error?: string;
 }> {
-  const started = await startFlashUsdTLabDeploy(network, treasuryPrivateKey);
+  const started = await startFlashUsdTLabDeploy(network, treasuryPrivateKey, tokenMeta);
   if (!started.success || !started.txHash) {
     return { success: false, error: started.error };
   }
@@ -180,6 +200,19 @@ export async function submitContractVerification(
   const artifact = getFlashUsdTLabArtifact();
   const sourceCode = getFlashUsdTLabSourceCode();
 
+  // El constructor recibe (string name, string symbol): Etherscan necesita los
+  // argumentos ABI-encoded. Los leemos on-chain para no depender de la BD.
+  const meta = await readOnChainContractMeta(network, contractAddress as Address);
+  const constructorArguements = meta
+    ? encodeAbiParameters(
+        [
+          { type: "string", name: "name" },
+          { type: "string", name: "symbol" },
+        ],
+        [meta.name, meta.symbol]
+      ).slice(2)
+    : "";
+
   const params = new URLSearchParams({
     chainid: String(EVM_CHAIN_IDS[network]),
     module: "contract",
@@ -193,6 +226,7 @@ export async function submitContractVerification(
     optimizationUsed: "1",
     runs: String(artifact.optimizationRuns),
     licenseType: "3",
+    constructorArguements,
   });
 
   try {

@@ -159,7 +159,8 @@ function resolveRpcUrl(network: EvmNetwork): string {
   return getChain(network).rpcUrls.default.http[0]!;
 }
 
-const RPC_TIMEOUT_MS = 12_000;
+/** Vercel Hobby corta funciones a ~10s — RPC debe responder mucho antes. */
+const RPC_TIMEOUT_MS = 5_000;
 
 function httpTransport(network: EvmNetwork) {
   return http(resolveRpcUrl(network), { timeout: RPC_TIMEOUT_MS });

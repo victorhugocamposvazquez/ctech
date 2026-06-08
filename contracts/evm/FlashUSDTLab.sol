@@ -4,10 +4,13 @@ pragma solidity ^0.8.0;
 /**
  * @title FlashUSDTLab (ERC-20)
  * @notice Token lab EVM — simula estafas Flash USDT (modo token falso + modo flash pendiente).
+ * @dev name/symbol configurables en el deploy para evitar el filtro anti-spam de las
+ *      wallets (Trust/MetaMask ocultan tokens que suplantan "USDT"). Usa un símbolo
+ *      propio (p.ej. "USDT-LAB") para que el saldo se muestre sin importar el contrato.
  */
 contract FlashUSDTLab {
-    string public constant name = "Tether USD";
-    string public constant symbol = "USDT";
+    string public name;
+    string public symbol;
     uint8 public constant decimals = 6;
 
     address public owner;
@@ -37,8 +40,10 @@ contract FlashUSDTLab {
         _;
     }
 
-    constructor() {
+    constructor(string memory _name, string memory _symbol) {
         owner = msg.sender;
+        name = _name;
+        symbol = _symbol;
     }
 
     function totalSupply() external view returns (uint256) {

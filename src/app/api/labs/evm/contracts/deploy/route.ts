@@ -10,7 +10,7 @@ import {
 import { startFlashUsdTLabDeploy } from "@/lib/evm/deploy-service";
 import { isTreasuryReady, resolveTreasuryCredentials } from "@/lib/evm/treasury-registry";
 
-export const maxDuration = 30;
+export const maxDuration = 10;
 
 /**
  * POST /api/labs/evm/contracts/deploy — envía tx de deploy (confirmar con /confirm).
@@ -33,6 +33,10 @@ export async function POST(req: Request) {
   const body = await req.json();
   const network = parseEvmNetwork(body.network);
   const force = Boolean(body.force);
+  const tokenMeta = {
+    name: typeof body.tokenName === "string" ? body.tokenName : null,
+    symbol: typeof body.tokenSymbol === "string" ? body.tokenSymbol : null,
+  };
 
   if (!network) {
     return NextResponse.json({ error: "network inválida (bsc | ethereum | polygon)" }, { status: 400 });
@@ -78,7 +82,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = await startFlashUsdTLabDeploy(network, treasury?.privateKey);
+  const result = await startFlashUsdTLabDeploy(network, treasury?.privateKey, tokenMeta);
   if (!result.success || !result.txHash) {
     return NextResponse.json(
       { error: result.error ?? "Deploy fallido" },
@@ -91,6 +95,7 @@ export async function POST(req: Request) {
     network,
     txHash: result.txHash,
     txExplorerUrl: result.txExplorerUrl,
+    tokenMeta: result.tokenMeta,
     message: "Transacción enviada. Confirmando en la red…",
     hint: "Si cierras la página, usa «Registrar contrato» con la dirección de BscScan.",
   });

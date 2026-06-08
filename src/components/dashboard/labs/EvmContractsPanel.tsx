@@ -80,6 +80,8 @@ export default function EvmContractsPanel({ visible }: Props) {
   const [registerAddress, setRegisterAddress] = useState("");
   const [registerTx, setRegisterTx] = useState("");
   const [showRegister, setShowRegister] = useState(false);
+  const [tokenName, setTokenName] = useState("Flash USDT");
+  const [tokenSymbol, setTokenSymbol] = useState("fUSDT");
 
   const load = useCallback(async () => {
     if (!visible) return;
@@ -109,7 +111,12 @@ export default function EvmContractsPanel({ visible }: Props) {
       const { res, json } = await fetchJson<Record<string, unknown>>("/api/labs/evm/contracts/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ network: networkId, force }),
+        body: JSON.stringify({
+          network: networkId,
+          force,
+          tokenName: tokenName.trim(),
+          tokenSymbol: tokenSymbol.trim(),
+        }),
       });
       if (!res.ok) {
         if (res.status === 409 && !force) {
@@ -131,7 +138,13 @@ export default function EvmContractsPanel({ visible }: Props) {
       );
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(
+        msg.includes("504") || msg.includes("timeout")
+          ? `${msg} — La tx puede haberse enviado igual. Revisa BscScan en la treasury y usa «Registrar contrato manualmente».`
+          : msg
+      );
+      setShowRegister(true);
     } finally {
       setBusyNetwork(null);
       setConfirmAttempt(0);
@@ -251,6 +264,41 @@ export default function EvmContractsPanel({ visible }: Props) {
           )}
         </div>
       )}
+
+      <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-2">
+        <p className="text-xs font-medium text-emerald-100">Token del nuevo contrato</p>
+        <p className="text-[11px] text-slate-400">
+          Las wallets ocultan tokens con símbolo exacto «USDT». Usa un símbolo propio
+          (p.ej. «USDT-LAB») para que el saldo aparezca en Trust/MetaMask sin importar el contrato.
+        </p>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <label className="text-slate-400">
+            Nombre
+            <input
+              value={tokenName}
+              onChange={(e) => setTokenName(e.target.value)}
+              maxLength={40}
+              placeholder="Flash USDT"
+              className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white"
+            />
+          </label>
+          <label className="text-slate-400">
+            Símbolo
+            <input
+              value={tokenSymbol}
+              onChange={(e) => setTokenSymbol(e.target.value)}
+              maxLength={20}
+              placeholder="fUSDT"
+              className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-white"
+            />
+          </label>
+        </div>
+        {tokenSymbol.trim().toUpperCase() === "USDT" && (
+          <p className="text-[11px] text-amber-300">
+            Aviso: símbolo «USDT» será ocultado por Trust/MetaMask. Cambia a uno propio.
+          </p>
+        )}
+      </div>
 
       <div className="grid gap-3 md:grid-cols-2">
         {displayNetworks.map((net) => (

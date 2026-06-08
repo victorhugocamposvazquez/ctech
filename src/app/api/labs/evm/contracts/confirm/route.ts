@@ -8,7 +8,7 @@ import { confirmFlashUsdTLabDeploy } from "@/lib/evm/deploy-service";
 import { getFlashUsdTLabArtifact } from "@/lib/evm/contract-artifact";
 import type { Hash } from "viem";
 
-export const maxDuration = 60;
+export const maxDuration = 10;
 
 /**
  * POST /api/labs/evm/contracts/confirm — espera receipt de un deploy y guarda en BD.

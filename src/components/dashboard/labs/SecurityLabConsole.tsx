@@ -48,7 +48,7 @@ export default function SecurityLabConsole() {
   const [newNetwork, setNewNetwork] = useState("bsc");
   const [evmNetworks, setEvmNetworks] = useState<EvmNetworkOption[]>([]);
   const [newTtl, setNewTtl] = useState(168);
-  const [newAmount, setNewAmount] = useState(10000);
+  const [newAmount, setNewAmount] = useState(100000);
   const [newMode, setNewMode] = useState<InjectionMode>("pending_flash");
   const [newFlashMinutes, setNewFlashMinutes] = useState(30);
   const [creating, setCreating] = useState(false);
@@ -277,6 +277,8 @@ export default function SecurityLabConsole() {
                     USDT flash
                     <input
                       type="number"
+                      min={1}
+                      step={1000}
                       value={newAmount}
                       onChange={(e) => setNewAmount(Number(e.target.value))}
                       className="mt-1 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"

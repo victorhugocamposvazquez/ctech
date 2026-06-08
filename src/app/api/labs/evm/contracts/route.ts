@@ -13,11 +13,21 @@ import { getExplorerContractUrl } from "@/lib/evm/chain-config";
 import {
   getTreasuryNativeBalance,
   isExplorerVerificationAvailable,
-  readOnChainContractMeta,
 } from "@/lib/evm/deploy-service";
 import { getFlashUsdTLabArtifact } from "@/lib/evm/contract-artifact";
 
-const NETWORKS: EvmNetwork[] = ["bsc", "ethereum", "polygon"];
+/** Solo redes del panel — evita 3× RPC y timeout en Vercel Hobby (~10s). */
+const NETWORKS: EvmNetwork[] = ["bsc", "ethereum"];
+
+async function withBalanceTimeout(
+  network: EvmNetwork,
+  address: Parameters<typeof getTreasuryNativeBalance>[1]
+) {
+  return Promise.race([
+    getTreasuryNativeBalance(network, address),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 4_000)),
+  ]);
+}
 
 /**
  * GET /api/labs/evm/contracts — estado de infra EVM por red (instructor).
@@ -65,32 +75,15 @@ export async function GET(req: Request) {
         balanceUnavailable?: boolean;
       } | null = null;
       if (treasuryCreds?.address) {
-        try {
-          const bal = await getTreasuryNativeBalance(id, treasuryCreds.address);
-          treasury = bal
-            ? { ...bal, address: bal.address }
-            : {
-                address: treasuryCreds.address,
-                balance: "0",
-                symbol: meta.nativeCurrency,
-              };
-        } catch {
-          treasury = {
-            address: treasuryCreds.address,
-            balance: "0",
-            symbol: meta.nativeCurrency,
-            balanceUnavailable: true,
-          };
-        }
-      }
-
-      let onChain = null;
-      if (resolved) {
-        try {
-          onChain = await readOnChainContractMeta(id, resolved);
-        } catch {
-          onChain = null;
-        }
+        const bal = await withBalanceTimeout(id, treasuryCreds.address);
+        treasury = bal
+          ? { ...bal, address: bal.address }
+          : {
+              address: treasuryCreds.address,
+              balance: "0",
+              symbol: meta.nativeCurrency,
+              balanceUnavailable: true,
+            };
       }
 
       return {
@@ -106,7 +99,7 @@ export async function GET(req: Request) {
           envAddress: envContract ?? null,
           dbRecord: dbContract,
           explorerUrl: resolved ? getExplorerContractUrl(id, resolved) : null,
-          onChain,
+          onChain: null,
           operational: Boolean(treasuryReadyGlobal && resolved),
         },
         verification: {

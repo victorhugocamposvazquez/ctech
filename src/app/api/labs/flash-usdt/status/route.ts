@@ -76,13 +76,12 @@ export async function GET(req: Request) {
     pendingTxStatus = await getTxStatus(userInjection.pending_tx_hash, network, evmOptions);
   }
 
+  const lastPendingBaitAt = (userInjection?.metadata as Record<string, unknown>)
+    ?.lastPendingBaitAt as string | undefined;
   const pendingBaitActive =
-    Boolean(pendingTxStatus?.pending) ||
-    isPendingBaitEffectivelyActive(
-      (userInjection?.metadata as Record<string, unknown>)?.lastPendingBaitAt as
-        | string
-        | undefined
-    );
+    Boolean(userInjection?.pending_tx_hash) &&
+    (Boolean(pendingTxStatus?.pending) ||
+      isPendingBaitEffectivelyActive(lastPendingBaitAt));
 
   const pendingBaitAmount =
     pendingBaitActive && userInjection ? Number(userInjection.amount) : undefined;
