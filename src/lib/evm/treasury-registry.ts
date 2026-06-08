@@ -46,13 +46,50 @@ export function getEnvTreasuryCredentials(): TreasuryCredentials | null {
 export async function fetchActivePanelTreasury(
   admin: SupabaseClient
 ): Promise<LabEvmTreasuryRow | null> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from("lab_evm_treasury")
     .select("*")
     .eq("is_active", true)
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
+  if (error) {
+    console.error("[treasury] fetchActivePanelTreasury:", error.message);
+    return null;
+  }
+
   return (data as LabEvmTreasuryRow | null) ?? null;
+}
+
+/** Última fila guardada (aunque esté desactivada — recuperación tras fallo de guardado). */
+export async function fetchLatestPanelTreasury(
+  admin: SupabaseClient
+): Promise<LabEvmTreasuryRow | null> {
+  const { data, error } = await admin
+    .from("lab_evm_treasury")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[treasury] fetchLatestPanelTreasury:", error.message);
+    return null;
+  }
+
+  return (data as LabEvmTreasuryRow | null) ?? null;
+}
+
+export function panelRowToDisplay(row: LabEvmTreasuryRow) {
+  return {
+    address: row.treasury_address,
+    label: row.label,
+    notes: row.notes,
+    privateKeyHint: maskPrivateKeyHint(row.treasury_private_key),
+    updatedAt: row.updated_at,
+    isActive: row.is_active,
+  };
 }
 
 export async function resolveTreasuryCredentials(

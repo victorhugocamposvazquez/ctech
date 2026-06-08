@@ -9,12 +9,14 @@ type TreasuryStatus = {
   envAddress: string | null;
   activeAddress: string | null;
   priorityNote: string;
+  panelInactive?: boolean;
   panel: {
     address: string;
     label: string | null;
     notes: string | null;
     privateKeyHint: string;
     updatedAt: string;
+    isActive?: boolean;
   } | null;
   balances: { network: string; balance: string; symbol: string }[];
 };
@@ -50,11 +52,13 @@ export default function EvmTreasuryPanel({ visible }: Props) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Error cargando treasury");
       setStatus(json);
-      if (json.panel) {
+      if (json.panel?.address) {
         setAddress(json.panel.address);
         setLabel(json.panel.label ?? "Treasury lab");
         setNotes(json.panel.notes ?? "");
-      } else if (json.envAddress && !json.panel) {
+      } else if (json.activeAddress) {
+        setAddress(json.activeAddress);
+      } else if (json.envAddress) {
         setAddress(json.envAddress);
       }
       setPrivateKey("");
@@ -193,8 +197,12 @@ export default function EvmTreasuryPanel({ visible }: Props) {
             </span>
             {status.ready ? (
               <span className="ml-2 text-emerald-300">● Lista</span>
+            ) : status.panelInactive ? (
+              <span className="ml-2 text-amber-300">● Desactivada — pulsa Guardar para reactivar</span>
+            ) : status.panel ? (
+              <span className="ml-2 text-amber-300">● Guardada — falta key válida o SUPABASE_SERVICE_ROLE_KEY</span>
             ) : (
-              <span className="ml-2 text-amber-300">● Pendiente — falta private key válida</span>
+              <span className="ml-2 text-amber-300">● Sin configurar</span>
             )}
           </p>
           {displayAddress && (
@@ -219,8 +227,17 @@ export default function EvmTreasuryPanel({ visible }: Props) {
               ))}
             </p>
           )}
+          {status.panel?.privateKeyHint && (
+            <p className="text-slate-500">Key en panel: {status.panel.privateKeyHint}</p>
+          )}
           <p className="text-slate-500">{status.priorityNote}</p>
         </div>
+      )}
+
+      {!loading && !status && !error && (
+        <p className="text-xs text-amber-300">
+          No se cargó el estado. Comprueba SUPABASE_SERVICE_ROLE_KEY en Vercel y pulsa Actualizar.
+        </p>
       )}
 
       {status?.ready && (needsBscGas || needsEthGas) && displayAddress && (

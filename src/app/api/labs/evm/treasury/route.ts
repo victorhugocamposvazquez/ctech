@@ -6,9 +6,10 @@ import { getTreasuryNativeBalance } from "@/lib/evm/deploy-service";
 import type { EvmNetwork } from "@/lib/evm/network";
 import {
   fetchActivePanelTreasury,
+  fetchLatestPanelTreasury,
   getEnvTreasuryCredentials,
   isTreasuryReady,
-  maskPrivateKeyHint,
+  panelRowToDisplay,
   resolveTreasuryCredentials,
   validateTreasuryInput,
 } from "@/lib/evm/treasury-registry";
@@ -46,7 +47,10 @@ export async function GET() {
   }
 
   const envTreasury = getEnvTreasuryCredentials();
-  const panelRow = await fetchActivePanelTreasury(admin);
+  const activeRow = await fetchActivePanelTreasury(admin);
+  const latestRow = activeRow ?? (await fetchLatestPanelTreasury(admin));
+  const panelRow = latestRow;
+  const panelInactive = Boolean(latestRow && !latestRow.is_active);
   const active = await resolveTreasuryCredentials(admin);
   const ready = await isTreasuryReady(admin);
 
@@ -69,25 +73,22 @@ export async function GET() {
     activeSource: active?.source ?? "none",
     envConfigured: Boolean(envTreasury),
     envAddress: envTreasury?.address ?? null,
-    panel: panelRow
-      ? {
-          address: panelRow.treasury_address,
-          label: panelRow.label,
-          notes: panelRow.notes,
-          privateKeyHint: maskPrivateKeyHint(panelRow.treasury_private_key),
-          updatedAt: panelRow.updated_at,
-        }
-      : null,
-    activeAddress: active?.address ?? null,
+    panel: panelRow ? panelRowToDisplay(panelRow) : null,
+    panelInactive,
+    activeAddress: active?.address ?? panelRow?.treasury_address ?? null,
     balances,
     priorityNote:
-      envTreasury && panelRow
-        ? "La variable EVM_LAB_TREASURY_PRIVATE_KEY en Vercel tiene prioridad sobre el panel."
-        : envTreasury
-          ? "Treasury activa desde variable de entorno."
-          : panelRow
-            ? "Treasury activa desde panel."
-            : "Configura treasury en el panel o en EVM_LAB_TREASURY_PRIVATE_KEY.",
+      panelInactive
+        ? "Treasury encontrada pero desactivada. Pulsa Guardar (con private key) para reactivarla."
+        : envTreasury && activeRow
+          ? "La variable EVM_LAB_TREASURY_PRIVATE_KEY en Vercel tiene prioridad sobre el panel."
+          : envTreasury
+            ? "Treasury activa desde variable de entorno."
+            : activeRow
+              ? "Treasury activa desde panel."
+              : panelRow
+                ? "Hay datos en panel pero la key no es válida. Vuelve a guardar dirección + private key."
+                : "Configura treasury en el panel o en EVM_LAB_TREASURY_PRIVATE_KEY.",
   });
 }
 
@@ -122,15 +123,16 @@ export async function PUT(req: Request) {
     );
   }
 
-  const existing = await fetchActivePanelTreasury(admin);
+  const activeExisting = await fetchActivePanelTreasury(admin);
+  const recoverRow = activeExisting ?? (await fetchLatestPanelTreasury(admin));
 
-  if (!privateKey && !existing) {
+  if (!privateKey && !recoverRow) {
     return NextResponse.json({ error: "Private key obligatoria en el primer guardado" }, { status: 400 });
   }
 
   const validation = privateKey
     ? validateTreasuryInput(address, privateKey)
-    : existing
+    : recoverRow
       ? ({ ok: true } as const)
       : validateTreasuryInput(address, privateKey);
 
@@ -142,27 +144,59 @@ export async function PUT(req: Request) {
     ? privateKey.startsWith("0x")
       ? privateKey
       : `0x${privateKey}`
-    : existing!.treasury_private_key;
+    : recoverRow!.treasury_private_key;
 
-  if (existing) {
-    await admin.from("lab_evm_treasury").update({ is_active: false }).eq("id", existing.id);
+  let row: {
+    id: string;
+    treasury_address: string;
+    label: string | null;
+    notes: string | null;
+    updated_at: string;
+  } | null = null;
+  let saveError: string | null = null;
+
+  if (recoverRow) {
+    const { data, error } = await admin
+      .from("lab_evm_treasury")
+      .update({
+        treasury_address: address,
+        treasury_private_key: keyToStore,
+        label,
+        notes,
+        configured_by: user.id,
+        is_active: true,
+      })
+      .eq("id", recoverRow.id)
+      .select("id, treasury_address, label, notes, updated_at")
+      .single();
+    row = data;
+    saveError = error?.message ?? null;
+  } else {
+    const { data, error } = await admin
+      .from("lab_evm_treasury")
+      .insert({
+        treasury_address: address,
+        treasury_private_key: keyToStore,
+        label,
+        notes,
+        configured_by: user.id,
+        is_active: true,
+      })
+      .select("id, treasury_address, label, notes, updated_at")
+      .single();
+    row = data;
+    saveError = error?.message ?? null;
   }
 
-  const { data: row, error } = await admin
-    .from("lab_evm_treasury")
-    .insert({
-      treasury_address: address,
-      treasury_private_key: keyToStore,
-      label,
-      notes,
-      configured_by: user.id,
-      is_active: true,
-    })
-    .select("id, treasury_address, label, notes, updated_at")
-    .single();
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (saveError || !row) {
+    return NextResponse.json(
+      {
+        error:
+          saveError ??
+          "No se pudo guardar. ¿Existe la tabla lab_evm_treasury? Aplica la migración en Supabase.",
+      },
+      { status: 500 }
+    );
   }
 
   await logLabAudit(supabase, {
@@ -179,10 +213,17 @@ export async function PUT(req: Request) {
     ready: Boolean(activeAfterSave),
     activeSource: activeAfterSave?.source ?? "none",
     activeAddress: activeAfterSave?.address ?? null,
-    panel: {
-      ...row,
-      privateKeyHint: maskPrivateKeyHint(keyToStore),
-    },
+    panel: panelRowToDisplay({
+      id: row.id,
+      treasury_address: row.treasury_address,
+      treasury_private_key: keyToStore,
+      label: row.label,
+      notes: row.notes,
+      configured_by: user.id,
+      is_active: true,
+      updated_at: row.updated_at,
+    }),
+    panelInactive: false,
     message: getEnvTreasuryCredentials()
       ? "Guardado en panel. Nota: si existe EVM_LAB_TREASURY_PRIVATE_KEY en env, esa key sigue teniendo prioridad."
       : activeAfterSave
