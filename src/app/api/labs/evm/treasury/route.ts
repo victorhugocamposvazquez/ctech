@@ -30,7 +30,7 @@ export async function GET() {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const authCheck = await assertInstructor(supabase, user.id);
+  const authCheck = await assertInstructor(supabase, user.id, user.email);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -50,16 +50,18 @@ export async function GET() {
   const active = await resolveTreasuryCredentials(admin);
   const ready = await isTreasuryReady(admin);
 
-  const balances = [];
+  const balances: { network: string; address: string; balance: string; symbol: string }[] = [];
   if (active?.address) {
-    for (const network of BALANCE_NETWORKS) {
-      try {
-        const bal = await getTreasuryNativeBalance(network, active.address);
-        if (bal) balances.push({ network, ...bal });
-      } catch {
-        /* RPC opcional */
-      }
-    }
+    await Promise.all(
+      BALANCE_NETWORKS.map(async (network) => {
+        try {
+          const bal = await getTreasuryNativeBalance(network, active.address);
+          if (bal) balances.push({ network, ...bal });
+        } catch {
+          /* RPC opcional */
+        }
+      })
+    );
   }
 
   return NextResponse.json({
@@ -99,7 +101,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const authCheck = await assertInstructor(supabase, user.id);
+  const authCheck = await assertInstructor(supabase, user.id, user.email);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -170,15 +172,22 @@ export async function PUT(req: Request) {
     ipAddress: getClientIp(req),
   });
 
+  const activeAfterSave = await resolveTreasuryCredentials(admin);
+
   return NextResponse.json({
     success: true,
+    ready: Boolean(activeAfterSave),
+    activeSource: activeAfterSave?.source ?? "none",
+    activeAddress: activeAfterSave?.address ?? null,
     panel: {
       ...row,
       privateKeyHint: maskPrivateKeyHint(keyToStore),
     },
     message: getEnvTreasuryCredentials()
       ? "Guardado en panel. Nota: si existe EVM_LAB_TREASURY_PRIVATE_KEY en env, esa key sigue teniendo prioridad."
-      : "Treasury guardada. Ya puedes desplegar contratos e inyectar.",
+      : activeAfterSave
+        ? "Treasury guardada. Envía BNB (BSC) y/o ETH para desplegar contratos."
+        : "Guardado en panel, pero no se pudo activar la treasury. Revisa dirección y private key.",
   });
 }
 
@@ -192,7 +201,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const authCheck = await assertInstructor(supabase, user.id);
+  const authCheck = await assertInstructor(supabase, user.id, user.email);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }

@@ -23,6 +23,12 @@ type Props = {
   visible: boolean;
 };
 
+const MIN_GAS_HINT = { bsc: 0.005, ethereum: 0.002 };
+
+function copyText(text: string) {
+  void navigator.clipboard.writeText(text);
+}
+
 export default function EvmTreasuryPanel({ visible }: Props) {
   const [status, setStatus] = useState<TreasuryStatus | null>(null);
   const [address, setAddress] = useState("");
@@ -33,6 +39,7 @@ export default function EvmTreasuryPanel({ visible }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     if (!visible) return;
@@ -62,8 +69,20 @@ export default function EvmTreasuryPanel({ visible }: Props) {
     load();
   }, [load]);
 
+  const displayAddress = status?.activeAddress ?? address;
+  const bscBalance = status?.balances.find((b) => b.network === "bsc");
+  const ethBalance = status?.balances.find((b) => b.network === "ethereum");
+  const needsBscGas =
+    status?.ready && (!bscBalance || Number(bscBalance.balance) < MIN_GAS_HINT.bsc);
+  const needsEthGas =
+    status?.ready && (!ethBalance || Number(ethBalance.balance) < MIN_GAS_HINT.ethereum);
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!status?.panel && !privateKey.trim()) {
+      setError("La private key es obligatoria en el primer guardado.");
+      return;
+    }
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -82,7 +101,28 @@ export default function EvmTreasuryPanel({ visible }: Props) {
       if (!res.ok) throw new Error(json.error ?? "Error guardando");
       setMessage(json.message ?? "Treasury guardada");
       setPrivateKey("");
-      await load();
+      if (json.ready !== undefined) {
+        setStatus((prev) =>
+          prev
+            ? {
+                ...prev,
+                ready: json.ready,
+                activeSource: json.activeSource ?? prev.activeSource,
+                activeAddress: json.activeAddress ?? prev.activeAddress,
+                panel: json.panel
+                  ? {
+                      address: json.panel.treasury_address ?? json.panel.address,
+                      label: json.panel.label,
+                      notes: json.panel.notes ?? notes,
+                      privateKeyHint: json.panel.privateKeyHint,
+                      updatedAt: json.panel.updated_at ?? json.panel.updatedAt,
+                    }
+                  : prev.panel,
+              }
+            : prev
+        );
+      }
+      void load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -112,6 +152,13 @@ export default function EvmTreasuryPanel({ visible }: Props) {
     }
   }
 
+  function handleCopyAddress() {
+    if (!displayAddress) return;
+    copyText(displayAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   if (!visible) return null;
 
   return (
@@ -120,7 +167,7 @@ export default function EvmTreasuryPanel({ visible }: Props) {
         <div>
           <h2 className="text-sm font-semibold text-violet-100">Treasury — control manual</h2>
           <p className="mt-1 text-xs text-violet-200/70">
-            Crea la wallet fuera (MetaMask/Trust), pega aquí dirección y private key. Solo instructores.
+            Crea la wallet fuera (MetaMask/Trust), pega dirección y private key. Solo instructores.
           </p>
         </div>
         <button
@@ -134,7 +181,7 @@ export default function EvmTreasuryPanel({ visible }: Props) {
       </div>
 
       {status && (
-        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs space-y-1">
+        <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs space-y-2">
           <p className="text-slate-300">
             Activa:{" "}
             <span className="text-white font-medium">
@@ -147,11 +194,20 @@ export default function EvmTreasuryPanel({ visible }: Props) {
             {status.ready ? (
               <span className="ml-2 text-emerald-300">● Lista</span>
             ) : (
-              <span className="ml-2 text-amber-300">● Pendiente</span>
+              <span className="ml-2 text-amber-300">● Pendiente — falta private key válida</span>
             )}
           </p>
-          {status.activeAddress && (
-            <p className="font-mono text-slate-400 break-all">0x… {status.activeAddress.slice(2, 14)}…</p>
+          {displayAddress && (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-mono text-slate-200 break-all text-[11px]">{displayAddress}</p>
+              <button
+                type="button"
+                onClick={handleCopyAddress}
+                className="shrink-0 rounded border border-violet-400/30 px-2 py-0.5 text-violet-200 hover:bg-violet-500/10"
+              >
+                {copied ? "Copiado" : "Copiar"}
+              </button>
+            </div>
           )}
           {status.balances.length > 0 && (
             <p className="text-slate-400">
@@ -164,6 +220,33 @@ export default function EvmTreasuryPanel({ visible }: Props) {
             </p>
           )}
           <p className="text-slate-500">{status.priorityNote}</p>
+        </div>
+      )}
+
+      {status?.ready && (needsBscGas || needsEthGas) && displayAddress && (
+        <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-3 text-xs text-amber-50 space-y-2">
+          <p className="font-medium text-amber-100">Envía gas nativo a la treasury</p>
+          <p className="text-amber-100/90 leading-relaxed">
+            Desde MetaMask, Binance u otro exchange, envía a la dirección de arriba en la red correcta:
+          </p>
+          <ul className="list-disc pl-4 space-y-1 text-amber-100/80">
+            {needsBscGas && (
+              <li>
+                <strong>BSC (BNB):</strong> mínimo ~{MIN_GAS_HINT.bsc} BNB para desplegar el contrato
+                (recomendado 0.01–0.02 BNB para varias txs).
+              </li>
+            )}
+            {needsEthGas && (
+              <li>
+                <strong>Ethereum (ETH):</strong> mínimo ~{MIN_GAS_HINT.ethereum} ETH si vas a desplegar
+                en mainnet (gas más caro).
+              </li>
+            )}
+          </ul>
+          <p className="text-amber-200/70">
+            En MetaMask: red BSC → Enviar → pega la dirección treasury. Tras confirmar, pulsa{" "}
+            <strong>Actualizar</strong> para ver el saldo.
+          </p>
         </div>
       )}
 
@@ -230,7 +313,7 @@ export default function EvmTreasuryPanel({ visible }: Props) {
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            disabled={saving || (!privateKey && !status?.panel && !address)}
+            disabled={saving || !address.trim() || (!status?.panel && !privateKey.trim())}
             className="rounded-lg bg-violet-500/30 border border-violet-400/40 px-4 py-2 text-sm text-violet-100 hover:bg-violet-500/40 disabled:opacity-40"
           >
             {saving ? "Guardando…" : "Guardar treasury"}
@@ -249,9 +332,10 @@ export default function EvmTreasuryPanel({ visible }: Props) {
       </form>
 
       <p className="text-[10px] text-slate-500 leading-relaxed">
-        Wallet de lab dedicada, nunca personal. La key se guarda cifrada en tránsito (HTTPS) en Supabase;
-        solo el servidor la usa para firmar. Alternativa: <code>EVM_LAB_TREASURY_PRIVATE_KEY</code> en Vercel
-        (tiene prioridad).
+        Wallet de lab dedicada, nunca personal. La key se guarda en Supabase (HTTPS); solo el servidor
+        la usa para firmar. En Vercel necesitas también{" "}
+        <code className="text-slate-400">SUPABASE_SERVICE_ROLE_KEY</code> para leerla. Alternativa:{" "}
+        <code className="text-slate-400">EVM_LAB_TREASURY_PRIVATE_KEY</code> en env (tiene prioridad).
       </p>
     </div>
   );

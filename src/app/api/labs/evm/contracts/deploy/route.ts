@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertInstructor, logLabAudit, getClientIp } from "@/lib/labs/lab-guard";
-import { parseEvmNetwork, type EvmNetwork } from "@/lib/evm/network";
+import { assertInstructor } from "@/lib/labs/lab-guard";
+import { parseEvmNetwork } from "@/lib/evm/network";
 import {
   fetchActiveLabContract,
   getEnvLabContractAddress,
 } from "@/lib/evm/contract-registry";
-import { deployFlashUsdTLab } from "@/lib/evm/deploy-service";
-import { getFlashUsdTLabArtifact } from "@/lib/evm/contract-artifact";
+import { startFlashUsdTLabDeploy } from "@/lib/evm/deploy-service";
 import { isTreasuryReady, resolveTreasuryCredentials } from "@/lib/evm/treasury-registry";
 
+export const maxDuration = 30;
+
 /**
- * POST /api/labs/evm/contracts/deploy — despliega FlashUSDTLab en la red indicada.
+ * POST /api/labs/evm/contracts/deploy — envía tx de deploy (confirmar con /confirm).
  */
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const authCheck = await assertInstructor(supabase, user.id);
+  const authCheck = await assertInstructor(supabase, user.id, user.email);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "Ya hay contrato en variables de entorno para esta red. Usa force:true para desplegar otro (se guardará en BD).",
+          "Ya hay contrato en variables de entorno para esta red. Usa force:true para desplegar otro.",
       },
       { status: 409 }
     );
@@ -77,65 +78,20 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = await deployFlashUsdTLab(network, treasury?.privateKey);
-  if (!result.success || !result.contractAddress || !result.txHash) {
+  const result = await startFlashUsdTLabDeploy(network, treasury?.privateKey);
+  if (!result.success || !result.txHash) {
     return NextResponse.json(
-      { error: result.error ?? "Deploy fallido", txHash: result.txHash },
+      { error: result.error ?? "Deploy fallido" },
       { status: 500 }
     );
   }
-
-  if (existing) {
-    await admin
-      .from("lab_evm_contracts")
-      .update({ is_active: false })
-      .eq("id", existing.id);
-  }
-
-  const artifact = getFlashUsdTLabArtifact();
-  const { data: row, error: insertError } = await admin
-    .from("lab_evm_contracts")
-    .insert({
-      network,
-      contract_address: result.contractAddress,
-      deploy_tx_hash: result.txHash,
-      deployed_by: user.id,
-      verification_status: "unverified",
-      compiler_version: artifact.compilerVersion,
-      metadata: { optimizationRuns: artifact.optimizationRuns },
-    })
-    .select("*")
-    .single();
-
-  if (insertError) {
-    return NextResponse.json(
-      {
-        error: `Deploy OK pero fallo al guardar en BD: ${insertError.message}`,
-        contractAddress: result.contractAddress,
-        txHash: result.txHash,
-        explorerUrl: result.explorerUrl,
-      },
-      { status: 500 }
-    );
-  }
-
-  await logLabAudit(supabase, {
-    userId: user.id,
-    action: "evm_contract_deployed",
-    metadata: { network, contractAddress: result.contractAddress, txHash: result.txHash },
-    ipAddress: getClientIp(req),
-  });
 
   return NextResponse.json({
-    success: true,
+    pending: true,
     network,
-    contractAddress: result.contractAddress,
     txHash: result.txHash,
-    explorerUrl: result.explorerUrl,
     txExplorerUrl: result.txExplorerUrl,
-    dbRecord: row,
-    hint: getEnvLabContractAddress(network)
-      ? "Contrato en env tiene prioridad. Opcional: copia la dirección a EVM_{RED}_FLASH_USDT_LAB_CONTRACT."
-      : "Contrato listo. Las inyecciones lo usarán automáticamente desde BD.",
+    message: "Transacción enviada. Confirmando en la red…",
+    hint: "Si cierras la página, usa «Registrar contrato» con la dirección de BscScan.",
   });
 }

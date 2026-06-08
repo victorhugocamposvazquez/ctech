@@ -32,7 +32,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const authCheck = await assertInstructor(supabase, user.id);
+  const authCheck = await assertInstructor(supabase, user.id, user.email);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -50,54 +50,75 @@ export async function GET(req: Request) {
   const artifact = getFlashUsdTLabArtifact();
   const treasuryCreds = await resolveTreasuryCredentials(admin);
   const treasuryReadyGlobal = await isTreasuryReady(admin);
-  const networks = [];
 
-  for (const id of NETWORKS) {
-    const meta = EVM_NETWORK_META[id];
-    const treasuryReady = treasuryReadyGlobal;
-    const envContract = getEnvLabContractAddress(id);
-    const dbContract = await fetchActiveLabContract(admin, id);
-    const resolved = await resolveLabContractAddress(admin, id);
+  const networks = await Promise.all(
+    NETWORKS.map(async (id) => {
+      const meta = EVM_NETWORK_META[id];
+      const envContract = getEnvLabContractAddress(id);
+      const dbContract = await fetchActiveLabContract(admin, id);
+      const resolved = await resolveLabContractAddress(admin, id);
 
-    let treasury = null;
-    if (treasuryCreds?.address) {
-      try {
-        treasury = await getTreasuryNativeBalance(id, treasuryCreds.address);
-      } catch {
-        treasury = null;
+      let treasury: {
+        address: string;
+        balance: string;
+        symbol: string;
+        balanceUnavailable?: boolean;
+      } | null = null;
+      if (treasuryCreds?.address) {
+        try {
+          const bal = await getTreasuryNativeBalance(id, treasuryCreds.address);
+          treasury = bal
+            ? { ...bal, address: bal.address }
+            : {
+                address: treasuryCreds.address,
+                balance: "0",
+                symbol: meta.nativeCurrency,
+              };
+        } catch {
+          treasury = {
+            address: treasuryCreds.address,
+            balance: "0",
+            symbol: meta.nativeCurrency,
+            balanceUnavailable: true,
+          };
+        }
       }
-    }
 
-    let onChain = null;
-    if (resolved) {
-      onChain = await readOnChainContractMeta(id, resolved);
-    }
+      let onChain = null;
+      if (resolved) {
+        try {
+          onChain = await readOnChainContractMeta(id, resolved);
+        } catch {
+          onChain = null;
+        }
+      }
 
-    networks.push({
-      id,
-      label: meta.label,
-      shortLabel: meta.shortLabel,
-      nativeCurrency: meta.nativeCurrency,
-      treasuryReady,
-      treasury,
-      contract: {
-        address: resolved,
-        source: envContract ? "env" : dbContract ? "database" : null,
-        envAddress: envContract ?? null,
-        dbRecord: dbContract,
-        explorerUrl: resolved ? getExplorerContractUrl(id, resolved) : null,
-        onChain,
-        operational: Boolean(treasuryReady && resolved),
-      },
-      verification: {
-        available: isExplorerVerificationAvailable(),
-        status: dbContract?.verification_status ?? (resolved ? "unverified" : null),
-        guid: dbContract?.verification_guid ?? null,
-        verifiedAt: dbContract?.verified_at ?? null,
-        error: dbContract?.verification_error ?? null,
-      },
-    });
-  }
+      return {
+        id,
+        label: meta.label,
+        shortLabel: meta.shortLabel,
+        nativeCurrency: meta.nativeCurrency,
+        treasuryReady: treasuryReadyGlobal,
+        treasury,
+        contract: {
+          address: resolved,
+          source: envContract ? "env" : dbContract ? "database" : null,
+          envAddress: envContract ?? null,
+          dbRecord: dbContract,
+          explorerUrl: resolved ? getExplorerContractUrl(id, resolved) : null,
+          onChain,
+          operational: Boolean(treasuryReadyGlobal && resolved),
+        },
+        verification: {
+          available: isExplorerVerificationAvailable(),
+          status: dbContract?.verification_status ?? (resolved ? "unverified" : null),
+          guid: dbContract?.verification_guid ?? null,
+          verifiedAt: dbContract?.verified_at ?? null,
+          error: dbContract?.verification_error ?? null,
+        },
+      };
+    })
+  );
 
   return NextResponse.json({
     artifact: {

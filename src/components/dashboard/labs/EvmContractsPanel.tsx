@@ -8,7 +8,12 @@ type NetworkStatus = {
   shortLabel: string;
   nativeCurrency: string;
   treasuryReady: boolean;
-  treasury: { address: string; balance: string; symbol: string } | null;
+  treasury: {
+    address: string;
+    balance: string;
+    symbol: string;
+    balanceUnavailable?: boolean;
+  } | null;
   contract: {
     address: string | null;
     source: string | null;
@@ -37,12 +42,41 @@ type Props = {
   visible: boolean;
 };
 
+async function pollDeployConfirm(
+  networkId: string,
+  txHash: string,
+  force: boolean,
+  onTick?: (attempt: number) => void
+): Promise<{ contractAddress?: string; explorerUrl?: string }> {
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    onTick?.(attempt);
+    const res = await fetch("/api/labs/evm/contracts/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ network: networkId, txHash, force }),
+    });
+    const json = await res.json();
+    if (res.status === 202) {
+      await new Promise((r) => setTimeout(r, 3000));
+      continue;
+    }
+    if (!res.ok) throw new Error(json.error ?? "Error confirmando deploy");
+    return { contractAddress: json.contractAddress, explorerUrl: json.explorerUrl };
+  }
+  throw new Error("Timeout esperando confirmación on-chain. Registra el contrato manualmente.");
+}
+
 export default function EvmContractsPanel({ visible }: Props) {
   const [data, setData] = useState<InfraResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyNetwork, setBusyNetwork] = useState<string | null>(null);
+  const [confirmAttempt, setConfirmAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [registerNetwork, setRegisterNetwork] = useState("bsc");
+  const [registerAddress, setRegisterAddress] = useState("");
+  const [registerTx, setRegisterTx] = useState("");
+  const [showRegister, setShowRegister] = useState(false);
 
   const load = useCallback(async () => {
     if (!visible) return;
@@ -68,6 +102,7 @@ export default function EvmContractsPanel({ visible }: Props) {
     setBusyNetwork(networkId);
     setError(null);
     setMessage(null);
+    setConfirmAttempt(0);
     try {
       const res = await fetch("/api/labs/evm/contracts/deploy", {
         method: "POST",
@@ -77,16 +112,51 @@ export default function EvmContractsPanel({ visible }: Props) {
       const json = await res.json();
       if (!res.ok) {
         if (res.status === 409 && !force) {
-          const ok = window.confirm(
-            `${json.error}\n\n¿Redeploy de todos modos?`
-          );
+          const ok = window.confirm(`${json.error}\n\n¿Redeploy de todos modos?`);
           if (ok) return handleDeploy(networkId, true);
         }
         throw new Error(json.error ?? "Deploy fallido");
       }
+
       setMessage(
-        `Contrato desplegado en ${networkId}: ${json.contractAddress?.slice(0, 10)}…`
+        `Tx enviada (${networkId}). Confirmando en BSC/Eth… ${json.txExplorerUrl ? "Abre el explorer si tarda." : ""}`
       );
+
+      const confirmed = await pollDeployConfirm(networkId, json.txHash, force, setConfirmAttempt);
+      setMessage(
+        `Contrato listo en ${networkId}: ${confirmed.contractAddress?.slice(0, 12)}…`
+      );
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusyNetwork(null);
+      setConfirmAttempt(0);
+    }
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setBusyNetwork("register");
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/labs/evm/contracts/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          network: registerNetwork,
+          contractAddress: registerAddress.trim(),
+          deployTxHash: registerTx.trim() || undefined,
+          force: true,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Error registrando");
+      setMessage(`Contrato registrado en ${registerNetwork}: ${json.contractAddress?.slice(0, 12)}…`);
+      setRegisterAddress("");
+      setRegisterTx("");
+      setShowRegister(false);
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -122,13 +192,17 @@ export default function EvmContractsPanel({ visible }: Props) {
 
   if (!visible) return null;
 
+  const displayNetworks = (data?.networks ?? []).filter(
+    (n) => n.id === "bsc" || n.id === "ethereum"
+  );
+
   return (
     <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-emerald-100">Infra EVM — contratos</h2>
           <p className="mt-1 text-xs text-emerald-200/70">
-            Despliega y verifica FlashUSDTLab sin Remix. Requiere treasury en server + gas en cada red.
+            Paso 2 del lab: despliega FlashUSDTLab. Si el deploy se cortó, regístralo manualmente.
           </p>
         </div>
         <button
@@ -141,17 +215,23 @@ export default function EvmContractsPanel({ visible }: Props) {
         </button>
       </div>
 
-      {!data?.treasuryEnvConfigured && !data?.treasuryPanelConfigured && (
+      {loading && !data && (
+        <p className="text-xs text-slate-400 animate-pulse">Cargando estado de contratos…</p>
+      )}
+
+      {!loading && !data && !error && (
+        <p className="text-xs text-amber-300">No se pudo cargar infra EVM. Pulsa Actualizar.</p>
+      )}
+
+      {!data?.treasuryEnvConfigured && !data?.treasuryPanelConfigured && data && (
         <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          Configura la treasury en el panel superior o en{" "}
-          <code className="text-amber-50">EVM_LAB_TREASURY_PRIVATE_KEY</code>.
+          Configura la treasury en el panel superior primero.
         </div>
       )}
 
-      {!data?.explorerApiConfigured && (
+      {!data?.explorerApiConfigured && data && (
         <div className="rounded-lg border border-slate-400/20 bg-white/5 px-3 py-2 text-xs text-slate-300">
-          Verificación en explorer: añade{" "}
-          <code className="text-slate-100">EVM_EXPLORER_API_KEY</code> (Etherscan API v2).
+          Verificación opcional: <code className="text-slate-100">EVM_EXPLORER_API_KEY</code>
         </div>
       )}
 
@@ -163,11 +243,16 @@ export default function EvmContractsPanel({ visible }: Props) {
       {message && (
         <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
           {message}
+          {confirmAttempt > 0 && (
+            <span className="block mt-1 text-emerald-200/70">
+              Esperando confirmación… intento {confirmAttempt}/30
+            </span>
+          )}
         </div>
       )}
 
       <div className="grid gap-3 md:grid-cols-2">
-        {(data?.networks ?? []).filter((n) => n.id === "bsc" || n.id === "ethereum").map((net) => (
+        {displayNetworks.map((net) => (
           <div
             key={net.id}
             className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3"
@@ -177,15 +262,24 @@ export default function EvmContractsPanel({ visible }: Props) {
               <StatusBadge ok={net.contract.operational} label={net.contract.operational ? "Listo" : "Pendiente"} />
             </div>
 
-            {net.treasury ? (
-              <p className="text-xs text-slate-400 font-mono break-all">
-                Treasury: {net.treasury.address.slice(0, 10)}… ·{" "}
-                <span className="text-slate-200">
-                  {Number(net.treasury.balance).toFixed(4)} {net.treasury.symbol}
-                </span>
-              </p>
+            {net.treasuryReady && net.treasury ? (
+              <div className="text-xs space-y-1">
+                <p className="text-slate-400 font-mono break-all">
+                  Treasury: {net.treasury.address.slice(0, 10)}… ·{" "}
+                  <span
+                    className={
+                      Number(net.treasury.balance) < 0.001 ? "text-amber-300" : "text-slate-200"
+                    }
+                  >
+                    {Number(net.treasury.balance).toFixed(4)} {net.treasury.symbol}
+                  </span>
+                </p>
+                {Number(net.treasury.balance) < 0.005 && (
+                  <p className="text-amber-300/90">Saldo bajo — envía {net.treasury.symbol} a treasury.</p>
+                )}
+              </div>
             ) : (
-              <p className="text-xs text-amber-300">Treasury no configurada o sin RPC</p>
+              <p className="text-xs text-amber-300">Treasury no configurada.</p>
             )}
 
             {net.contract.address ? (
@@ -211,7 +305,7 @@ export default function EvmContractsPanel({ visible }: Props) {
                 )}
               </div>
             ) : (
-              <p className="text-xs text-slate-500">Sin contrato desplegado</p>
+              <p className="text-xs text-slate-500">Sin contrato en BD</p>
             )}
 
             <div className="flex flex-wrap gap-2">
@@ -221,7 +315,13 @@ export default function EvmContractsPanel({ visible }: Props) {
                 onClick={() => handleDeploy(net.id)}
                 className="rounded-lg bg-emerald-500/30 border border-emerald-400/40 px-3 py-1.5 text-xs text-emerald-100 hover:bg-emerald-500/40 disabled:opacity-40"
               >
-                {busyNetwork === net.id ? "Desplegando…" : net.contract.address ? "Redeploy" : "Desplegar"}
+                {busyNetwork === net.id
+                  ? confirmAttempt > 0
+                    ? `Confirmando ${confirmAttempt}/30…`
+                    : "Enviando tx…"
+                  : net.contract.address
+                    ? "Redeploy"
+                    : "Desplegar"}
               </button>
               {net.contract.address && net.verification.available && (
                 <>
@@ -231,7 +331,7 @@ export default function EvmContractsPanel({ visible }: Props) {
                     onClick={() => handleVerify(net.id, "submit")}
                     className="rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/10 disabled:opacity-40"
                   >
-                    {busyNetwork === `${net.id}-submit` ? "…" : "Verificar"}
+                    Verificar
                   </button>
                   {net.verification.guid && (
                     <button
@@ -246,32 +346,58 @@ export default function EvmContractsPanel({ visible }: Props) {
                 </>
               )}
             </div>
-
-            {net.verification.status && net.verification.status !== "unverified" && (
-              <p className="text-xs text-slate-400">
-                Verificación:{" "}
-                <span
-                  className={
-                    net.verification.status === "verified"
-                      ? "text-emerald-300"
-                      : net.verification.status === "failed"
-                        ? "text-red-300"
-                        : "text-amber-300"
-                  }
-                >
-                  {net.verification.status}
-                </span>
-                {net.verification.error ? ` — ${net.verification.error}` : ""}
-              </p>
-            )}
           </div>
         ))}
       </div>
 
+      <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowRegister((v) => !v)}
+          className="text-xs text-cyan-300 hover:underline"
+        >
+          {showRegister ? "Ocultar" : "¿Deploy cortado? Registrar contrato manualmente"}
+        </button>
+        {showRegister && (
+          <form onSubmit={handleRegister} className="space-y-2 text-xs">
+            <p className="text-slate-400">
+              Pega la dirección del contrato desde BscScan/Etherscan (pestaña Contract creation).
+            </p>
+            <select
+              value={registerNetwork}
+              onChange={(e) => setRegisterNetwork(e.target.value)}
+              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white"
+            >
+              <option value="bsc">BSC</option>
+              <option value="ethereum">Ethereum</option>
+            </select>
+            <input
+              value={registerAddress}
+              onChange={(e) => setRegisterAddress(e.target.value.trim())}
+              placeholder="0x… dirección del contrato"
+              required
+              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-white"
+            />
+            <input
+              value={registerTx}
+              onChange={(e) => setRegisterTx(e.target.value.trim())}
+              placeholder="0x… tx hash (opcional)"
+              className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-mono text-white"
+            />
+            <button
+              type="submit"
+              disabled={busyNetwork === "register"}
+              className="rounded-lg bg-cyan-500/20 border border-cyan-400/40 px-3 py-2 text-cyan-100 disabled:opacity-40"
+            >
+              {busyNetwork === "register" ? "Registrando…" : "Registrar contrato"}
+            </button>
+          </form>
+        )}
+      </div>
+
       {data?.artifact && (
         <p className="text-[10px] text-slate-500">
-          Artifact: {data.artifact.contractName} · {data.artifact.compilerVersion} · optimizer{" "}
-          {data.artifact.optimizationRuns} runs
+          Artifact: {data.artifact.contractName} · {data.artifact.compilerVersion}
         </p>
       )}
     </div>

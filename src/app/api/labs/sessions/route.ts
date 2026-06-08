@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ session });
   }
 
-  const role = await getLabRole(supabase, user.id);
+  const role = await getLabRole(supabase, user.id, user.email);
 
   if (role === "instructor" || role === "admin") {
     const { data: sessions, error } = await supabase
@@ -100,9 +100,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  await ensureInstructorAccess(supabase, user.id, user.email);
-
-  const authCheck = await assertInstructor(supabase, user.id);
+  const authCheck = await assertInstructor(supabase, user.id, user.email);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }
@@ -219,21 +217,3 @@ export async function POST(req: Request) {
   return NextResponse.json(session, { status: 201 });
 }
 
-async function ensureInstructorAccess(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  email: string | undefined
-) {
-  const adminEmails = (process.env.LAB_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  const role =
-    email && adminEmails.includes(email.toLowerCase()) ? "admin" : "instructor";
-
-  await supabase.from("lab_roles").upsert(
-    { user_id: userId, role },
-    { onConflict: "user_id" }
-  );
-}

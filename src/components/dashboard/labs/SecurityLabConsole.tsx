@@ -144,6 +144,17 @@ export default function SecurityLabConsole() {
 
   return (
     <div className="space-y-6">
+      {canBecomeInstructor && (
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
+          <p className="font-medium text-white mb-2">Flujo instructor</p>
+          <ol className="list-decimal pl-4 space-y-1">
+            <li>Treasury — wallet + private key + BNB/ETH para gas</li>
+            <li>Infra EVM — desplegar contrato FlashUSDTLab (BSC recomendado)</li>
+            <li>Crear sesión abajo — elige la misma red que el contrato</li>
+            <li>Selecciona la sesión → registrar wallet MetaMask → Inyectar Flash USDT</li>
+          </ol>
+        </div>
+      )}
       {canBecomeInstructor && <EvmTreasuryPanel visible={canBecomeInstructor} />}
       {canBecomeInstructor && <EvmContractsPanel visible={canBecomeInstructor} />}
 

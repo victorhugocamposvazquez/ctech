@@ -62,6 +62,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [injecting, setInjecting] = useState(false);
+  const [participantCount, setParticipantCount] = useState(0);
 
   const isPendingMode = session.injection_mode === "pending_flash";
   const sessionNetwork = (session.network ?? "bsc").toLowerCase();
@@ -78,6 +79,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
     if (res.ok) {
       setConsentText(data.consentText ?? "");
       setConsentVersion(data.consentVersion ?? "1.0");
+      setParticipantCount(data.participantCount ?? 0);
       if (data.enrolled) {
         setEnrolled(true);
         setWalletAddress(data.enrolled.wallet_address);
@@ -141,6 +143,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
       if (!res.ok) throw new Error(data.error);
       setEnrolled(true);
       setPhase("waiting");
+      await loadEnroll();
       onRefresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -160,7 +163,7 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      await loadStatus();
+      await Promise.all([loadStatus(), loadEnroll()]);
       setPhase("lab");
       onRefresh();
     } catch (e) {
@@ -245,17 +248,28 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
 
       {isInstructor && (
         <div className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 p-4">
-          <h3 className="text-sm font-medium text-indigo-100">Panel instructor</h3>
+          <h3 className="text-sm font-medium text-indigo-100">Paso 4 — Inyectar Flash USDT</h3>
           <p className="text-xs text-indigo-200/70 mt-1">
-            {isPendingMode
-              ? "Modo 2: flashInject() + cebo pending USDT oficial (gas bajo). " +
-                "En EVM el total $ puede mantenerse horas/días en Trust Wallet."
-              : "Modo 1: token lab transferido + cebo pending USDT oficial para inflar el total $."}
+            {participantCount === 0 ? (
+              <>
+                <strong className="text-amber-200">Primero inscribe al menos 1 wallet</strong> en el
+                formulario de abajo (la tuya de MetaMask/Trust en {networkLabel}, o la del alumno).
+                Sin wallet inscrita no hay destino para la inyección.
+              </>
+            ) : (
+              <>
+                {participantCount} wallet(s) inscrita(s). Pulsa inyectar para enviar{" "}
+                {session.token_amount} USDT flash a todas.
+                {isPendingMode
+                  ? " Modo 2: saldo fantasma + cebo pending."
+                  : " Modo 1: token lab persistente."}
+              </>
+            )}
           </p>
           <button
             type="button"
             onClick={handleInject}
-            disabled={injecting || session.status === "expired"}
+            disabled={injecting || session.status === "expired" || participantCount === 0}
             className="mt-3 rounded-lg bg-indigo-500/40 border border-indigo-300/40 px-4 py-2 text-sm text-white hover:bg-indigo-500/50 disabled:opacity-50"
           >
             {injecting
@@ -293,6 +307,12 @@ export default function FlashUSDTLab({ session, isInstructor, onRefresh }: Props
 
       {phase === "enroll" && !enrolled && (
         <div className="space-y-4">
+          <p className="text-xs text-cyan-200/80 rounded-lg border border-cyan-400/20 bg-cyan-500/5 px-3 py-2">
+            <strong className="text-cyan-100">Paso 3 — Registrar wallet</strong> · Red {networkLabel}.
+            {isInstructor
+              ? " Como instructor puedes usar tu propia wallet de prueba antes de inyectar."
+              : " Espera a que el instructor lance la inyección tras registrarte."}
+          </p>
           <div className="rounded-xl border border-amber-400/20 bg-amber-500/10 p-4 text-xs text-amber-100 whitespace-pre-line max-h-48 overflow-y-auto">
             {consentText || "Cargando consentimiento…"}
           </div>

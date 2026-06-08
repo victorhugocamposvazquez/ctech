@@ -8,10 +8,38 @@ export { LAB_CONSENT_TEXT };
 const INJECT_RATE_LIMIT_MS = 60_000;
 const injectTimestamps = new Map<string, number>();
 
+export function parseLabAdminEmails(): string[] {
+  return (process.env.LAB_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isLabAdminEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return parseLabAdminEmails().includes(email.toLowerCase());
+}
+
+/** Promote LAB_ADMIN_EMAILS to admin in lab_roles (RLS: own row). */
+export async function ensureInstructorAccess(
+  supabase: SupabaseClient,
+  userId: string,
+  email: string | undefined | null
+): Promise<LabRole | null> {
+  if (!isLabAdminEmail(email)) return null;
+
+  const role: LabRole = "admin";
+  await supabase.from("lab_roles").upsert({ user_id: userId, role }, { onConflict: "user_id" });
+  return role;
+}
+
 export async function getLabRole(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  email?: string | null
 ): Promise<LabRole> {
+  await ensureInstructorAccess(supabase, userId, email);
+
   const { data } = await supabase
     .from("lab_roles")
     .select("role")
@@ -23,17 +51,19 @@ export async function getLabRole(
 
 export async function isInstructorOrAdmin(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  email?: string | null
 ): Promise<boolean> {
-  const role = await getLabRole(supabase, userId);
+  const role = await getLabRole(supabase, userId, email);
   return role === "instructor" || role === "admin";
 }
 
 export async function assertInstructor(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  email?: string | null
 ): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
-  const allowed = await isInstructorOrAdmin(supabase, userId);
+  const allowed = await isInstructorOrAdmin(supabase, userId, email);
   if (!allowed) {
     return { ok: false, error: "Se requiere rol instructor o admin", status: 403 };
   }

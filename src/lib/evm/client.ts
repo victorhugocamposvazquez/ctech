@@ -159,10 +159,16 @@ function resolveRpcUrl(network: EvmNetwork): string {
   return getChain(network).rpcUrls.default.http[0]!;
 }
 
+const RPC_TIMEOUT_MS = 12_000;
+
+function httpTransport(network: EvmNetwork) {
+  return http(resolveRpcUrl(network), { timeout: RPC_TIMEOUT_MS });
+}
+
 export function getPublicClient(network: EvmNetwork) {
   return createPublicClient({
     chain: getChain(network),
-    transport: http(resolveRpcUrl(network)),
+    transport: httpTransport(network),
   });
 }
 
@@ -174,7 +180,7 @@ export function getWalletClient(
   return createWalletClient({
     account,
     chain: getChain(network),
-    transport: http(resolveRpcUrl(network)),
+    transport: httpTransport(network),
   });
 }
 

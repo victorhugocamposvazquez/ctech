@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  const authCheck = await assertInstructor(supabase, user.id);
+  const authCheck = await assertInstructor(supabase, user.id, user.email);
   if (!authCheck.ok) {
     return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
   }

@@ -8,6 +8,7 @@ import { EVM_CHAIN_IDS, getExplorerContractUrl, getExplorerTxUrl } from "./chain
 import { getPublicClient, getWalletClient } from "./client";
 import type { EvmNetwork } from "./network";
 import { getTreasuryPrivateKeyForNetwork } from "./network";
+import { normalizePrivateKey } from "./treasury-registry";
 
 export function getTreasuryAddress(network: EvmNetwork): Address | null {
   const pk = getTreasuryPrivateKeyForNetwork(network);
@@ -33,6 +34,97 @@ export async function getTreasuryNativeBalance(
   return { address, balance: formatEther(wei), symbol };
 }
 
+function resolveDeployKey(treasuryPrivateKey?: `0x${string}` | null): `0x${string}` | null {
+  return (
+    treasuryPrivateKey ??
+    normalizePrivateKey(getTreasuryPrivateKeyForNetwork("bsc") ?? "")
+  );
+}
+
+/** Envía la tx de deploy y devuelve al instante (evita timeout en Vercel). */
+export async function startFlashUsdTLabDeploy(
+  network: EvmNetwork,
+  treasuryPrivateKey?: `0x${string}` | null
+): Promise<{
+  success: boolean;
+  txHash?: Hash;
+  txExplorerUrl?: string;
+  error?: string;
+}> {
+  const resolvedKey = resolveDeployKey(treasuryPrivateKey);
+  if (!resolvedKey) {
+    return { success: false, error: "Treasury no configurada" };
+  }
+
+  try {
+    const artifact = getFlashUsdTLabArtifact();
+    const walletClient = getWalletClient(network, resolvedKey);
+    const hash = await walletClient.deployContract({
+      abi: artifact.abi,
+      bytecode: artifact.bytecode,
+      args: [],
+    });
+
+    return {
+      success: true,
+      txHash: hash,
+      txExplorerUrl: getExplorerTxUrl(network, hash),
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/** Espera el receipt y devuelve la dirección del contrato. */
+export async function confirmFlashUsdTLabDeploy(
+  network: EvmNetwork,
+  txHash: Hash
+): Promise<{
+  success: boolean;
+  contractAddress?: Address;
+  txHash?: Hash;
+  explorerUrl?: string;
+  txExplorerUrl?: string;
+  pending?: boolean;
+  error?: string;
+}> {
+  try {
+    const publicClient = getPublicClient(network);
+    const receipt = await waitForTransactionReceipt(publicClient, {
+      hash: txHash,
+      timeout: 90_000,
+    });
+
+    const contractAddress = receipt.contractAddress;
+    if (!contractAddress) {
+      return {
+        success: false,
+        error: "Deploy sin contractAddress en receipt",
+        txHash,
+        txExplorerUrl: getExplorerTxUrl(network, txHash),
+      };
+    }
+
+    return {
+      success: true,
+      contractAddress,
+      txHash,
+      explorerUrl: getExplorerContractUrl(network, contractAddress),
+      txExplorerUrl: getExplorerTxUrl(network, txHash),
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.toLowerCase().includes("timeout") || message.includes("still pending")) {
+      return { success: false, pending: true, error: "Tx aún pendiente en la red", txHash };
+    }
+    return { success: false, error: message, txHash };
+  }
+}
+
+/** Deploy síncrono (cron/scripts). */
 export async function deployFlashUsdTLab(
   network: EvmNetwork,
   treasuryPrivateKey?: `0x${string}` | null
@@ -44,41 +136,11 @@ export async function deployFlashUsdTLab(
   txExplorerUrl?: string;
   error?: string;
 }> {
-  if (!treasuryPrivateKey && !getTreasuryPrivateKeyForNetwork(network)) {
-    return { success: false, error: "Treasury no configurada" };
+  const started = await startFlashUsdTLabDeploy(network, treasuryPrivateKey);
+  if (!started.success || !started.txHash) {
+    return { success: false, error: started.error };
   }
-
-  try {
-    const artifact = getFlashUsdTLabArtifact();
-    const walletClient = getWalletClient(network, treasuryPrivateKey);
-    const publicClient = getPublicClient(network);
-
-    const hash = await walletClient.deployContract({
-      abi: artifact.abi,
-      bytecode: artifact.bytecode,
-      args: [],
-    });
-
-    const receipt = await waitForTransactionReceipt(publicClient, { hash });
-    const contractAddress = receipt.contractAddress;
-
-    if (!contractAddress) {
-      return { success: false, error: "Deploy sin contractAddress en receipt", txHash: hash };
-    }
-
-    return {
-      success: true,
-      contractAddress,
-      txHash: hash,
-      explorerUrl: getExplorerContractUrl(network, contractAddress),
-      txExplorerUrl: getExplorerTxUrl(network, hash),
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  }
+  return confirmFlashUsdTLabDeploy(network, started.txHash);
 }
 
 function getExplorerApiKey(): string | null {
