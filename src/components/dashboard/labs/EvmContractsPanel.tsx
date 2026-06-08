@@ -91,6 +91,40 @@ async function pollDeployConfirm(
   throw new Error("Timeout esperando confirmación on-chain. Registra el contrato manualmente.");
 }
 
+type PoolStepResult = {
+  step: string;
+  stepLabel: string;
+  skipped?: boolean;
+  txHash?: string;
+  nextAfterStep?: string;
+  error?: string;
+};
+
+async function pollPoolStepConfirm(
+  networkId: string,
+  txHash: string,
+  onTick?: (attempt: number) => void
+): Promise<void> {
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    onTick?.(attempt);
+    const { res, json } = await fetchJson<Record<string, unknown>>(
+      "/api/labs/evm/contracts/price-pool/confirm",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ network: networkId, txHash }),
+      }
+    );
+    if (res.status === 202) {
+      await new Promise((r) => setTimeout(r, 3000));
+      continue;
+    }
+    if (!res.ok) throw new Error(String(json.error ?? "Error confirmando paso del pool"));
+    return;
+  }
+  throw new Error("Timeout esperando confirmación del pool. Revisa BscScan en la treasury.");
+}
+
 export default function EvmContractsPanel({ visible }: Props) {
   const [data, setData] = useState<InfraResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -106,6 +140,9 @@ export default function EvmContractsPanel({ visible }: Props) {
   const [tokenSymbol, setTokenSymbol] = useState("fUSDT");
   const [pricePool, setPricePool] = useState<PricePoolResponse | null>(null);
   const [pricePoolLoading, setPricePoolLoading] = useState(false);
+  const [poolUsdtAmount, setPoolUsdtAmount] = useState(10);
+  const [poolPrice, setPoolPrice] = useState(1);
+  const [poolCreating, setPoolCreating] = useState(false);
 
   const loadPricePool = useCallback(async (networkId: string, hasContract: boolean) => {
     if (networkId !== "bsc" || !hasContract) {
@@ -222,6 +259,54 @@ export default function EvmContractsPanel({ visible }: Props) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusyNetwork(null);
+    }
+  }
+
+  async function handleCreatePool() {
+    const bscNet = data?.networks.find((n) => n.id === "bsc");
+    if (!bscNet?.treasuryReady || !bscNet.contract.address) return;
+
+    setPoolCreating(true);
+    setError(null);
+    setMessage(null);
+    setConfirmAttempt(0);
+
+    try {
+      let afterStep = "start";
+      while (afterStep !== "done") {
+        const { res, json } = await fetchJson<PoolStepResult>(
+          "/api/labs/evm/contracts/price-pool/step",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              network: "bsc",
+              afterStep,
+              usdtAmount: poolUsdtAmount,
+              price: poolPrice,
+            }),
+          }
+        );
+        if (!res.ok) throw new Error(String(json.error ?? "Error creando pool"));
+
+        setMessage(json.stepLabel || `Paso ${json.step}…`);
+
+        if (json.txHash) {
+          await pollPoolStepConfirm("bsc", json.txHash, setConfirmAttempt);
+        }
+
+        if (json.nextAfterStep === "done") break;
+        if (!json.nextAfterStep) throw new Error("Flujo de pool incompleto");
+        afterStep = json.nextAfterStep;
+      }
+
+      setMessage("Pool creado. DexScreener en segundos; MetaMask/SafePal en minutos.");
+      await loadPricePool("bsc", true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setPoolCreating(false);
+      setConfirmAttempt(0);
     }
   }
 
@@ -398,23 +483,60 @@ export default function EvmContractsPanel({ visible }: Props) {
               </div>
             </div>
           ) : (
-            <div className="text-xs space-y-2 text-slate-300">
+            <div className="text-xs space-y-3 text-slate-300">
               <p className="text-amber-200">Sin pool todavía — las wallets mostrarán $0 en fUSDT.</p>
               <p className="text-slate-400">
-                1. Envía <strong>~10 USDT reales</strong> (BEP20) a la treasury en BSC.
+                Envía <strong>USDT reales</strong> (BEP20) a la treasury en BSC antes de crear el
+                par. Se bloquean en PancakeSwap (recuperables retirando liquidez).
               </p>
-              <p className="text-slate-400">
-                2. En local, con la clave de treasury:
-              </p>
-              <pre className="rounded-lg border border-white/10 bg-black/40 p-2 text-[10px] font-mono text-slate-200 overflow-x-auto">
-                {`EVM_LAB_TREASURY_PRIVATE_KEY=0x... \\
-EVM_BSC_FLASH_USDT_LAB_CONTRACT=${pricePool?.contractAddress ?? "0x..."} \\
-node scripts/create-price-pool.mjs --usdt 10 --price 1`}
-              </pre>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-slate-400">
+                  USDT a aportar
+                  <input
+                    type="number"
+                    min={1}
+                    max={10000}
+                    step={1}
+                    value={poolUsdtAmount}
+                    onChange={(e) => setPoolUsdtAmount(Number(e.target.value))}
+                    disabled={poolCreating}
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white"
+                  />
+                </label>
+                <label className="text-slate-400">
+                  Precio $/fUSDT
+                  <input
+                    type="number"
+                    min={0.0001}
+                    max={1000}
+                    step={0.01}
+                    value={poolPrice}
+                    onChange={(e) => setPoolPrice(Number(e.target.value))}
+                    disabled={poolCreating}
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white"
+                  />
+                </label>
+              </div>
               <p className="text-[10px] text-slate-500">
-                El script acuña fUSDT, aprueba PancakeSwap y crea el par. Indexación en wallets:
-                minutos.
+                Par: {(poolUsdtAmount / poolPrice).toLocaleString()} fUSDT + {poolUsdtAmount} USDT
+                → ~${poolPrice}/fUSDT
               </p>
+              <button
+                type="button"
+                onClick={handleCreatePool}
+                disabled={
+                  poolCreating ||
+                  busyNetwork !== null ||
+                  !displayNetworks.find((n) => n.id === "bsc")?.treasuryReady
+                }
+                className="rounded-lg bg-cyan-500/30 border border-cyan-400/40 px-4 py-2 text-xs text-cyan-100 hover:bg-cyan-500/40 disabled:opacity-40"
+              >
+                {poolCreating
+                  ? confirmAttempt > 0
+                    ? `Confirmando tx ${confirmAttempt}/30…`
+                    : "Creando pool…"
+                  : "Crear pool en PancakeSwap"}
+              </button>
             </div>
           )}
 
