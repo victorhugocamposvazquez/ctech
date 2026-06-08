@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { privateKeyToAccount } from "viem/accounts";
 import { formatEther, type Address, type Hash } from "viem";
-import { waitForTransactionReceipt } from "viem/actions";
 import { getFlashUsdTLabArtifact } from "./contract-artifact";
 import { EVM_CHAIN_IDS, getExplorerContractUrl, getExplorerTxUrl } from "./chain-config";
 import { getPublicClient, getWalletClient } from "./client";
@@ -78,7 +77,7 @@ export async function startFlashUsdTLabDeploy(
   }
 }
 
-/** Espera el receipt y devuelve la dirección del contrato. */
+/** Consulta receipt sin bloquear (ideal para polling desde Vercel). */
 export async function confirmFlashUsdTLabDeploy(
   network: EvmNetwork,
   txHash: Hash
@@ -91,12 +90,15 @@ export async function confirmFlashUsdTLabDeploy(
   pending?: boolean;
   error?: string;
 }> {
+  const txExplorerUrl = getExplorerTxUrl(network, txHash);
+
   try {
     const publicClient = getPublicClient(network);
-    const receipt = await waitForTransactionReceipt(publicClient, {
-      hash: txHash,
-      timeout: 90_000,
-    });
+    const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
+
+    if (!receipt) {
+      return { success: false, pending: true, txHash, txExplorerUrl };
+    }
 
     const contractAddress = receipt.contractAddress;
     if (!contractAddress) {
@@ -104,7 +106,7 @@ export async function confirmFlashUsdTLabDeploy(
         success: false,
         error: "Deploy sin contractAddress en receipt",
         txHash,
-        txExplorerUrl: getExplorerTxUrl(network, txHash),
+        txExplorerUrl,
       };
     }
 
@@ -113,14 +115,14 @@ export async function confirmFlashUsdTLabDeploy(
       contractAddress,
       txHash,
       explorerUrl: getExplorerContractUrl(network, contractAddress),
-      txExplorerUrl: getExplorerTxUrl(network, txHash),
+      txExplorerUrl,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (message.toLowerCase().includes("timeout") || message.includes("still pending")) {
-      return { success: false, pending: true, error: "Tx aún pendiente en la red", txHash };
+    if (message.toLowerCase().includes("not found") || message.toLowerCase().includes("pending")) {
+      return { success: false, pending: true, txHash, txExplorerUrl };
     }
-    return { success: false, error: message, txHash };
+    return { success: false, error: message, txHash, txExplorerUrl };
   }
 }
 
@@ -140,7 +142,15 @@ export async function deployFlashUsdTLab(
   if (!started.success || !started.txHash) {
     return { success: false, error: started.error };
   }
-  return confirmFlashUsdTLabDeploy(network, started.txHash);
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const result = await confirmFlashUsdTLabDeploy(network, started.txHash);
+    if (result.success) return result;
+    if (!result.pending) return { success: false, error: result.error, txHash: started.txHash };
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+
+  return { success: false, error: "Timeout esperando confirmación on-chain", txHash: started.txHash };
 }
 
 function getExplorerApiKey(): string | null {

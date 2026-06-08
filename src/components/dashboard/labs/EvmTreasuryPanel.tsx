@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { fetchJson } from "@/lib/fetch-json";
 
 type TreasuryStatus = {
   ready: boolean;
@@ -48,9 +49,8 @@ export default function EvmTreasuryPanel({ visible }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/labs/evm/treasury");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Error cargando treasury");
+      const { res, json } = await fetchJson<TreasuryStatus>("/api/labs/evm/treasury");
+      if (!res.ok) throw new Error((json as unknown as { error?: string }).error ?? "Error cargando treasury");
       setStatus(json);
       if (json.panel?.address) {
         setAddress(json.panel.address);
@@ -91,7 +91,7 @@ export default function EvmTreasuryPanel({ visible }: Props) {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch("/api/labs/evm/treasury", {
+      const { res, json } = await fetchJson<Record<string, unknown>>("/api/labs/evm/treasury", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -101,31 +101,9 @@ export default function EvmTreasuryPanel({ visible }: Props) {
           notes,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Error guardando");
-      setMessage(json.message ?? "Treasury guardada");
+      if (!res.ok) throw new Error(String(json.error ?? "Error guardando"));
+      setMessage(String(json.message ?? "Treasury guardada"));
       setPrivateKey("");
-      if (json.ready !== undefined) {
-        setStatus((prev) =>
-          prev
-            ? {
-                ...prev,
-                ready: json.ready,
-                activeSource: json.activeSource ?? prev.activeSource,
-                activeAddress: json.activeAddress ?? prev.activeAddress,
-                panel: json.panel
-                  ? {
-                      address: json.panel.treasury_address ?? json.panel.address,
-                      label: json.panel.label,
-                      notes: json.panel.notes ?? notes,
-                      privateKeyHint: json.panel.privateKeyHint,
-                      updatedAt: json.panel.updated_at ?? json.panel.updatedAt,
-                    }
-                  : prev.panel,
-              }
-            : prev
-        );
-      }
       void load();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -141,9 +119,10 @@ export default function EvmTreasuryPanel({ visible }: Props) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch("/api/labs/evm/treasury", { method: "DELETE" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Error");
+      const { res, json } = await fetchJson<Record<string, unknown>>("/api/labs/evm/treasury", {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(String(json.error ?? "Error"));
       setAddress("");
       setPrivateKey("");
       setNotes("");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { fetchJson } from "@/lib/fetch-json";
 
 type NetworkStatus = {
   id: string;
@@ -50,18 +51,20 @@ async function pollDeployConfirm(
 ): Promise<{ contractAddress?: string; explorerUrl?: string }> {
   for (let attempt = 1; attempt <= 30; attempt++) {
     onTick?.(attempt);
-    const res = await fetch("/api/labs/evm/contracts/confirm", {
+    const { res, json } = await fetchJson<Record<string, unknown>>("/api/labs/evm/contracts/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ network: networkId, txHash, force }),
     });
-    const json = await res.json();
     if (res.status === 202) {
       await new Promise((r) => setTimeout(r, 3000));
       continue;
     }
-    if (!res.ok) throw new Error(json.error ?? "Error confirmando deploy");
-    return { contractAddress: json.contractAddress, explorerUrl: json.explorerUrl };
+    if (!res.ok) throw new Error(String(json.error ?? "Error confirmando deploy"));
+    return {
+      contractAddress: json.contractAddress as string | undefined,
+      explorerUrl: json.explorerUrl as string | undefined,
+    };
   }
   throw new Error("Timeout esperando confirmación on-chain. Registra el contrato manualmente.");
 }
@@ -83,9 +86,8 @@ export default function EvmContractsPanel({ visible }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/labs/evm/contracts");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Error cargando infra EVM");
+      const { res, json } = await fetchJson<InfraResponse>("/api/labs/evm/contracts");
+      if (!res.ok) throw new Error((json as unknown as { error?: string }).error ?? "Error cargando infra EVM");
       setData(json);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -104,25 +106,26 @@ export default function EvmContractsPanel({ visible }: Props) {
     setMessage(null);
     setConfirmAttempt(0);
     try {
-      const res = await fetch("/api/labs/evm/contracts/deploy", {
+      const { res, json } = await fetchJson<Record<string, unknown>>("/api/labs/evm/contracts/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ network: networkId, force }),
       });
-      const json = await res.json();
       if (!res.ok) {
         if (res.status === 409 && !force) {
-          const ok = window.confirm(`${json.error}\n\n¿Redeploy de todos modos?`);
+          const ok = window.confirm(`${String(json.error)}\n\n¿Redeploy de todos modos?`);
           if (ok) return handleDeploy(networkId, true);
         }
-        throw new Error(json.error ?? "Deploy fallido");
+        throw new Error(String(json.error ?? "Deploy fallido"));
       }
 
       setMessage(
-        `Tx enviada (${networkId}). Confirmando en BSC/Eth… ${json.txExplorerUrl ? "Abre el explorer si tarda." : ""}`
+        `Tx enviada (${networkId}). Confirmando… ${
+          json.txExplorerUrl ? "Puedes abrir el explorer en BscScan." : ""
+        }`
       );
 
-      const confirmed = await pollDeployConfirm(networkId, json.txHash, force, setConfirmAttempt);
+      const confirmed = await pollDeployConfirm(networkId, String(json.txHash), force, setConfirmAttempt);
       setMessage(
         `Contrato listo en ${networkId}: ${confirmed.contractAddress?.slice(0, 12)}…`
       );
@@ -141,7 +144,7 @@ export default function EvmContractsPanel({ visible }: Props) {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch("/api/labs/evm/contracts/register", {
+      const { res, json } = await fetchJson<Record<string, unknown>>("/api/labs/evm/contracts/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -151,9 +154,8 @@ export default function EvmContractsPanel({ visible }: Props) {
           force: true,
         }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Error registrando");
-      setMessage(`Contrato registrado en ${registerNetwork}: ${json.contractAddress?.slice(0, 12)}…`);
+      if (!res.ok) throw new Error(String(json.error ?? "Error registrando"));
+      setMessage(`Contrato registrado en ${registerNetwork}: ${String(json.contractAddress).slice(0, 12)}…`);
       setRegisterAddress("");
       setRegisterTx("");
       setShowRegister(false);
@@ -170,17 +172,16 @@ export default function EvmContractsPanel({ visible }: Props) {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch("/api/labs/evm/contracts/verify", {
+      const { res, json } = await fetchJson<Record<string, unknown>>("/api/labs/evm/contracts/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ network: networkId, action }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Verificación fallida");
+      if (!res.ok) throw new Error(String(json.error ?? "Verificación fallida"));
       if (action === "submit") {
-        setMessage(`Verificación enviada (${networkId}). GUID: ${json.guid?.slice(0, 12)}…`);
+        setMessage(`Verificación enviada (${networkId}). GUID: ${String(json.guid).slice(0, 12)}…`);
       } else {
-        setMessage(`Estado verificación ${networkId}: ${json.status}`);
+        setMessage(`Estado verificación ${networkId}: ${String(json.status)}`);
       }
       await load();
     } catch (e) {
