@@ -606,6 +606,3 @@ create policy "calibration_state_insert_own" on public.calibration_state
 
 create policy "calibration_state_update_own" on public.calibration_state
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- ==================== security labs (see migration 20260606120000_labs_security.sql) ====================
--- Tables: lab_roles, lab_sessions, lab_wallets, lab_injections, lab_step_completions, lab_audit_log
