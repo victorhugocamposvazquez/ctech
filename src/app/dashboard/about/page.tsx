@@ -284,6 +284,16 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.7.1"
+            date="11 jun 2026"
+            title="Integridad: los rugs ya no se disfrazan de pérdidas pequeñas"
+            items={[
+              "Bug crítico corregido: cuando un par desaparecía de DexScreener (liquidez retirada = rug), la posición se cerraba a -5% en vez de la pérdida casi total que es en realidad. Ahora, tras 3 chequeos consecutivos sin par, se registra valor residual del 2% — el paper deja de maquillar los peores resultados.",
+              "Bug crítico corregido en el tracker de outcomes: las señales de tokens muertos quedaban con precios null para siempre y se EXCLUÍAN de los hit rates — sesgo de superviviente dentro de nuestra propia validación. Ahora se registran como -100% y cuentan en las estadísticas del EdgeValidator.",
+              "Ambos bugs inflaban el edge aparente justo en la cola izquierda, que es donde se decide si el sistema es viable. Detectados en revisión crítica antes de acumular datos de Fase 1 — el dataset limpio nace sin este sesgo.",
+            ]}
+          />
+          <ChangelogEntry
             version="1.7.0"
             date="11 jun 2026"
             title="Scheduler de precisión: pg_cron + monitor de posiciones cada minuto"

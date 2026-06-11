@@ -22,6 +22,7 @@ type SignalOutcomeRow = {
   price_24h: number | null;
   price_48h: number | null;
   price_7d: number | null;
+  metadata: Record<string, unknown> | null;
 };
 
 export class SignalOutcomeTracker {
@@ -87,7 +88,7 @@ export class SignalOutcomeTracker {
     const { data: pending } = await this.supabase
       .from("signal_outcomes")
       .select(
-        "id, token_address, network, entry_price, created_at, checks_done, price_1h, price_6h, price_24h, price_48h, price_7d"
+        "id, token_address, network, entry_price, created_at, checks_done, price_1h, price_6h, price_24h, price_48h, price_7d, metadata"
       )
       .eq("fully_tracked", false)
       .order("created_at", { ascending: true })
@@ -102,44 +103,72 @@ export class SignalOutcomeTracker {
       const entryPrice = Number(row.entry_price);
       if (entryPrice <= 0) continue;
 
-      let currentPrice: number | null = null;
-      const updates: Record<string, unknown> = {};
-      let newChecksDone = row.checks_done;
-      let allFilled = true;
+      const unfilled = CHECK_WINDOWS.filter(
+        (w) => row[w.field as keyof SignalOutcomeRow] == null
+      );
+      const due = unfilled.filter((w) => ageMs >= w.minAgeMs);
+      if (!due.length) continue;
 
-      for (const win of CHECK_WINDOWS) {
-        const existing = row[win.field as keyof SignalOutcomeRow];
-        if (existing != null) continue;
-
-        if (ageMs < win.minAgeMs) {
-          allFilled = false;
-          continue;
-        }
-
-        if (currentPrice === null) {
-          try {
-            const pair = await this.dex.getBestPair(row.network, row.token_address);
-            currentPrice = pair ? parseFloat(pair.priceUsd) || 0 : 0;
-          } catch {
-            allFilled = false;
-            break;
-          }
-        }
-
-        if (currentPrice > 0) {
-          updates[win.field] = currentPrice;
-          updates[win.pnlField] = (currentPrice - entryPrice) / entryPrice;
-          newChecksDone++;
-        } else {
-          allFilled = false;
-        }
+      let pair;
+      try {
+        pair = await this.dex.getBestPair(row.network, row.token_address);
+      } catch {
+        // Error de API (no "par inexistente"): reintentar en el próximo pase
+        continue;
       }
 
-      if (Object.keys(updates).length === 0 && !allFilled) continue;
+      const metadata = row.metadata ?? {};
+
+      // Par desaparecido = token muerto (rug/liquidez retirada). Dejar la
+      // fila en null para siempre la EXCLUYE de los hit rates — sesgo de
+      // superviviente dentro de nuestra propia validación, justo en los
+      // peores resultados. Tras 3 chequeos consecutivos sin par, todas las
+      // ventanas restantes se registran como pérdida total (-100%).
+      if (!pair) {
+        const misses = Number(metadata.pairMissingChecks ?? 0) + 1;
+
+        if (misses >= 3) {
+          const updates: Record<string, unknown> = {
+            checks_done: row.checks_done + unfilled.length,
+            fully_tracked: true,
+            metadata: { ...metadata, pairMissingChecks: misses, tokenDied: true },
+          };
+          for (const win of unfilled) {
+            updates[win.field] = 0;
+            updates[win.pnlField] = -1;
+          }
+          await this.supabase
+            .from("signal_outcomes")
+            .update(updates)
+            .eq("id", row.id);
+          updated++;
+        } else {
+          await this.supabase
+            .from("signal_outcomes")
+            .update({ metadata: { ...metadata, pairMissingChecks: misses } })
+            .eq("id", row.id);
+        }
+        continue;
+      }
+
+      const currentPrice = parseFloat(pair.priceUsd) || 0;
+      if (currentPrice <= 0) continue;
+
+      const updates: Record<string, unknown> = {};
+      let newChecksDone = row.checks_done;
+
+      for (const win of due) {
+        updates[win.field] = currentPrice;
+        updates[win.pnlField] = (currentPrice - entryPrice) / entryPrice;
+        newChecksDone++;
+      }
 
       updates.checks_done = newChecksDone;
-      if (allFilled && newChecksDone >= CHECK_WINDOWS.length) {
+      if (due.length === unfilled.length) {
         updates.fully_tracked = true;
+      }
+      if (metadata.pairMissingChecks) {
+        updates.metadata = { ...metadata, pairMissingChecks: 0 };
       }
 
       await this.supabase

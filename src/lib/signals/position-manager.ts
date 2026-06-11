@@ -159,12 +159,30 @@ export class PositionManager {
     try {
       const pair = await this.dex.getBestPair(pos.network, pos.tokenAddress);
       if (!pair) {
-        return this.createExit(pos, pos.entryPrice * 0.95, 0,
-          "Par no encontrado en DexScreener — salida preventiva");
+        // Par desaparecido = casi siempre rug (liquidez retirada). Registrar
+        // esto como -5% inflaría el paper justo en los peores resultados.
+        // 3 chequeos consecutivos para descartar fallos transitorios de la
+        // API; después, pérdida casi total (valor residual 2% del último
+        // precio conocido).
+        const misses = Number(pos.metadata.pairMissingChecks ?? 0) + 1;
+        if (misses < 3) {
+          pos.metadata = { ...pos.metadata, pairMissingChecks: misses };
+          await this.supabase
+            .from("trades")
+            .update({ metadata: pos.metadata })
+            .eq("id", pos.tradeId);
+          return null;
+        }
+        const lastKnown = pos.currentPrice > 0 ? pos.currentPrice : pos.entryPrice;
+        return this.createExit(pos, lastKnown * 0.02, 0,
+          "Par desaparecido de DexScreener (3 chequeos) — rug asumido, valor residual 2%");
       }
       currentPrice = parseFloat(pair.priceUsd) || 0;
       currentLiquidity = pair.liquidity?.usd ?? 0;
       currentVolume = pair.volume?.h24 ?? 0;
+      if (pos.metadata.pairMissingChecks) {
+        pos.metadata = { ...pos.metadata, pairMissingChecks: 0 };
+      }
     } catch {
       return null;
     }
