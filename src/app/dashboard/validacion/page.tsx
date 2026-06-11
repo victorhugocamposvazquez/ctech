@@ -1,4 +1,5 @@
 import ValidationConsole from "@/components/dashboard/ValidationConsole";
+import EdgeVerdictPanel from "@/components/dashboard/EdgeVerdictPanel";
 
 export default function ValidacionPage() {
   return (
@@ -13,6 +14,7 @@ export default function ValidacionPage() {
           funciona.
         </p>
       </div>
+      <EdgeVerdictPanel />
       <ValidationConsole />
     </div>
   );

@@ -58,6 +58,9 @@ export class RollingPerformanceEngine {
     const days = window === "7d" ? 7 : 30;
     const since = new Date(Date.now() - days * 24 * 3600_000).toISOString();
 
+    // Solo datos limpios: los trades pre-Fase 0 (confluencia sintética, sin
+    // stops, sin fricción de salida) inflarían el PF/Kelly que alimenta el
+    // sizing adaptativo durante los 30 días posteriores a la migración.
     const { data } = await this.supabase
       .from("trades")
       .select(
@@ -66,6 +69,7 @@ export class RollingPerformanceEngine {
       .eq("user_id", userId)
       .eq("status", "closed")
       .eq("execution_mode", "paper")
+      .is("metadata->preFase0", null)
       .gte("closed_at", since)
       .order("closed_at", { ascending: true });
 

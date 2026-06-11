@@ -488,6 +488,7 @@ create table if not exists public.signal_outcomes (
   layer           text not null check (layer in ('core','satellite')),
   confidence      numeric not null,
   regime          text,
+  signal_source   text,
   entry_price     numeric not null,
   liquidity_usd   numeric,
   volume_24h      numeric,
@@ -569,6 +570,34 @@ create policy "cycle_runs_select_own" on public.cycle_runs
   for select using (auth.uid() = user_id);
 
 create policy "cycle_runs_insert_own" on public.cycle_runs
+  for insert with check (auth.uid() = user_id);
+
+-- ==================== cycle_snapshots ====================
+-- Archivo histórico de candidatos (anti sesgo de superviviente): una fila
+-- por ciclo con todos los candidatos vistos por los detectores (aceptados
+-- y rechazados), métricas crudas y motivo de rechazo.
+
+create table if not exists public.cycle_snapshots (
+  id                      uuid primary key default gen_random_uuid(),
+  user_id                 uuid not null references auth.users(id) on delete cascade,
+  timestamp               timestamptz not null default now(),
+  regime                  text not null default 'unknown',
+  momentum_pools_scanned  int not null default 0,
+  early_pools_scanned     int not null default 0,
+  candidates_count        int not null default 0,
+  candidates              jsonb not null default '[]'::jsonb,
+  created_at              timestamptz not null default now()
+);
+
+create index if not exists idx_cycle_snapshots_user_timestamp
+on public.cycle_snapshots(user_id, timestamp desc);
+
+alter table public.cycle_snapshots enable row level security;
+
+create policy "cycle_snapshots_select_own" on public.cycle_snapshots
+  for select using (auth.uid() = user_id);
+
+create policy "cycle_snapshots_insert_own" on public.cycle_snapshots
   for insert with check (auth.uid() = user_id);
 
 -- ==================== calibration_state ====================

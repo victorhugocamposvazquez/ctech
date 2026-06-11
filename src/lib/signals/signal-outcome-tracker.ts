@@ -38,6 +38,12 @@ export class SignalOutcomeTracker {
     rejectReason: string | null,
     regime: string
   ): Promise<void> {
+    // El precio de entrada debe venir de la fuente que generó la señal:
+    // las señales early no tienen sources.momentum y quedaban con
+    // entry_price=0, corrompiendo los hit rates de validación.
+    const entryPrice =
+      conf.sources.momentum?.price ?? conf.sources.early?.price ?? 0;
+
     await this.supabase.from("signal_outcomes").insert({
       user_id: userId,
       symbol: conf.token,
@@ -46,16 +52,23 @@ export class SignalOutcomeTracker {
       layer: conf.layer,
       confidence: conf.confidence,
       regime,
-      entry_price: conf.sources.momentum?.price ?? 0,
-      liquidity_usd: conf.sources.momentum?.liquidityUsd ?? 0,
-      volume_24h: conf.sources.momentum?.volume24h ?? 0,
-      momentum_score: conf.sources.momentum?.momentumScore ?? 0,
+      signal_source: conf.signalSource,
+      entry_price: entryPrice,
+      liquidity_usd:
+        conf.sources.momentum?.liquidityUsd ?? conf.sources.early?.liquidityUsd ?? 0,
+      volume_24h:
+        conf.sources.momentum?.volume24h ?? conf.sources.early?.volume24h ?? 0,
+      momentum_score:
+        conf.sources.momentum?.momentumScore ?? conf.sources.early?.earlyScore ?? 0,
       health_score: conf.sources.tokenHealth?.healthScore ?? null,
       was_executed: wasExecuted,
       reject_reason: rejectReason,
       reasons: conf.reasons,
       metadata: {
         momentumTier: conf.sources.momentum?.tier,
+        earlyTier: conf.sources.early?.tier,
+        pairAgeHours: conf.sources.early?.pairAgeHours,
+        invalidEntryPrice: entryPrice <= 0 ? true : undefined,
         walletConfluence: conf.sources.walletConfluence
           ? {
               count: conf.sources.walletConfluence.walletCount,
@@ -141,10 +154,13 @@ export class SignalOutcomeTracker {
   }
 
   async getValidationSummary(userId: string): Promise<ValidationSummary> {
+    // Solo señales limpias: las pre-Fase 0 (confluencia sintética, early
+    // con entry_price=0) corrompen los hit rates de validación.
     const { data: outcomes } = await this.supabase
       .from("signal_outcomes")
       .select("*")
       .eq("user_id", userId)
+      .is("metadata->preFase0", null)
       .order("created_at", { ascending: false })
       .limit(500);
 

@@ -61,6 +61,7 @@ export class IncrementalCalibrator {
       .from("signal_outcomes")
       .select("layer, pnl_pct_24h, confidence, was_executed, signal_source, metadata")
       .eq("user_id", userId)
+      .is("metadata->preFase0", null)
       .not("pnl_pct_24h", "is", null)
       .order("created_at", { ascending: false })
       .limit(200);

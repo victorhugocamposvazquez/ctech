@@ -123,18 +123,22 @@ export default function AboutPage() {
               durante la latencia de ejecución; (3) CompetitionSimulator
               simula MEV, front-running y back-running con probabilidades
               según red, visibilidad del trade y densidad de bots. Gestión
-              de posiciones con trailing stop, tiempo máximo, salida por
-              caída de volumen/liquidez y take profit escalonado."
+              de posiciones con stop-loss duro, trailing stop, tiempo máximo,
+              salida por caída de volumen/liquidez, TP1 parcial (vende 50%,
+              el resto corre) y TP2 con conversión a moonbag en Satellite:
+              recupera el 100% del coste y deja el resto sin límites como
+              ventana a explosiones (10x-1000x), con salidas terminales
+              propias y cap de moonbags simultáneos."
           />
           <Block
-            title="9. Smart Money Simulado"
-            description="SmartMoneySimulator genera actividad de wallets sintéticas
-              (Alpha Whale, DeFi OG, Early Sniper, Trend Surfer, Patient Whale)
-              de forma determinista por (token + fecha). Cada wallet tiene su
-              estilo, win rate histórico y redes preferidas. Los movimientos
-              se persisten en wallet_movements y el ConfluenceEngine los
-              detecta como wallet confluence real. Permite validar señales
-              incluso sin Arkham API."
+            title="9. Wallet Confluence (solo datos reales)"
+            description="La confluencia de wallets se calcula exclusivamente sobre
+              movimientos reales registrados en wallet_movements (Arkham API o
+              registro manual). El antiguo SmartMoneySimulator fue eliminado en
+              la Fase 0 de integridad estadística: inyectaba compras sintéticas
+              que confirmaban las señales del propio ciclo (circularidad),
+              inflando la confianza entre +18 y +30 puntos. Sin Arkham
+              configurado, el factor wallet simplemente no suma puntos."
           />
           <Block
             title="10. Validación Forward + Reentrenamiento Incremental v2"
@@ -279,6 +283,59 @@ export default function AboutPage() {
         </p>
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
+          <ChangelogEntry
+            version="1.5.0"
+            date="11 jun 2026"
+            title="Veredicto de edge (Fase 1): el go/no-go es un número, no una sensación"
+            items={[
+              "Nuevo EdgeValidator: calcula sobre trades limpios (post-Fase 0) la expectancia por trade con IC 95% (t-based), profit factor, win rate con IC de Wilson y drawdown, global y por layer/fuente de señal.",
+              "Veredicto conservador de 5 estados: insufficient_data (<60 trades), no_edge (IC íntegramente <0), inconclusive, promising (media >0 pero IC cruza 0), validated (IC íntegramente >0 y PF>=1.3). Solo 'validated' habilita considerar capital real.",
+              "Panel en /dashboard/validacion con barra de progreso hacia la muestra mínima y estimación de días restantes al ritmo actual de trades.",
+              "Fix de integridad: RollingPerformanceEngine (que alimenta el sizing adaptativo y Kelly), getValidationSummary y el calibrador EXCLUÍAN mal los datos pre-Fase 0 — los trades contaminados seguían inflando PF/Kelly durante los 30 días post-migración. Ahora todos filtran metadata.preFase0.",
+            ]}
+          />
+          <ChangelogEntry
+            version="1.4.0"
+            date="10 jun 2026"
+            title="Archivo histórico de candidatos: dataset propio sin sesgo de superviviente"
+            items={[
+              "Nueva tabla cycle_snapshots: cada ciclo guarda TODOS los candidatos que vieron los detectores (aceptados Y rechazados), con métricas crudas (precio, liquidez, volúmenes, txns, buyers/sellers, edad del par) y motivo de rechazo.",
+              "Por qué importa: los feeds públicos olvidan a los tokens que mueren — justo los que habrían dado las pérdidas. Un backtest sobre esos feeds mentiría. Este archivo captura el universo completo en vivo, antes de conocer el desenlace.",
+              "Habilita (Fase 1+): replay de filtros alternativos sobre el histórico en minutos en vez de semanas de paper; distribuciones empíricas reales (cola de pérdidas, frecuencia de 10x/50x) para sustituir los supuestos del Monte Carlo; dataset etiquetado para clasificadores de rug/explosión.",
+              "Coste: ~2-3 MB/día (cap de 400 candidatos/ciclo). Captura no bloqueante: si falla el insert, el ciclo de trading no se entera.",
+              "El valor del archivo es compuesto: cada día que corre vale más y no se puede reconstruir retroactivamente.",
+            ]}
+          />
+          <ChangelogEntry
+            version="1.3.0"
+            date="10 jun 2026"
+            title="TP1 parcial + Moonbags: consistencia mensual con ventana a explosiones"
+            items={[
+              "TP1 parcial implementado (estaba definido pero sin usar): al alcanzar TP1 (+8% Core / +30% Satellite) se vende el 50% y el resto sigue corriendo con trailing. Consistencia sin renunciar a la cola derecha.",
+              "Moonbag en TP2 Satellite (+80%): en vez de cerrar todo, vende la fracción justa para recuperar el 100% del coste original (con margen para gas) y convierte el resto en moonbag.",
+              "Moonbags sin stop-loss, sin trailing, sin TP y sin tiempo máximo: es la ventana a 10x-1000x. Un trailing del 10% saldría en el primer retroceso del viaje (WIF retrocedió 40-60% varias veces camino del 2000x).",
+              "Downside de capital de un moonbag = 0: el coste ya se recuperó al convertir. Solo arriesga beneficio no realizado. Salidas terminales: liquidez < $30K, -80% desde su máximo o par desaparecido.",
+              "Cap de 5 moonbags simultáneos: la lotería no puede dominar el book. Sin hueco, TP2 cierra todo como antes.",
+              "Cierres parciales con contabilidad limpia: cada venta parcial genera una fila trades cerrada con su propio PnL (con slippage AMM + fee + gas) y reduce la cantidad de la fila original. metadata.partialOf enlaza ambas.",
+              "Tracking de moonbags en metadata (moonbagConvertedAt, moonbagEntryPnlPct, costBasisUsd, recoveredUsd) para medir empíricamente si E[multiplicador] > 1 y decidir con datos si la lotería se mantiene.",
+            ]}
+          />
+          <ChangelogEntry
+            version="1.2.0"
+            date="10 jun 2026"
+            title="Fase 0 — Integridad estadística: medición honesta del edge"
+            items={[
+              "SmartMoneySimulator ELIMINADO del flujo: las wallets sintéticas confirmaban señales del propio ciclo (circularidad). La confluencia usa solo movimientos reales (Arkham/manual). Migración purga wallets 'sim-%' y sus scores.",
+              "Stop-loss duro desde entrada: Core -7%, Satellite -15%. Antes el trailing solo actuaba tras estar en beneficio, dejando la cola izquierda sin control (rugs a -100%).",
+              "Fricción simétrica en salidas: el PositionManager aplica el mismo SlippageModel AMM + fee 0.3% + gas que la entrada. El PnL registrado ya no está inflado al alza.",
+              "Capital compuesto: el PnL realizado actualiza risk_state.capital, de modo que sizing y límites porcentuales siguen al equity real.",
+              "Fix de doble conteo: los trades/día se cuentan solo al abrir (antes también al cerrar, agotando los límites diarios al doble de velocidad).",
+              "Fix outcomes Early: entry_price ahora viene de la fuente de la señal (las early quedaban con precio 0, corrompiendo los hit rates de validación). Nueva columna signal_source.",
+              "Calibración automática CONGELADA por defecto (CTECH_CALIBRATION_ENABLED=true para reactivar): ajustar umbrales con outcomes in-sample es sobreajuste. Se reactivará con validación walk-forward (Fase 1).",
+              "Filtros Early endurecidos: liquidez mínima $25K (antes $500), volumen $5K (antes $50), edad mínima 2h (antes 0h).",
+              "Datos históricos marcados con metadata.preFase0=true: las métricas previas (confluencia sintética, sin stops, sin fricción de salida) no son aptas para medir edge.",
+            ]}
+          />
           <ChangelogEntry
             version="1.1.0"
             date="23 feb 2026"

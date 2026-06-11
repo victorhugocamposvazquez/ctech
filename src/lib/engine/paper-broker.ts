@@ -190,7 +190,7 @@ function simulateFill(
   const entryPrice = noisePrice * priceImpact;
   const quantity = positionUsd / entryPrice;
 
-  const gasCost = estimateGas(quote.network);
+  const gasCost = estimateGasUsd(quote.network);
 
   return {
     success: true,
@@ -219,7 +219,9 @@ const GAS_ESTIMATES_USD: Record<string, [number, number]> = {
   bsc: [0.1, 0.5],
 };
 
-function estimateGas(network: string): number {
+/** Estimación de gas en USD por transacción. Compartida con PositionManager
+ *  para que entrada y salida tengan la misma fricción. */
+export function estimateGasUsd(network: string): number {
   const range = GAS_ESTIMATES_USD[network.toLowerCase()] ?? [0.5, 5];
   return range[0] + Math.random() * (range[1] - range[0]);
 }

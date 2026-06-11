@@ -85,6 +85,12 @@ export class RiskGate {
   /**
    * Calcula el nuevo estado de riesgo tras un trade cerrado.
    * El caller persiste el resultado en Supabase.
+   *
+   * Notas:
+   *  - El capital COMPONE: el PnL realizado actualiza `capital`, de modo que
+   *    el sizing y los límites porcentuales siguen al equity real.
+   *  - Los contadores de trades/día se incrementan al ABRIR (registerOpenedTrade
+   *    en el orchestrator), no aquí — evita el doble conteo apertura+cierre.
    */
   applyTradeResult(
     state: RiskState,
@@ -94,11 +100,9 @@ export class RiskGate {
     const next: RiskState = { ...state };
     next.pnlToday += pnl;
     next.pnlThisWeek += pnl;
+    next.capital = Math.max(0, next.capital + pnl);
 
-    if (layer === "core") {
-      next.tradesTodayCore += 1;
-    } else {
-      next.tradesTodaySatellite += 1;
+    if (layer === "satellite") {
       if (pnl < 0) {
         next.consecutiveLossesSatellite += 1;
       } else {

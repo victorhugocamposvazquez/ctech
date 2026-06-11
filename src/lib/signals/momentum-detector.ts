@@ -5,6 +5,10 @@ import {
   type GeckoTerminalToken,
 } from "../market/geckoterminal";
 import { BirdeyeClient } from "../market/birdeye";
+import {
+  toCandidateSnapshot,
+  type CandidateSnapshot,
+} from "./candidate-snapshot";
 
 export interface MomentumSignal {
   tokenAddress: string;
@@ -31,6 +35,8 @@ export interface MomentumScanResult {
   poolsScanned: number;
   networkErrors: string[];
   filterStats?: Record<string, number>;
+  /** Todos los candidatos únicos vistos (aceptados y rechazados) — archivo histórico. */
+  candidates: CandidateSnapshot[];
 }
 
 export interface MomentumConfig {
@@ -112,6 +118,7 @@ export class MomentumDetector {
     const seen = new Set<string>();
     const signals: MomentumSignal[] = [];
     const filterStats: Record<string, number> = {};
+    const candidates: CandidateSnapshot[] = [];
 
     for (const pool of pools) {
       const pair = this.geckoPoolToDexPair(pool, tokens);
@@ -121,19 +128,32 @@ export class MomentumDetector {
       if (seen.has(key)) continue;
       seen.add(key);
 
+      const tx24 = pool.attributes.transactions?.h24;
+
       const rejectReason = this.getRejectReason(pair);
       if (rejectReason) {
         filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+        candidates.push(toCandidateSnapshot(pair, "momentum", {
+          reject: rejectReason,
+          buyers24h: tx24?.buyers ?? null,
+          sellers24h: tx24?.sellers ?? null,
+        }));
         continue;
       }
 
       const signal = this.analyzePair(pair);
       if (signal) signals.push(signal);
+      candidates.push(toCandidateSnapshot(pair, "momentum", {
+        score: signal?.momentumScore ?? null,
+        reject: signal ? null : "analyze_null",
+        buyers24h: tx24?.buyers ?? null,
+        sellers24h: tx24?.sellers ?? null,
+      }));
     }
 
     signals.sort((a, b) => b.momentumScore - a.momentumScore);
 
-    return { signals, poolsScanned: pools.length, networkErrors: errors, filterStats };
+    return { signals, poolsScanned: pools.length, networkErrors: errors, filterStats, candidates };
   }
 
   private async scanFromBirdeye(): Promise<MomentumScanResult> {
@@ -142,6 +162,7 @@ export class MomentumDetector {
         signals: [],
         poolsScanned: 0,
         networkErrors: ["Birdeye no configurado (falta BIRDEYE_API_KEY)"],
+        candidates: [],
       };
     }
 
@@ -150,6 +171,7 @@ export class MomentumDetector {
       const seen = new Set<string>();
       const signals: MomentumSignal[] = [];
       const filterStats: Record<string, number> = {};
+      const candidates: CandidateSnapshot[] = [];
 
       for (const pair of pairs) {
         const key = `${pair.chainId}:${pair.baseToken.address}`;
@@ -159,20 +181,26 @@ export class MomentumDetector {
         const rejectReason = this.getRejectReason(pair);
         if (rejectReason) {
           filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+          candidates.push(toCandidateSnapshot(pair, "momentum", { reject: rejectReason }));
           continue;
         }
 
         const signal = this.analyzePair(pair);
         if (signal) signals.push(signal);
+        candidates.push(toCandidateSnapshot(pair, "momentum", {
+          score: signal?.momentumScore ?? null,
+          reject: signal ? null : "analyze_null",
+        }));
       }
 
       signals.sort((a, b) => b.momentumScore - a.momentumScore);
-      return { signals, poolsScanned: pairs.length, networkErrors: [], filterStats };
+      return { signals, poolsScanned: pairs.length, networkErrors: [], filterStats, candidates };
     } catch (err) {
       return {
         signals: [],
         poolsScanned: 0,
         networkErrors: [`Birdeye trending: ${err instanceof Error ? err.message : String(err)}`],
+        candidates: [],
       };
     }
   }

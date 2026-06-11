@@ -5,6 +5,10 @@ import {
   type GeckoTerminalToken,
 } from "../market/geckoterminal";
 import { BirdeyeClient } from "../market/birdeye";
+import {
+  toCandidateSnapshot,
+  type CandidateSnapshot,
+} from "./candidate-snapshot";
 
 /**
  * Señal de un token en fase temprana con potencial.
@@ -35,6 +39,8 @@ export interface EarlyScanResult {
   poolsScanned: number;
   networkErrors: string[];
   filterStats?: Record<string, number>;
+  /** Todos los candidatos únicos vistos (aceptados y rechazados) — archivo histórico. */
+  candidates: CandidateSnapshot[];
 }
 
 export interface EarlyConfig {
@@ -51,16 +57,19 @@ export interface EarlyConfig {
   source: "birdeye" | "gecko";
 }
 
+// Filtros endurecidos (Fase 0): el universo early estaba dominado por
+// rugs y honeypots (liquidez mín $500, edad 0h). Es preferible perder
+// señales a comprar tokens de los que no se puede salir.
 const DEFAULT_CONFIG: EarlyConfig = {
   networks: ["solana"],
-  minLiquidityUsd: 500,
+  minLiquidityUsd: 25_000,
   maxLiquidityUsd: 2_000_000,
-  minVolume24h: 50,
+  minVolume24h: 5_000,
   minBuyPressure: 1.1,
   minBuyerSellerRatio: 1.1,
   minEarlyScore: 42,
   maxPairAgeHours: 72,
-  minPairAgeHours: 0.00,
+  minPairAgeHours: 2,
   maxPriceChange24h: 400,
   source: "birdeye",
 };
@@ -71,11 +80,11 @@ const DEFAULT_CONFIG: EarlyConfig = {
  * Busca pools recién creados (últimas 72h) con señales de tracción
  * orgánica. Alimenta la capa Satellite del sistema.
  *
- * Filtros anti-scam:
- *  - Edad mínima 1h (evita honeypots instantáneos)
- *  - Ratio compradores/vendedores > 1.2 (compras orgánicas, no bots)
- *  - Liquidez mínima $5K (evita pools ficticios)
- *  - Precio no parabólico (< 200% en 24h)
+ * Filtros anti-scam (ver DEFAULT_CONFIG):
+ *  - Edad mínima 2h (evita honeypots instantáneos)
+ *  - Ratio compradores/vendedores mínimo (compras orgánicas, no bots)
+ *  - Liquidez mínima $25K y volumen mínimo $5K (evita pools ficticios)
+ *  - Precio no parabólico (límite de cambio 24h)
  *
  * Diferencia con MomentumDetector:
  *  - Busca NEW pools, no trending pools
@@ -117,6 +126,7 @@ export class EarlyDetector {
     const seen = new Set<string>();
     const signals: EarlySignal[] = [];
     const filterStats: Record<string, number> = {};
+    const candidates: CandidateSnapshot[] = [];
 
     for (const pool of pools) {
       const pair = this.geckoPoolToDexPair(pool, tokens);
@@ -126,19 +136,32 @@ export class EarlyDetector {
       if (seen.has(key)) continue;
       seen.add(key);
 
+      const tx24 = pool.attributes.transactions?.h24;
+
       const rejectReason = this.getRejectReason(pair, pool);
       if (rejectReason) {
         filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+        candidates.push(toCandidateSnapshot(pair, "early", {
+          reject: rejectReason,
+          buyers24h: tx24?.buyers ?? null,
+          sellers24h: tx24?.sellers ?? null,
+        }));
         continue;
       }
 
       const signal = this.analyzeEarlyPair(pair, pool);
       if (signal) signals.push(signal);
+      candidates.push(toCandidateSnapshot(pair, "early", {
+        score: signal?.earlyScore ?? null,
+        reject: signal ? null : "analyze_null",
+        buyers24h: tx24?.buyers ?? null,
+        sellers24h: tx24?.sellers ?? null,
+      }));
     }
 
     signals.sort((a, b) => b.earlyScore - a.earlyScore);
 
-    return { signals, poolsScanned: pools.length, networkErrors: errors, filterStats };
+    return { signals, poolsScanned: pools.length, networkErrors: errors, filterStats, candidates };
   }
 
   private async scanFromBirdeye(): Promise<EarlyScanResult> {
@@ -147,6 +170,7 @@ export class EarlyDetector {
         signals: [],
         poolsScanned: 0,
         networkErrors: ["Birdeye no configurado (falta BIRDEYE_API_KEY)"],
+        candidates: [],
       };
     }
 
@@ -155,6 +179,7 @@ export class EarlyDetector {
       const seen = new Set<string>();
       const signals: EarlySignal[] = [];
       const filterStats: Record<string, number> = {};
+      const candidates: CandidateSnapshot[] = [];
 
       for (const pair of pairs) {
         const key = `${pair.chainId}:${pair.baseToken.address}`;
@@ -164,20 +189,26 @@ export class EarlyDetector {
         const rejectReason = this.getRejectReason(pair, null);
         if (rejectReason) {
           filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
+          candidates.push(toCandidateSnapshot(pair, "early", { reject: rejectReason }));
           continue;
         }
 
         const signal = this.analyzeEarlyPair(pair, null);
         if (signal) signals.push(signal);
+        candidates.push(toCandidateSnapshot(pair, "early", {
+          score: signal?.earlyScore ?? null,
+          reject: signal ? null : "analyze_null",
+        }));
       }
 
       signals.sort((a, b) => b.earlyScore - a.earlyScore);
-      return { signals, poolsScanned: pairs.length, networkErrors: [], filterStats };
+      return { signals, poolsScanned: pairs.length, networkErrors: [], filterStats, candidates };
     } catch (err) {
       return {
         signals: [],
         poolsScanned: 0,
         networkErrors: [`Birdeye new_listing: ${err instanceof Error ? err.message : String(err)}`],
+        candidates: [],
       };
     }
   }

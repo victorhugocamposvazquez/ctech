@@ -16,11 +16,10 @@ import type { RiskState, TradeRecord } from "../engine/types";
 import { ArkhamClient } from "../arkham/client";
 import { SignalOutcomeTracker } from "./signal-outcome-tracker";
 import { IncrementalCalibrator } from "./incremental-calibrator";
-import type { DetectorInteraction } from "./incremental-calibrator";
-import { SmartMoneySimulator } from "./smart-money-simulator";
 import { ForwardPredictor } from "../engine/forward-predictor";
 import type { ForwardPrediction } from "../engine/forward-predictor";
 import type { StressEvent } from "../engine/stress-events";
+import type { CandidateSnapshot } from "./candidate-snapshot";
 
 export interface CycleResult {
   timestamp: Date;
@@ -71,16 +70,20 @@ interface PositionSizingDecision {
  * Orchestrator — pipeline completo end-to-end.
  *
  * Un ciclo:
- *  0. Cargar rolling metrics + calibrar umbrales (auto-tune)
+ *  0. Cargar rolling metrics (+ calibración solo si CTECH_CALIBRATION_ENABLED=true)
  *  1. Detectar régimen de mercado
- *  2. Simular smart money para tokens trending
- *  3. Escanear tokens con momentum + early
- *  4. Evaluar salud de cada token candidato
- *  5. Pasar por ConfluenceEngine (momentum + wallets + health + régimen)
- *  6. AdaptiveRiskGate evalúa si se puede operar (con sizing dinámico)
- *  7. PaperBroker ejecuta con SlippageModel + MicroVolatility + CompetitionSim
- *  8. PositionManager revisa posiciones abiertas y cierra las que toque
- *  9. Actualizar outcomes + recalibrar
+ *  2. Escanear tokens con momentum + early
+ *  3. Evaluar salud de cada token candidato
+ *  4. Pasar por ConfluenceEngine (momentum + wallets reales + health + régimen)
+ *  5. AdaptiveRiskGate evalúa si se puede operar (con sizing dinámico)
+ *  6. PaperBroker ejecuta con SlippageModel + MicroVolatility + CompetitionSim
+ *  7. PositionManager revisa posiciones abiertas y cierra las que toque
+ *  8. Actualizar outcomes
+ *
+ * Nota de integridad estadística: la confluencia de wallets usa exclusivamente
+ * movimientos reales de `wallet_movements` (Arkham / registro manual). El
+ * antiguo SmartMoneySimulator se eliminó del flujo porque inyectaba compras
+ * sintéticas que confirmaban las señales del propio ciclo (circularidad).
  */
 export class Orchestrator {
   private momentum: MomentumDetector;
@@ -94,7 +97,6 @@ export class Orchestrator {
   private outcomeTracker: SignalOutcomeTracker;
   private rollingEngine: RollingPerformanceEngine;
   private calibrator: IncrementalCalibrator;
-  private smartMoney: SmartMoneySimulator;
   private _pendingStressEvents: StressEvent[] = [];
 
   constructor(
@@ -122,7 +124,6 @@ export class Orchestrator {
     this.outcomeTracker = new SignalOutcomeTracker(supabase);
     this.rollingEngine = new RollingPerformanceEngine(supabase);
     this.calibrator = new IncrementalCalibrator(supabase);
-    this.smartMoney = new SmartMoneySimulator();
   }
 
   async runCycle(): Promise<CycleResult> {
@@ -151,8 +152,15 @@ export class Orchestrator {
       result.errors.push(`Rolling metrics: ${errMsg(err)}`);
     }
 
+    // Calibración automática CONGELADA por defecto: ajustar umbrales con
+    // outcomes del propio sistema sin holdout es sobreajuste in-sample.
+    // Se reactiva con CTECH_CALIBRATION_ENABLED=true cuando exista
+    // validación walk-forward (Fase 1).
+    const calibrationEnabled = process.env.CTECH_CALIBRATION_ENABLED === "true";
     try {
-      const cal = await this.calibrator.recalibrate(this.userId);
+      const cal = calibrationEnabled
+        ? await this.calibrator.recalibrate(this.userId)
+        : null;
       if (cal) {
         result.calibration = {
           momentumThreshold: cal.momentumScoreThreshold,
@@ -201,12 +209,14 @@ export class Orchestrator {
 
     const riskState = await this.getRiskState();
     const processedTokens = new Set<string>();
+    const cycleCandidates: CandidateSnapshot[] = [];
 
     // --- 2. Pipeline TRENDING (MomentumDetector → Core/Satellite) ---
     let momentumSignals: Awaited<ReturnType<MomentumDetector["scan"]>>["signals"] = [];
     try {
       const scanResult = await this.momentum.scan();
       momentumSignals = scanResult.signals;
+      cycleCandidates.push(...scanResult.candidates);
       result.poolsScanned = scanResult.poolsScanned;
       result.tokensScanned = scanResult.signals.length;
       for (const ne of scanResult.networkErrors) {
@@ -228,8 +238,6 @@ export class Orchestrator {
       try {
         const key = `${signal.network}:${signal.tokenAddress}`;
         processedTokens.add(key);
-
-        await this.injectSmartMoney(signal.tokenAddress, signal.tokenSymbol, signal.network, signal.momentumScore, false);
 
         let health = null;
         try {
@@ -268,6 +276,7 @@ export class Orchestrator {
     try {
       const earlyScan = await this.early.scan();
       earlySignals = earlyScan.signals;
+      cycleCandidates.push(...earlyScan.candidates);
       result.earlyPoolsScanned = earlyScan.poolsScanned;
       result.earlyCandidates = earlyScan.signals.length;
       for (const ne of earlyScan.networkErrors) {
@@ -290,8 +299,6 @@ export class Orchestrator {
         const key = `${signal.network}:${signal.tokenAddress}`;
         if (processedTokens.has(key)) continue;
         processedTokens.add(key);
-
-        await this.injectSmartMoney(signal.tokenAddress, signal.tokenSymbol, signal.network, signal.earlyScore, true);
 
         let health = null;
         try {
@@ -349,26 +356,8 @@ export class Orchestrator {
     }
 
     await this.persistCycleRun(result);
+    await this.persistCycleSnapshot(result, cycleCandidates);
     return result;
-  }
-
-  private async injectSmartMoney(
-    tokenAddress: string,
-    tokenSymbol: string,
-    network: string,
-    score: number,
-    isEarly: boolean
-  ): Promise<void> {
-    try {
-      const movements = this.smartMoney.simulateActivity(
-        tokenAddress, tokenSymbol, network, score, isEarly
-      );
-      if (movements.length > 0) {
-        await this.smartMoney.persistMovements(this.supabase, this.userId, movements);
-      }
-    } catch {
-      // Non-critical, don't block cycle
-    }
   }
 
   private async executeEntry(
@@ -612,6 +601,7 @@ export class Orchestrator {
     await this.supabase
       .from("risk_state")
       .update({
+        capital: newState.capital,
         pnl_today: newState.pnlToday,
         pnl_this_week: newState.pnlThisWeek,
         trades_today_core: newState.tradesTodayCore,
@@ -672,6 +662,39 @@ export class Orchestrator {
       });
     } catch {
       // Non-blocking: cycle execution should never fail by logging issue
+    }
+  }
+
+  /**
+   * Archivo histórico sin sesgo de superviviente: guarda TODOS los
+   * candidatos que los detectores vieron este ciclo (aceptados y
+   * rechazados, con métricas crudas y motivo de rechazo). Los feeds
+   * públicos olvidan a los tokens que mueren; este archivo es la única
+   * fuente para backtests honestos, distribuciones empíricas y datasets
+   * de entrenamiento (Fase 1+).
+   */
+  private async persistCycleSnapshot(
+    result: CycleResult,
+    candidates: CandidateSnapshot[]
+  ): Promise<void> {
+    if (candidates.length === 0) return;
+
+    // Cap defensivo de tamaño de fila (~400 candidatos ≈ 150-200 KB jsonb)
+    const MAX_CANDIDATES = 400;
+    const trimmed = candidates.slice(0, MAX_CANDIDATES);
+
+    try {
+      await this.supabase.from("cycle_snapshots").insert({
+        user_id: this.userId,
+        timestamp: result.timestamp.toISOString(),
+        regime: result.regime,
+        momentum_pools_scanned: result.poolsScanned,
+        early_pools_scanned: result.earlyPoolsScanned,
+        candidates_count: candidates.length,
+        candidates: trimmed,
+      });
+    } catch {
+      // Non-blocking: el archivo nunca debe romper el ciclo
     }
   }
 }
