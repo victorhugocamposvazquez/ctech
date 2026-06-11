@@ -9,11 +9,24 @@ concurrency:
   group: ctech-cycle-scheduler
   cancel-in-progress: false
 
+permissions:
+  actions: write
+
 jobs:
   trigger-cycle:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # GitHub desactiva los workflows programados tras 60 dias sin actividad
+      # en el repo (asi murio el motor el 25-abr-2026). Re-habilitarse a si
+      # mismo en cada ejecucion resetea ese contador.
+      - name: Keepalive (prevent inactivity auto-disable)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT \
+            "repos/${{ github.repository }}/actions/workflows/cycle-cron.yml/enable" \
+            || echo "Keepalive failed (non-fatal)"
       - name: Trigger /api/cron/cycle
         env:
           CTECH_BASE_URL: ${{ secrets.CTECH_BASE_URL }}
