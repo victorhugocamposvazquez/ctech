@@ -98,6 +98,7 @@ export class Orchestrator {
   private rollingEngine: RollingPerformanceEngine;
   private calibrator: IncrementalCalibrator;
   private _pendingStressEvents: StressEvent[] = [];
+  private cycleRegime: Awaited<ReturnType<RegimeDetector["detect"]>> | null = null;
 
   constructor(
     private supabase: SupabaseClient,
@@ -206,6 +207,7 @@ export class Orchestrator {
     } catch (err) {
       result.errors.push(`Régimen: ${errMsg(err)}`);
     }
+    this.cycleRegime = regimeSnapshot ?? null;
 
     const riskState = await this.getRiskState();
     const processedTokens = new Set<string>();
@@ -389,7 +391,26 @@ export class Orchestrator {
       };
     }
 
-    const sizing = this.calculateAdaptivePositionSize(conf, verdict.maxPositionUsd);
+    // Freno proactivo por régimen: reduce exposición ANTES de perder, no
+    // después (el AdaptiveRiskGate ya frena por drawdown, pero eso es
+    // reactivo). En risk_off el universo memecoin se seca y la proporción
+    // de rugs sube — el satellite/early es lo primero que se corta.
+    const regimePolicy = this.applyRegimePolicy(conf.layer);
+    if (regimePolicy.blocked) {
+      return {
+        symbol: conf.token,
+        layer: conf.layer,
+        confidence: conf.confidence,
+        signalSource: conf.signalSource,
+        executed: false,
+        reason: regimePolicy.reason,
+      };
+    }
+
+    const sizing = this.calculateAdaptivePositionSize(
+      conf,
+      verdict.maxPositionUsd * regimePolicy.sizingMultiplier
+    );
     conf.order.amountUsd = sizing.amountUsd;
     conf.order.metadata = {
       ...conf.order.metadata,
@@ -435,6 +456,52 @@ export class Orchestrator {
       signalSource: conf.signalSource,
       executed: true,
       reason: `Ejecutado ($${conf.order.amountUsd.toFixed(2)}) — ${conf.reasons.join(" | ")}`,
+    };
+  }
+
+  /**
+   * Política proactiva de exposición por régimen de mercado.
+   *
+   * Complementa (no sustituye) dos mecanismos existentes:
+   *  - ConfluenceEngine ya penaliza la confianza en risk_off (filtra señales
+   *    marginales).
+   *  - AdaptiveRiskGate frena por drawdown/PF (reactivo: actúa tras perder).
+   *
+   * Esto corta exposición ANTES de que lleguen las pérdidas:
+   *  - risk_off con confianza alta (>=55): satellite bloqueado por completo
+   *    (universo early = el más denso en rugs cuando el mercado se seca),
+   *    core a mitad de tamaño.
+   *  - risk_off con confianza baja: sin bloqueos, sizing reducido.
+   *  - neutral / risk_on: sin cambios.
+   */
+  private applyRegimePolicy(layer: "core" | "satellite"): {
+    blocked: boolean;
+    reason: string;
+    sizingMultiplier: number;
+  } {
+    const regime = this.cycleRegime;
+    if (!regime || regime.regime !== "risk_off") {
+      return { blocked: false, reason: "", sizingMultiplier: 1 };
+    }
+
+    const highConfidence = regime.confidence >= 55;
+
+    if (highConfidence && layer === "satellite") {
+      return {
+        blocked: true,
+        reason: `Régimen risk_off (F&G ${regime.fearGreedValue}, confianza ${regime.confidence}%) — entradas satellite suspendidas`,
+        sizingMultiplier: 0,
+      };
+    }
+
+    if (highConfidence) {
+      return { blocked: false, reason: "", sizingMultiplier: 0.5 };
+    }
+
+    return {
+      blocked: false,
+      reason: "",
+      sizingMultiplier: layer === "satellite" ? 0.5 : 0.75,
     };
   }
 

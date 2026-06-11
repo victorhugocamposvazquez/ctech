@@ -284,6 +284,17 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.6.0"
+            date="11 jun 2026"
+            title="Freno proactivo por régimen: cortar exposición antes de perder"
+            items={[
+              "Nueva política de exposición por régimen en el Orchestrator: en risk_off con confianza alta (Fear & Greed extremo), las entradas satellite/early se suspenden por completo y el core opera a mitad de tamaño.",
+              "Razón: cuando el mercado memecoin se seca, el flujo de tokens legítimos cae más rápido que el de scams — la proporción de rugs en el universo early sube justo cuando el upside baja. Es el peor momento para estar en la capa especulativa.",
+              "Complementa los mecanismos existentes sin sustituirlos: la confluencia ya penalizaba confianza en risk_off (filtro suave) y el AdaptiveRiskGate frena por drawdown (reactivo, actúa tras perder). Este corte es proactivo: actúa antes de las pérdidas.",
+              "Cada entrada bloqueada queda registrada con su razón en el ciclo, así el coste de oportunidad del freno también se mide (señales bloqueadas siguen trackeándose en signal_outcomes).",
+            ]}
+          />
+          <ChangelogEntry
             version="1.5.0"
             date="11 jun 2026"
             title="Veredicto de edge (Fase 1): el go/no-go es un número, no una sensación"
