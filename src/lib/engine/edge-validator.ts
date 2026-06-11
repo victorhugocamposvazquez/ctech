@@ -24,6 +24,20 @@ export type EdgeVerdictStatus =
   | "promising"         // media > 0 pero el IC aún cruza 0
   | "validated";        // IC íntegramente > 0 y PF >= umbral
 
+export interface IndependenceMetrics {
+  /** Días UTC distintos con al menos un trade cerrado. */
+  tradingDays: number;
+  /** Media de trades por día activo. */
+  avgTradesPerDay: number;
+  /**
+   * N efectivo para intervalos: min(n trades, tradingDays × 2).
+   * En memecoins los trades del mismo día comparten régimen/narrativa.
+   */
+  effectiveN: number;
+  /** IC de expectancia agregando PnL por día (más conservador). */
+  dailyExpectancyCi95: [number, number];
+}
+
 export interface GroupEdgeMetrics {
   n: number;
   winRate: number;            // 0-1
@@ -31,10 +45,13 @@ export interface GroupEdgeMetrics {
   profitFactor: number;
   expectancyUsd: number;      // media PnL neto por trade
   expectancyCi95: [number, number];
+  /** IC conservador: el más amplio entre per-trade y per-day. */
+  expectancyCi95Conservative: [number, number];
   totalPnlUsd: number;
   avgWinUsd: number;
   avgLossUsd: number;
   maxDrawdownPct: number;     // 0-1 sobre curva de PnL acumulado
+  independence: IndependenceMetrics;
 }
 
 export interface EdgeVerdict {
@@ -152,7 +169,7 @@ function deriveVerdict(
     };
   }
 
-  const [lo, hi] = g.expectancyCi95;
+  const [lo, hi] = g.expectancyCi95Conservative;
 
   if (hi < 0) {
     return {
@@ -178,13 +195,13 @@ function deriveVerdict(
   if (g.expectancyUsd > 0) {
     return {
       status: "promising",
-      statusReason: `Expectancia media positiva (${g.expectancyUsd.toFixed(3)} $/trade) pero el IC aún cruza cero (IC [${lo.toFixed(3)}, ${hi.toFixed(3)}]). Pinta bien, no está demostrado — seguir acumulando muestra.`,
+      statusReason: `Expectancia media positiva (${g.expectancyUsd.toFixed(3)} $/trade) pero el IC conservador (correlación ajustada, ${g.independence.tradingDays} días) aún cruza cero [${lo.toFixed(3)}, ${hi.toFixed(3)}]. Pinta bien, no está demostrado — seguir acumulando muestra.`,
     };
   }
 
   return {
     status: "inconclusive",
-    statusReason: `Expectancia ~0 (IC [${lo.toFixed(3)}, ${hi.toFixed(3)}] $/trade). Sin señal clara en ninguna dirección con la muestra actual.`,
+    statusReason: `Expectancia ~0 (IC conservador [${lo.toFixed(3)}, ${hi.toFixed(3)}] $/trade, ${g.independence.effectiveN} apuestas efectivas). Sin señal clara en ninguna dirección con la muestra actual.`,
   };
 }
 
@@ -205,6 +222,13 @@ function computeGroup(trades: CleanTradeRow[]): GroupEdgeMetrics {
   const variance =
     n > 1 ? pnls.reduce((s, p) => s + (p - mean) ** 2, 0) / (n - 1) : 0;
   const sem = n > 1 ? Math.sqrt(variance / n) : 0;
+  const tradeCi: [number, number] = [
+    round3(mean - Z95 * sem),
+    round3(mean + Z95 * sem),
+  ];
+
+  const independence = computeIndependence(trades, pnls);
+  const conservativeCi = widenCi(tradeCi, independence.dailyExpectancyCi95);
 
   let peak = 0;
   let cum = 0;
@@ -222,12 +246,60 @@ function computeGroup(trades: CleanTradeRow[]): GroupEdgeMetrics {
     winRateCi95: wilsonCi(wins.length, n),
     profitFactor: round(profitFactor),
     expectancyUsd: round3(mean),
-    expectancyCi95: [round3(mean - Z95 * sem), round3(mean + Z95 * sem)],
+    expectancyCi95: tradeCi,
+    expectancyCi95Conservative: conservativeCi,
     totalPnlUsd: round(pnls.reduce((s, p) => s + p, 0)),
     avgWinUsd: round3(wins.length > 0 ? grossProfit / wins.length : 0),
     avgLossUsd: round3(losses.length > 0 ? -grossLoss / losses.length : 0),
     maxDrawdownPct: round(maxDD),
+    independence,
   };
+}
+
+function computeIndependence(
+  trades: CleanTradeRow[],
+  pnls: number[]
+): IndependenceMetrics {
+  const dailyPnl = new Map<string, number>();
+  for (let i = 0; i < trades.length; i++) {
+    const day = trades[i].closed_at.slice(0, 10);
+    dailyPnl.set(day, (dailyPnl.get(day) ?? 0) + pnls[i]);
+  }
+
+  const tradingDays = dailyPnl.size;
+  const avgTradesPerDay = tradingDays > 0 ? trades.length / tradingDays : 0;
+  const effectiveN = Math.max(
+    1,
+    Math.min(trades.length, Math.round(tradingDays * 2))
+  );
+
+  const dailyReturns = [...dailyPnl.values()];
+  const dailyMean =
+    dailyReturns.length > 0
+      ? dailyReturns.reduce((s, p) => s + p, 0) / dailyReturns.length
+      : 0;
+  const dailyVar =
+    dailyReturns.length > 1
+      ? dailyReturns.reduce((s, p) => s + (p - dailyMean) ** 2, 0) /
+        (dailyReturns.length - 1)
+      : 0;
+  const dailySem =
+    dailyReturns.length > 1 ? Math.sqrt(dailyVar / dailyReturns.length) : 0;
+
+  return {
+    tradingDays,
+    avgTradesPerDay: round(avgTradesPerDay),
+    effectiveN,
+    dailyExpectancyCi95: [
+      round3(dailyMean - Z95 * dailySem),
+      round3(dailyMean + Z95 * dailySem),
+    ],
+  };
+}
+
+/** Toma el IC más amplio (más conservador) entre dos estimaciones. */
+function widenCi(a: [number, number], b: [number, number]): [number, number] {
+  return [round3(Math.min(a[0], b[0])), round3(Math.max(a[1], b[1]))];
 }
 
 /** Intervalo de Wilson al 95% para una proporción — fiable con n pequeño. */

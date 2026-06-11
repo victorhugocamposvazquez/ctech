@@ -9,6 +9,7 @@ import {
   toCandidateSnapshot,
   type CandidateSnapshot,
 } from "./candidate-snapshot";
+import { assessWashTrading } from "./wash-trading-filter";
 
 /**
  * Señal de un token en fase temprana con potencial.
@@ -331,6 +332,17 @@ export class EarlyDetector {
     const buyerSellerRatio = this.calcBuyerSellerRatio(pool);
     if (buyerSellerRatio < this.config.minBuyerSellerRatio) return null;
 
+    const tx24 = pool?.attributes.transactions?.h24;
+    if (
+      assessWashTrading({
+        pair,
+        buyers24h: tx24?.buyers ?? null,
+        sellers24h: tx24?.sellers ?? null,
+      }).rejectReason
+    ) {
+      return null;
+    }
+
     const volumeChange = this.calcVolumeGrowth(pair);
     const earlyScore = this.calcEarlyScore(
       pair, pool, buyPressure, buyerSellerRatio, volumeChange, pairAgeHours
@@ -501,6 +513,14 @@ export class EarlyDetector {
 
     const buyerSellerRatio = this.calcBuyerSellerRatio(pool);
     if (buyerSellerRatio < this.config.minBuyerSellerRatio) return "low_buyer_seller_ratio";
+
+    const tx24 = pool?.attributes.transactions?.h24;
+    const wash = assessWashTrading({
+      pair,
+      buyers24h: tx24?.buyers ?? null,
+      sellers24h: tx24?.sellers ?? null,
+    });
+    if (wash.rejectReason) return wash.rejectReason;
 
     const volumeChange = this.calcVolumeGrowth(pair);
     const earlyScore = this.calcEarlyScore(

@@ -284,6 +284,16 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.9.0"
+            date="11 jun 2026"
+            title="Anti wash-trading, correlación en edge y medición de decay"
+            items={[
+              "Filtro anti wash-trading en MomentumDetector y EarlyDetector: detecta volumen fabricado (wallets repetidas, micro-transacciones, flujo simétrico compra≈venta) y descarta candidatos antes de la confluencia. En memecoins una parte sustancial del volumen es falso — sin esto el momentum score se alimenta de ruido.",
+              "EdgeValidator con ajuste por correlación: los trades del mismo día comparten régimen y narrativa, así que el N efectivo es menor que el N nominal. El veredicto usa ahora el IC conservador (el más amplio entre per-trade y per-day) para no declarar edge antes de tiempo.",
+              "SignalDecayAnalyzer: mide cuánto se mueve el precio entre detección y el ciclo siguiente (~15 min) usando el archivador histórico. Panel nuevo en /dashboard/validacion para cuantificar el alfa perdido por granularidad y justificar un carril rápido en Fase 2.",
+            ]}
+          />
+          <ChangelogEntry
             version="1.8.0"
             date="11 jun 2026"
             title="Gate de seguridad on-chain + dead-man's switch"

@@ -9,10 +9,17 @@ type GroupMetrics = {
   profitFactor: number;
   expectancyUsd: number;
   expectancyCi95: [number, number];
+  expectancyCi95Conservative: [number, number];
   totalPnlUsd: number;
   avgWinUsd: number;
   avgLossUsd: number;
   maxDrawdownPct: number;
+  independence: {
+    tradingDays: number;
+    avgTradesPerDay: number;
+    effectiveN: number;
+    dailyExpectancyCi95: [number, number];
+  };
 };
 
 type EdgeVerdict = {
@@ -144,11 +151,11 @@ export default function EdgeVerdictPanel() {
           <Metric
             label="Expectancia / trade"
             value={`${fmtUsd(data.global.expectancyUsd)}`}
-            sub={`IC95 [${fmtUsd(data.global.expectancyCi95[0])}, ${fmtUsd(data.global.expectancyCi95[1])}]`}
+            sub={`IC95 conservador [${fmtUsd(data.global.expectancyCi95Conservative[0])}, ${fmtUsd(data.global.expectancyCi95Conservative[1])}] · ${data.global.independence.tradingDays} días · nₑ=${data.global.independence.effectiveN}`}
             tone={
-              data.global.expectancyCi95[0] > 0
+              data.global.expectancyCi95Conservative[0] > 0
                 ? "good"
-                : data.global.expectancyCi95[1] < 0
+                : data.global.expectancyCi95Conservative[1] < 0
                   ? "bad"
                   : undefined
             }
@@ -209,8 +216,8 @@ export default function EdgeVerdictPanel() {
 }
 
 function SegmentRow({ name, m }: { name: string; m: GroupMetrics }) {
-  const ciPositive = m.expectancyCi95[0] > 0;
-  const ciNegative = m.expectancyCi95[1] < 0;
+  const ciPositive = m.expectancyCi95Conservative[0] > 0;
+  const ciNegative = m.expectancyCi95Conservative[1] < 0;
   return (
     <tr className="border-b border-white/5">
       <td className="py-2 pr-3">{name}</td>
@@ -225,7 +232,7 @@ function SegmentRow({ name, m }: { name: string; m: GroupMetrics }) {
         {fmtUsd(m.expectancyUsd)}
       </td>
       <td className="py-2 pl-3 text-right text-slate-400">
-        [{fmtUsd(m.expectancyCi95[0])}, {fmtUsd(m.expectancyCi95[1])}]
+        [{fmtUsd(m.expectancyCi95Conservative[0])}, {fmtUsd(m.expectancyCi95Conservative[1])}]
       </td>
     </tr>
   );

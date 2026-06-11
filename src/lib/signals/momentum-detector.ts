@@ -9,6 +9,7 @@ import {
   toCandidateSnapshot,
   type CandidateSnapshot,
 } from "./candidate-snapshot";
+import { assessWashTrading } from "./wash-trading-filter";
 
 export interface MomentumSignal {
   tokenAddress: string;
@@ -130,7 +131,10 @@ export class MomentumDetector {
 
       const tx24 = pool.attributes.transactions?.h24;
 
-      const rejectReason = this.getRejectReason(pair);
+      const rejectReason = this.getRejectReason(pair, {
+        buyers24h: tx24?.buyers ?? null,
+        sellers24h: tx24?.sellers ?? null,
+      });
       if (rejectReason) {
         filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
         candidates.push(toCandidateSnapshot(pair, "momentum", {
@@ -181,7 +185,9 @@ export class MomentumDetector {
         const rejectReason = this.getRejectReason(pair);
         if (rejectReason) {
           filterStats[rejectReason] = (filterStats[rejectReason] ?? 0) + 1;
-          candidates.push(toCandidateSnapshot(pair, "momentum", { reject: rejectReason }));
+          candidates.push(toCandidateSnapshot(pair, "momentum", {
+            reject: rejectReason,
+          }));
           continue;
         }
 
@@ -339,6 +345,8 @@ export class MomentumDetector {
 
     if (buyPressure < this.config.minBuyPressure) return null;
 
+    if (assessWashTrading({ pair }).rejectReason) return null;
+
     const volumeChange = this.calcVolumeAcceleration(pair);
     const momentumScore = this.calcMomentumScore(pair, buyPressure, volumeChange, pairAgeDays);
 
@@ -435,7 +443,10 @@ export class MomentumDetector {
     return this.config;
   }
 
-  private getRejectReason(pair: DexPair): string | null {
+  private getRejectReason(
+    pair: DexPair,
+    walletStats?: { buyers24h: number | null; sellers24h: number | null }
+  ): string | null {
     const liquidityUsd = pair.liquidity?.usd ?? 0;
     const volume24h = pair.volume?.h24 ?? 0;
     const price = parseFloat(pair.priceUsd) || 0;
@@ -467,6 +478,13 @@ export class MomentumDetector {
             ? 5
             : 0;
     if (buyPressure < this.config.minBuyPressure) return "low_buy_pressure";
+
+    const wash = assessWashTrading({
+      pair,
+      buyers24h: walletStats?.buyers24h,
+      sellers24h: walletStats?.sellers24h,
+    });
+    if (wash.rejectReason) return wash.rejectReason;
 
     const volumeChange = this.calcVolumeAcceleration(pair);
     const momentumScore = this.calcMomentumScore(pair, buyPressure, volumeChange, pairAgeDays);
