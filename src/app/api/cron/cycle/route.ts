@@ -23,6 +23,32 @@ export async function GET(req: Request) {
     );
   }
 
+  // Guard de idempotencia: con dos schedulers redundantes (pg_cron principal
+  // + GitHub Actions de respaldo) y reintentos del workflow, pueden llegar
+  // disparos casi simultáneos. Si el último ciclo tiene <10 min, se ignora.
+  const url = new URL(req.url);
+  const force = url.searchParams.get("force") === "1";
+
+  if (!force) {
+    const { data: lastRun } = await supabase
+      .from("cycle_runs")
+      .select("timestamp")
+      .order("timestamp", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastRun) {
+      const ageMin = (Date.now() - new Date(lastRun.timestamp).getTime()) / 60_000;
+      if (ageMin < 10) {
+        return NextResponse.json({
+          message: `Ciclo reciente hace ${ageMin.toFixed(1)} min — disparo ignorado (idempotencia)`,
+          skipped: true,
+          cycles: 0,
+        });
+      }
+    }
+  }
+
   const { data: users } = await supabase
     .from("risk_state")
     .select("user_id")

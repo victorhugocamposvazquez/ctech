@@ -284,6 +284,17 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.7.0"
+            date="11 jun 2026"
+            title="Scheduler de precisión: pg_cron + monitor de posiciones cada minuto"
+            items={[
+              "Nuevo endpoint /api/cron/positions: vigila SOLO las posiciones abiertas (stops, trailing, TPs, moonbags) y se invoca cada minuto desde pg_cron en Supabase. Un stop-loss evaluado cada 15 min no es un stop-loss en tokens que caen 70% en 5 minutos; con resolución de 1 min el paper trading se acerca a lo que conseguiría una ejecución real.",
+              "pg_cron (la base de datos se dispara a sí misma vía pg_net) pasa a ser el scheduler principal: puntualidad de minuto exacto, sin las demoras de 3-15 min ni los saltos de ticks de GitHub Actions, y sin auto-desactivación por inactividad. GitHub Actions queda como respaldo redundante.",
+              "Guard de idempotencia en /api/cron/cycle: si el último ciclo tiene menos de 10 min, el disparo se ignora — los dos schedulers conviven sin duplicar ciclos. Cierres de trades idempotentes (solo el primer scheduler que llega cierra).",
+              "Causa raíz del motor parado desde el 25-abr: GitHub desactiva workflows programados tras 60 días sin commits. Corregido con keepalive automático + este scheduler que no depende de GitHub.",
+            ]}
+          />
+          <ChangelogEntry
             version="1.6.0"
             date="11 jun 2026"
             title="Freno proactivo por régimen: cortar exposición antes de perder"

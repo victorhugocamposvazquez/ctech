@@ -546,6 +546,9 @@ export class PositionManager {
   }
 
   private async closeTrade(exit: ExitSignal, pos: OpenPosition): Promise<void> {
+    // .eq("status", "open"): con dos schedulers (ciclo 15 min + monitor
+    // 1 min) un trade podría evaluarse dos veces casi a la vez; el filtro
+    // hace el cierre idempotente — solo el primero gana.
     await this.supabase
       .from("trades")
       .update({
@@ -563,6 +566,7 @@ export class PositionManager {
           exitGasUsd: exit.exitGasUsd,
         },
       })
-      .eq("id", exit.tradeId);
+      .eq("id", exit.tradeId)
+      .eq("status", "open");
   }
 }
