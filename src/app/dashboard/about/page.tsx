@@ -284,6 +284,17 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.10.0"
+            date="11 jun 2026"
+            title="Replay engine: optimizar filtros sin esperar semanas de paper"
+            items={[
+              "Nueva tabla candidate_outcomes: el desenlace real (precio a 24h/72h o muerte del par) de CADA token único archivado, incluidos los rechazados. Es la mitad que le faltaba al archivador: cycle_snapshots solo re-observa a los tokens que siguen siendo trending — los que desaparecen (la mayoría, y los más informativos) quedaban sin desenlace.",
+              "CandidateOutcomeTracker integrado en el ciclo: registra tokens nuevos y mide ~25 desenlaces por ciclo respetando el rate limit de DexScreener. Tokens muertos = -100%, consistente con el resto del sistema.",
+              "ReplayEngine + panel en /dashboard/validacion: compara configuraciones de filtro alternativas (actual, estricta, laxa, liquidez alta) sobre el universo completo con desenlace medido. Responde '¿qué hit rate y PnL habría tenido cada config?' sin sesgo de superviviente.",
+              "Es la base empírica del walk-forward que reactivará la calibración automática (congelada desde Fase 0): los umbrales se ajustarán con datos del universo completo, no con los supervivientes del paper.",
+            ]}
+          />
+          <ChangelogEntry
             version="1.9.0"
             date="11 jun 2026"
             title="Anti wash-trading, correlación en edge y medición de decay"

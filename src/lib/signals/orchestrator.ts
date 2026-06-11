@@ -15,6 +15,7 @@ import type { RollingMetrics } from "../engine/rolling-performance";
 import type { RiskState, TradeRecord } from "../engine/types";
 import { ArkhamClient } from "../arkham/client";
 import { SignalOutcomeTracker } from "./signal-outcome-tracker";
+import { CandidateOutcomeTracker } from "./candidate-outcome-tracker";
 import { IncrementalCalibrator } from "./incremental-calibrator";
 import { ForwardPredictor } from "../engine/forward-predictor";
 import type { ForwardPrediction } from "../engine/forward-predictor";
@@ -95,6 +96,7 @@ export class Orchestrator {
   private riskGate: AdaptiveRiskGate;
   private broker: PaperBroker;
   private outcomeTracker: SignalOutcomeTracker;
+  private candidateTracker: CandidateOutcomeTracker;
   private rollingEngine: RollingPerformanceEngine;
   private calibrator: IncrementalCalibrator;
   private _pendingStressEvents: StressEvent[] = [];
@@ -123,6 +125,7 @@ export class Orchestrator {
       new DexScreenerQuoteFetcher()
     );
     this.outcomeTracker = new SignalOutcomeTracker(supabase);
+    this.candidateTracker = new CandidateOutcomeTracker(supabase);
     this.rollingEngine = new RollingPerformanceEngine(supabase);
     this.calibrator = new IncrementalCalibrator(supabase);
   }
@@ -359,6 +362,20 @@ export class Orchestrator {
 
     await this.persistCycleRun(result);
     await this.persistCycleSnapshot(result, cycleCandidates);
+
+    // Desenlaces de candidatos (base del replay engine): registrar tokens
+    // nuevos y actualizar ventanas 24h/72h vencidas. Non-blocking.
+    try {
+      await this.candidateTracker.recordCandidates(
+        this.userId,
+        cycleCandidates,
+        result.regime
+      );
+      await this.candidateTracker.updatePending(this.userId);
+    } catch (err) {
+      result.errors.push(`Candidate outcomes: ${errMsg(err)}`);
+    }
+
     return result;
   }
 
