@@ -18,6 +18,7 @@ import { SignalOutcomeTracker } from "./signal-outcome-tracker";
 import { CandidateOutcomeTracker } from "./candidate-outcome-tracker";
 import { IncrementalCalibrator } from "./incremental-calibrator";
 import { ForwardPredictor } from "../engine/forward-predictor";
+import { JupiterClient } from "../market/jupiter";
 import type { ForwardPrediction } from "../engine/forward-predictor";
 import type { StressEvent } from "../engine/stress-events";
 import type { CandidateSnapshot } from "./candidate-snapshot";
@@ -97,6 +98,7 @@ export class Orchestrator {
   private broker: PaperBroker;
   private outcomeTracker: SignalOutcomeTracker;
   private candidateTracker: CandidateOutcomeTracker;
+  private jupiter: JupiterClient;
   private rollingEngine: RollingPerformanceEngine;
   private calibrator: IncrementalCalibrator;
   private _pendingStressEvents: StressEvent[] = [];
@@ -126,6 +128,7 @@ export class Orchestrator {
     );
     this.outcomeTracker = new SignalOutcomeTracker(supabase);
     this.candidateTracker = new CandidateOutcomeTracker(supabase);
+    this.jupiter = new JupiterClient();
     this.rollingEngine = new RollingPerformanceEngine(supabase);
     this.calibrator = new IncrementalCalibrator(supabase);
   }
@@ -462,6 +465,30 @@ export class Orchestrator {
         executed: false,
         reason: brokerResult.reason ?? "PaperBroker rechazó",
       };
+    }
+
+    // Quote sombra de Jupiter: cotización REAL del agregador en el momento
+    // exacto de la entrada paper. Mide el implementation shortfall (modelo
+    // vs realidad) sin arriesgar dinero. Non-blocking: si falla, el trade
+    // se persiste igual sin el dato.
+    if (conf.network === "solana") {
+      try {
+        const shadow = await this.jupiter.getShadowQuote(
+          conf.tokenAddress,
+          conf.order.amountUsd
+        );
+        if (shadow) {
+          brokerResult.trade.metadata = {
+            ...brokerResult.trade.metadata,
+            shadowQuote: {
+              ...shadow,
+              modelSlippagePct: brokerResult.fill?.slippage ?? null,
+            },
+          };
+        }
+      } catch {
+        // sin quote sombra — no bloquea
+      }
     }
 
     await this.persistTrade(brokerResult.trade, conf);

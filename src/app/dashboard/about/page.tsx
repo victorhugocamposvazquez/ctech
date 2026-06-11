@@ -284,6 +284,17 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.11.0"
+            date="11 jun 2026"
+            title="Quotes sombra de Jupiter: medir el peaje paper→real sin arriesgar dinero"
+            items={[
+              "En cada entrada paper sobre Solana se captura la cotización REAL de Jupiter (el agregador DEX) para el tamaño exacto de la orden, en el momento exacto. El implementation shortfall — la diferencia entre lo que el modelo de slippage asume y lo que el mercado cobraría de verdad — deja de ser una estimación del 20-40% y pasa a medirse empíricamente, semanas antes de la Fase 2.",
+              "Técnica de las dos quotes: se cotiza una referencia de $10 (~spot) y el tamaño real; el ratio entre ambas mide el impacto de precio sin necesitar los decimales del token.",
+              "Bonus de seguridad: si Jupiter no encuentra ruta para un token, ese token NO se puede comprar/vender vía el agregador principal — queda registrado como bandera de invendibilidad.",
+              "Nuevo panel en /dashboard/validacion y API /api/validation/shortfall: slippage modelado vs impacto real medio, mediana y P90 del delta, y % de entradas donde la realidad fue peor que el modelo.",
+            ]}
+          />
+          <ChangelogEntry
             version="1.10.0"
             date="11 jun 2026"
             title="Replay engine: optimizar filtros sin esperar semanas de paper"
