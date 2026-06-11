@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MomentumSignal } from "./momentum-detector";
 import type { EarlySignal } from "./early-detector";
 import type { RegimeSnapshot } from "../market/regime-detector";
+import { hasHardSecurityFlag } from "../market/token-health";
 import type { TokenHealthResult } from "../market/token-health";
 import type { OrderRequest, Layer } from "../engine/types";
 
@@ -127,6 +128,14 @@ export class ConfluenceEngine {
 
     // --- Capa 3: Token health (max 20 pts) ---
     if (tokenHealth) {
+      // Gate de seguridad on-chain: un token con freeze/mint authority,
+      // transfer fee o intransferible es un honeypot en potencia. El paper
+      // lo "vendería" sin problema; la realidad no. Descarte total.
+      const hardFlag = hasHardSecurityFlag(tokenHealth.contractRiskFlags);
+      if (hardFlag) {
+        return null;
+      }
+
       if (tokenHealth.healthScore >= 80) {
         confidence += 20;
         reasons.push(`Token muy sano (${tokenHealth.healthScore})`);
@@ -218,6 +227,13 @@ export class ConfluenceEngine {
 
     // --- Capa 3: Token health (max 15 pts, umbral más bajo para early) ---
     if (tokenHealth) {
+      // Gate de seguridad on-chain (ver evaluate): en early es aún más
+      // crítico — la densidad de honeypots en pares recién creados es máxima.
+      const hardFlag = hasHardSecurityFlag(tokenHealth.contractRiskFlags);
+      if (hardFlag) {
+        return null;
+      }
+
       if (tokenHealth.healthScore >= 70) {
         confidence += 15;
         reasons.push(`Token sano para early (${tokenHealth.healthScore})`);

@@ -526,6 +526,13 @@ export class Orchestrator {
       return "Hard gate live: token health < 60";
     }
 
+    // En live, "seguridad desconocida" = no operar. En paper se tolera
+    // (la señal queda trackeada igualmente), pero con dinero real un token
+    // sin verificación de autoridades on-chain es ruleta rusa.
+    if (!conf.sources.tokenHealth?.securityChecked) {
+      return "Hard gate live: seguridad on-chain sin verificar";
+    }
+
     if (conf.layer === "core" && conf.confidence < 75) {
       return "Hard gate live: confianza core < 75";
     }

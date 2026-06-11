@@ -1,11 +1,30 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DexScreenerClient, type DexPair } from "./dexscreener";
+import { BirdeyeClient } from "./birdeye";
 import { ArkhamClient } from "../arkham/client";
 
 const MIN_LIQUIDITY_USD = 50_000;
 const MIN_VOLUME_24H_USD = 10_000;
 const MAX_SPREAD_PCT = 3;
 const MAX_TOP10_CONCENTRATION = 0.85;
+
+/**
+ * Flags de seguridad on-chain que hacen al token INVENDIBLE o expropiable.
+ * Cualquiera de ellos descarta la señal por completo: el paper "vendería"
+ * un token que en la realidad no se puede vender (honeypot), inflando los
+ * resultados con trades imposibles.
+ */
+export const HARD_SECURITY_FLAGS = [
+  "sec_freeze_authority", // pueden congelar tu cuenta de token
+  "sec_mint_authority", // pueden inflar el supply hasta diluirte a cero
+  "sec_non_transferable", // token literalmente intransferible
+  "sec_transfer_fee", // fee oculta en cada transferencia (tax token)
+  "sec_top10_extreme", // >85% en 10 wallets: salida controlada por insiders
+] as const;
+
+export function hasHardSecurityFlag(flags: string[]): string | null {
+  return flags.find((f) => (HARD_SECURITY_FLAGS as readonly string[]).includes(f)) ?? null;
+}
 
 export interface TokenHealthResult {
   tokenId: string;
@@ -19,6 +38,8 @@ export interface TokenHealthResult {
   top10ConcentrationPct: number | null;
   contractRiskFlags: string[];
   healthScore: number;
+  /** true si la comprobación de seguridad on-chain (Birdeye) se ejecutó. */
+  securityChecked: boolean;
   bestPair: DexPair | null;
 }
 
@@ -34,6 +55,8 @@ export interface TokenHealthResult {
 export class TokenHealthChecker {
   private dex: DexScreenerClient;
   private arkham: ArkhamClient | null;
+  private birdeye: BirdeyeClient | null;
+  private securityCache = new Map<string, string[] | null>();
 
   constructor(
     private supabase: SupabaseClient,
@@ -41,6 +64,11 @@ export class TokenHealthChecker {
   ) {
     this.dex = new DexScreenerClient();
     this.arkham = arkham ?? null;
+    try {
+      this.birdeye = new BirdeyeClient();
+    } catch {
+      this.birdeye = null; // sin API key — health funciona sin seguridad on-chain
+    }
   }
 
   async checkToken(
@@ -77,6 +105,16 @@ export class TokenHealthChecker {
 
     const contractRiskFlags = this.detectRiskFlags(bestPair, liquidityUsd, priceUsd);
 
+    // Seguridad on-chain (solo Solana, donde opera el sistema)
+    let securityChecked = false;
+    if (network === "solana") {
+      const securityFlags = await this.checkOnChainSecurity(tokenAddress);
+      if (securityFlags !== null) {
+        securityChecked = true;
+        contractRiskFlags.push(...securityFlags);
+      }
+    }
+
     const healthScore = this.calcHealthScore({
       liquidityUsd,
       volume24hUsd,
@@ -98,6 +136,7 @@ export class TokenHealthChecker {
       top10ConcentrationPct,
       contractRiskFlags,
       healthScore,
+      securityChecked,
       bestPair,
     };
 
@@ -116,6 +155,55 @@ export class TokenHealthChecker {
       if (r) results.push(r);
     }
     return results;
+  }
+
+  /**
+   * Comprueba la seguridad on-chain vía Birdeye token_security.
+   *
+   * Devuelve la lista de flags (vacía si está limpio) o null si la
+   * comprobación no pudo ejecutarse (sin API key / sin datos) — el caller
+   * distingue "limpio" de "desconocido".
+   */
+  private async checkOnChainSecurity(tokenAddress: string): Promise<string[] | null> {
+    if (!this.birdeye) return null;
+
+    const cached = this.securityCache.get(tokenAddress);
+    if (cached !== undefined) return cached;
+
+    const sec = await this.birdeye.getTokenSecurity(tokenAddress);
+    if (!sec) {
+      this.securityCache.set(tokenAddress, null);
+      return null;
+    }
+
+    const flags: string[] = [];
+
+    if (truthy(sec.freezeable) || nonEmpty(sec.freezeAuthority)) {
+      flags.push("sec_freeze_authority");
+    }
+    // En Solana, ownerAddress != null en token_security implica que la mint
+    // authority no fue renunciada: el deployer puede imprimir supply.
+    if (nonEmpty(sec.ownerAddress) || truthy(sec.mintable)) {
+      flags.push("sec_mint_authority");
+    }
+    if (truthy(sec.nonTransferable)) {
+      flags.push("sec_non_transferable");
+    }
+    if (truthy(sec.transferFeeEnable)) {
+      flags.push("sec_transfer_fee");
+    }
+
+    const top10 = toFraction(sec.top10HolderPercent);
+    if (top10 !== null && top10 > MAX_TOP10_CONCENTRATION) {
+      flags.push("sec_top10_extreme");
+    }
+
+    if (truthy(sec.mutableMetadata)) {
+      flags.push("sec_mutable_metadata"); // soft: penaliza score, no descarta
+    }
+
+    this.securityCache.set(tokenAddress, flags);
+    return flags;
   }
 
   private estimateSpread(liquidityUsd: number, volume24h: number): number {
@@ -188,8 +276,12 @@ export class TokenHealthChecker {
       else score -= 10;
     }
 
-    // Risk flags (-5 pts cada uno)
-    score -= params.contractRiskFlags.length * 5;
+    // Risk flags: los de seguridad on-chain duros hunden el score (-25),
+    // el resto penaliza -5
+    for (const flag of params.contractRiskFlags) {
+      if ((HARD_SECURITY_FLAGS as readonly string[]).includes(flag)) score -= 25;
+      else score -= 5;
+    }
 
     // Antigüedad del par
     if (params.pairAge) {
@@ -251,4 +343,19 @@ export class TokenHealthChecker {
       health_score: result.healthScore,
     });
   }
+}
+
+function truthy(v: unknown): boolean {
+  return v === true || v === 1 || v === "true" || v === "1";
+}
+
+function nonEmpty(v: unknown): boolean {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
+/** Normaliza porcentajes que pueden venir como 0-1 o 0-100. */
+function toFraction(v: unknown): number | null {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n > 1 ? n / 100 : n;
 }

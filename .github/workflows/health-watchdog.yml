@@ -1,0 +1,48 @@
+name: CTech Health Watchdog
+
+# Dead-man's switch: si el motor lleva >45 min sin ejecutar un ciclo,
+# /api/health devuelve 503, este workflow falla y GitHub avisa por email.
+# El motor estuvo muerto 6 semanas (25-abr a 11-jun-2026) sin que nadie
+# lo supiera; este watchdog existe para que no se repita.
+
+on:
+  schedule:
+    - cron: "20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  check-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Keepalive (prevent inactivity auto-disable)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT \
+            "repos/${{ github.repository }}/actions/workflows/health-watchdog.yml/enable" \
+            || echo "Keepalive failed (non-fatal)"
+
+      - name: Check /api/health
+        env:
+          CTECH_BASE_URL: ${{ secrets.CTECH_BASE_URL }}
+        run: |
+          if [ -z "$CTECH_BASE_URL" ]; then
+            echo "Missing required secret: CTECH_BASE_URL"
+            exit 1
+          fi
+
+          endpoint="${CTECH_BASE_URL%/}/api/health"
+          HTTP_STATUS=$(curl -sS --max-time 30 -o health.json -w "%{http_code}" "$endpoint")
+
+          echo "HTTP status: $HTTP_STATUS"
+          cat health.json
+
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo ""
+            echo "MOTOR PARADO O DEGRADADO — revisar pg_cron, GitHub Actions scheduler y Vercel"
+            exit 1
+          fi

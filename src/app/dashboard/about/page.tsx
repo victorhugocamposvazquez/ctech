@@ -284,6 +284,17 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.8.0"
+            date="11 jun 2026"
+            title="Gate de seguridad on-chain + dead-man's switch"
+            items={[
+              "Verificación de seguridad on-chain vía Birdeye token_security en cada candidato Solana: freeze authority, mint authority no renunciada, tokens intransferibles, transfer fees ocultas y concentración >85% en top-10 holders. Cualquiera de estos flags descarta la señal por completo.",
+              "Razón: el paper broker 'vende' cualquier token sin problema, pero un honeypot real es invendible. Sin este gate, el sistema acumularía trades ganadores imposibles de ejecutar — el agujero más grande que quedaba en la fidelidad paper→real.",
+              "En modo live (futuro), la regla es más dura: seguridad sin verificar = no operar. En paper se tolera el fallo de la API para no perder la señal trackeada.",
+              "Dead-man's switch: /api/health devuelve 503 si el motor lleva >45 min sin ciclo, y un watchdog horario en GitHub Actions falla con ello — GitHub avisa por email. El motor estuvo muerto 6 semanas sin que nadie lo supiera; eso ya no puede volver a pasar en silencio.",
+            ]}
+          />
+          <ChangelogEntry
             version="1.7.1"
             date="11 jun 2026"
             title="Integridad: los rugs ya no se disfrazan de pérdidas pequeñas"

@@ -31,6 +31,25 @@ export class BirdeyeClient {
     }
   }
 
+  /**
+   * Seguridad on-chain de un token Solana (autoridades, holders, fees).
+   * Devuelve el objeto crudo de Birdeye o null si no hay datos.
+   */
+  async getTokenSecurity(address: string): Promise<Record<string, unknown> | null> {
+    try {
+      const body = await this.fetchWithFallback([
+        `/defi/token_security?address=${encodeURIComponent(address)}`,
+      ]);
+      const data = (body as BirdeyeListResponse | undefined)?.data;
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        return data as Record<string, unknown>;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   async getTrendingTokenAddresses(limit = 50): Promise<string[]> {
     const body = await this.fetchWithFallback([
       `/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=${limit}`,
