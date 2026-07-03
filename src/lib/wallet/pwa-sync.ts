@@ -4,32 +4,53 @@ import { isIosDevice, isStandalonePwa, registerWalletServiceWorker } from "./pwa
 const SYNC_PATH = "/wallet/__sync";
 const RELOAD_FLAG = "wallet_sync_reloaded_v1";
 
-/** Claves de localStorage que deben sobrevivir Safari → PWA en iOS. */
+/** Claves fijas de localStorage que deben sobrevivir Safari → PWA en iOS. */
 export const WALLET_SYNC_KEYS = [
   "wallet_theme",
   "wallet_autolock_ms",
+  "tw_vault_v2",
   "tw_keystore_v1",
   "wallet_mode",
   "wallet_tx_history_v1",
 ] as const;
+
+const BIO_KEY_PREFIX = "wallet_bio_v1_";
+
+function collectBioKeys(): string[] {
+  if (typeof window === "undefined") return [];
+  const keys: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith(BIO_KEY_PREFIX)) keys.push(k);
+  }
+  return keys;
+}
 
 export type WalletSnapshot = Record<string, string>;
 
 export function collectWalletSnapshot(): WalletSnapshot {
   if (typeof window === "undefined") return {};
   const snap: WalletSnapshot = {};
-  for (const key of WALLET_SYNC_KEYS) {
+  const keys = [...WALLET_SYNC_KEYS, ...collectBioKeys()];
+  for (const key of keys) {
     const v = localStorage.getItem(key);
     if (v != null) snap[key] = v;
   }
   return snap;
 }
 
+function isSyncKey(key: string): boolean {
+  return (
+    WALLET_SYNC_KEYS.includes(key as (typeof WALLET_SYNC_KEYS)[number]) ||
+    key.startsWith(BIO_KEY_PREFIX)
+  );
+}
+
 export function applyWalletSnapshot(snap: WalletSnapshot): boolean {
   if (typeof window === "undefined") return false;
   let changed = false;
   for (const [key, value] of Object.entries(snap)) {
-    if (!WALLET_SYNC_KEYS.includes(key as (typeof WALLET_SYNC_KEYS)[number])) continue;
+    if (!isSyncKey(key)) continue;
     if (localStorage.getItem(key) !== value) {
       localStorage.setItem(key, value);
       changed = true;

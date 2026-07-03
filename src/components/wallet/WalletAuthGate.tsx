@@ -8,7 +8,7 @@ import { InstallBottomBanner } from "./InstallBanner";
 import { t } from "@/lib/wallet/i18n";
 
 export function WalletAuthGate({ children }: { children: ReactNode }) {
-  const { localStatus, needsOnboarding, needsUnlock, isConnected } =
+  const { localStatus, needsOnboarding, needsUnlock, isConnected, addingWallet } =
     useWalletSession();
 
   if (localStatus === "loading") {
@@ -18,6 +18,15 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-wallet-accent border-t-transparent" />
         </div>
         <p className="mt-6 text-sm font-medium text-wallet-muted">{t.loading}</p>
+      </div>
+    );
+  }
+
+  if (addingWallet && !isConnected) {
+    return (
+      <div className="wallet-theme">
+        <ConnectScreen />
+        <InstallBottomBanner aboveNav={false} />
       </div>
     );
   }

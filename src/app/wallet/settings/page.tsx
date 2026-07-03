@@ -11,10 +11,11 @@ import { TrustShield } from "@/components/wallet/TrustShield";
 import { AutoLockSettings } from "@/components/wallet/AutoLockSettings";
 import { ThemeSettings } from "@/components/wallet/ThemeSettings";
 import { BiometricSettings } from "@/components/wallet/BiometricSettings";
+import { WalletsSettings } from "@/components/wallet/WalletsSettings";
 import { t } from "@/lib/wallet/i18n";
 
 export default function WalletSettingsPage() {
-  const { address, mode, disconnectAll, deleteLocalWallet } = useWalletSession();
+  const { address, mode, disconnectAll, deleteLocalWallet, deleteAllLocalWallets, wallets } = useWalletSession();
   const { lock } = useLocalWallet();
   const { install, isStandalone } = useInstallPrompt();
   const [copied, setCopied] = useState(false);
@@ -59,6 +60,8 @@ export default function WalletSettingsPage() {
             )}
           </section>
 
+          {mode === "local" && <WalletsSettings />}
+
           {mode === "local" && <AutoLockSettings />}
 
           {mode === "local" && <BiometricSettings />}
@@ -85,11 +88,23 @@ export default function WalletSettingsPage() {
             {t.disconnect}
           </button>
 
-          {mode === "local" && (
+          {mode === "local" && wallets.length === 1 && (
             <button
               type="button"
               onClick={() => {
                 if (confirm(t.deleteConfirm)) deleteLocalWallet();
+              }}
+              className="wallet-btn-danger"
+            >
+              {t.deleteWallet}
+            </button>
+          )}
+
+          {mode === "local" && wallets.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(t.deleteAllConfirm)) deleteAllLocalWallets();
               }}
               className="wallet-btn-danger"
             >

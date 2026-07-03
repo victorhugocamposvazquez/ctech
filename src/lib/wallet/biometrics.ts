@@ -1,7 +1,8 @@
 import { scheduleWalletSnapshotPush } from "./pwa-sync";
 import { loadKeystore } from "./keystore";
 
-const BIO_STORAGE_KEY = "wallet_bio_v1";
+const BIO_KEY_PREFIX = "wallet_bio_v1_";
+const LEGACY_BIO_KEY = "wallet_bio_v1";
 const PRF_LABEL = new TextEncoder().encode("ctech-wallet-bio-v1");
 
 interface BioStore {
@@ -16,6 +17,10 @@ type PrfExtensionResults = {
     results?: { first?: ArrayBuffer };
   };
 };
+
+function bioKey(address: string): string {
+  return `${BIO_KEY_PREFIX}${address.toLowerCase()}`;
+}
 
 function bufToBase64(buf: ArrayBuffer | Uint8Array): string {
   const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
@@ -34,8 +39,16 @@ function rpId(): string {
   return window.location.hostname;
 }
 
-function loadBioStore(): BioStore | null {
-  const raw = localStorage.getItem(BIO_STORAGE_KEY);
+function loadBioStore(address: string): BioStore | null {
+  const key = bioKey(address);
+  let raw = localStorage.getItem(key);
+  if (!raw && address === loadKeystore()?.address) {
+    raw = localStorage.getItem(LEGACY_BIO_KEY);
+    if (raw) {
+      localStorage.setItem(key, raw);
+      localStorage.removeItem(LEGACY_BIO_KEY);
+    }
+  }
   if (!raw) return null;
   try {
     return JSON.parse(raw) as BioStore;
@@ -44,8 +57,10 @@ function loadBioStore(): BioStore | null {
   }
 }
 
-export function isBiometricEnabled(): boolean {
-  return !!loadBioStore();
+export function isBiometricEnabled(address?: string): boolean {
+  const addr = address ?? loadKeystore()?.address;
+  if (!addr) return false;
+  return !!loadBioStore(addr);
 }
 
 export async function isBiometricSupported(): Promise<boolean> {
@@ -58,8 +73,14 @@ export async function isBiometricSupported(): Promise<boolean> {
   }
 }
 
-export function clearBiometricEnrollment(): void {
-  localStorage.removeItem(BIO_STORAGE_KEY);
+export function clearBiometricEnrollment(address?: string): void {
+  if (address) {
+    localStorage.removeItem(bioKey(address));
+  } else {
+    const ks = loadKeystore();
+    if (ks) localStorage.removeItem(bioKey(ks.address));
+    localStorage.removeItem(LEGACY_BIO_KEY);
+  }
   scheduleWalletSnapshotPush();
 }
 
@@ -145,7 +166,7 @@ export async function enrollBiometric(password: string): Promise<void> {
   const { encPassword, iv } = await encryptPasswordWithPrf(prfOut, password);
 
   localStorage.setItem(
-    BIO_STORAGE_KEY,
+    bioKey(keystore.address),
     JSON.stringify({
       credentialId: bufToBase64(credential.rawId),
       encPassword,
@@ -156,8 +177,11 @@ export async function enrollBiometric(password: string): Promise<void> {
 }
 
 /** Desbloquea con Face ID / Touch ID / huella. Devuelve la contraseña de la wallet. */
-export async function unlockWithBiometric(): Promise<string> {
-  const store = loadBioStore();
+export async function unlockWithBiometric(address?: string): Promise<string> {
+  const addr = address ?? loadKeystore()?.address;
+  if (!addr) throw new Error("No wallet");
+
+  const store = loadBioStore(addr);
   if (!store) throw new Error("Not enrolled");
 
   const assertion = (await navigator.credentials.get({

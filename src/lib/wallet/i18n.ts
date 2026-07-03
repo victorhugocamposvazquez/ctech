@@ -157,6 +157,19 @@ export const t = {
   deleteWallet: "Eliminar wallet local",
   deleteConfirm:
     "¿Eliminar la wallet de este dispositivo? Asegúrate de tener guardada tu frase secreta.",
+  deleteActiveConfirm:
+    "¿Eliminar esta wallet de este dispositivo? Las demás wallets no se borrarán.",
+  deleteAllConfirm:
+    "¿Eliminar todas las wallets de este dispositivo? Asegúrate de tener guardadas tus frases secretas.",
+  selectWallet: "Elegir wallet",
+  selectWalletHint: "Cambia a otra wallet guardada en este dispositivo",
+  useAnotherWallet: "Usar otra wallet",
+  addWallet: "Añadir wallet",
+  addWalletHint: "Crea o importa otra wallet sin borrar las existentes",
+  backToUnlock: "Volver",
+  manageWallets: "Mis wallets",
+  removeWallet: "Eliminar",
+  activeWallet: "Activa",
   securityNote:
     "Las wallets locales se cifran en este dispositivo. Nunca compartas tu frase secreta.",
   version: "Web App · v1.0",

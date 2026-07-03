@@ -26,13 +26,19 @@ import {
 } from "viem/accounts";
 import { walletChain } from "@/lib/wallet/config";
 import {
+  addWalletToVault,
   clearKeystore,
   decryptSecret,
   encryptSecret,
+  getActiveWalletId,
   hasKeystore,
+  listWalletMeta,
   loadKeystore,
-  saveKeystore,
+  loadKeystoreById,
+  removeWalletFromVault,
+  setActiveWallet,
   type SecretPayload,
+  type WalletMeta,
 } from "@/lib/wallet/keystore";
 import { WALLET_SYNC_APPLIED_EVENT } from "@/lib/wallet/pwa-sync";
 
@@ -42,11 +48,18 @@ interface LocalWalletContextValue {
   status: LocalStatus;
   account: Account | null;
   address: Address | null;
+  wallets: WalletMeta[];
+  activeWalletId: string | null;
+  addingWallet: boolean;
+  startAddingWallet: () => void;
+  cancelAddingWallet: () => void;
+  switchWallet: (id: string) => void;
   createWallet: (password: string) => Promise<{ mnemonic: string; address: Address }>;
   importWallet: (payload: SecretPayload, password: string) => Promise<Address>;
   unlock: (password: string) => Promise<void>;
   lock: () => void;
-  removeWallet: () => void;
+  removeWallet: (id?: string) => void;
+  removeAllWallets: () => void;
   getWalletClient: () => WalletClient | null;
   sendTransaction: (args: {
     to: Address;
@@ -67,26 +80,37 @@ function accountFromSecret(payload: SecretPayload): Account {
   return privateKeyToAccount(key as `0x${string}`);
 }
 
+function refreshWalletList(): WalletMeta[] {
+  return listWalletMeta();
+}
+
 export function LocalWalletProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<LocalStatus>("loading");
   const [account, setAccount] = useState<Account | null>(null);
   const [secret, setSecret] = useState<SecretPayload | null>(null);
+  const [wallets, setWallets] = useState<WalletMeta[]>([]);
+  const [activeWalletId, setActiveWalletIdState] = useState<string | null>(null);
+  const [addingWallet, setAddingWallet] = useState(false);
+
+  const syncFromStorage = useCallback(() => {
+    setWallets(refreshWalletList());
+    setActiveWalletIdState(getActiveWalletId());
+    setStatus(hasKeystore() ? "locked" : "none");
+  }, []);
 
   useEffect(() => {
-    setStatus(hasKeystore() ? "locked" : "none");
-
-    const onSync = () => {
-      setStatus(hasKeystore() ? "locked" : "none");
-    };
+    syncFromStorage();
+    const onSync = () => syncFromStorage();
     window.addEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
     return () => window.removeEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
-  }, []);
+  }, [syncFromStorage]);
 
   const unlockWithSecret = useCallback((payload: SecretPayload) => {
     const acc = accountFromSecret(payload);
     setSecret(payload);
     setAccount(acc);
     setStatus("unlocked");
+    setAddingWallet(false);
   }, []);
 
   const createWallet = useCallback(async (password: string) => {
@@ -94,7 +118,9 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
     const acc = mnemonicToAccount(mnemonic);
     const payload: SecretPayload = { type: "mnemonic", value: mnemonic };
     const store = await encryptSecret(payload, password, acc.address);
-    saveKeystore(store);
+    const id = addWalletToVault(store);
+    setWallets(refreshWalletList());
+    setActiveWalletIdState(id);
     unlockWithSecret(payload);
     return { mnemonic, address: acc.address };
   }, [unlockWithSecret]);
@@ -103,7 +129,9 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
     async (payload: SecretPayload, password: string) => {
       const acc = accountFromSecret(payload);
       const store = await encryptSecret(payload, password, acc.address);
-      saveKeystore(store);
+      const id = addWalletToVault(store);
+      setWallets(refreshWalletList());
+      setActiveWalletIdState(id);
       unlockWithSecret(payload);
       return acc.address;
     },
@@ -120,15 +148,53 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
   const lock = useCallback(() => {
     setAccount(null);
     setSecret(null);
+    setAddingWallet(false);
     if (hasKeystore()) setStatus("locked");
     else setStatus("none");
   }, []);
 
-  const removeWallet = useCallback(() => {
-    clearKeystore();
+  const switchWallet = useCallback((id: string) => {
+    if (!setActiveWallet(id)) return;
+    setActiveWalletIdState(id);
     setAccount(null);
     setSecret(null);
+    setAddingWallet(false);
+    setStatus("locked");
+  }, []);
+
+  const startAddingWallet = useCallback(() => {
+    setAccount(null);
+    setSecret(null);
+    setAddingWallet(true);
+  }, []);
+
+  const cancelAddingWallet = useCallback(() => {
+    setAddingWallet(false);
+    if (hasKeystore()) setStatus("locked");
+    else setStatus("none");
+  }, []);
+
+  const removeAllWallets = useCallback(() => {
+    clearKeystore();
+    setWallets([]);
+    setActiveWalletIdState(null);
+    setAccount(null);
+    setSecret(null);
+    setAddingWallet(false);
     setStatus("none");
+  }, []);
+
+  const removeWallet = useCallback((id?: string) => {
+    const targetId = id ?? getActiveWalletId();
+    if (!targetId) return;
+    removeWalletFromVault(targetId);
+    setWallets(refreshWalletList());
+    setActiveWalletIdState(getActiveWalletId());
+    setAccount(null);
+    setSecret(null);
+    setAddingWallet(false);
+    if (hasKeystore()) setStatus("locked");
+    else setStatus("none");
   }, []);
 
   const getWalletClient = useCallback(() => {
@@ -159,22 +225,36 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
       status,
       account,
       address: account?.address ?? null,
+      wallets,
+      activeWalletId,
+      addingWallet,
+      startAddingWallet,
+      cancelAddingWallet,
+      switchWallet,
       createWallet,
       importWallet,
       unlock,
       lock,
       removeWallet,
+      removeAllWallets,
       getWalletClient,
       sendTransaction,
     }),
     [
       status,
       account,
+      wallets,
+      activeWalletId,
+      addingWallet,
+      startAddingWallet,
+      cancelAddingWallet,
+      switchWallet,
       createWallet,
       importWallet,
       unlock,
       lock,
       removeWallet,
+      removeAllWallets,
       getWalletClient,
       sendTransaction,
     ]
@@ -191,4 +271,11 @@ export function useLocalWallet() {
   const ctx = useContext(LocalWalletContext);
   if (!ctx) throw new Error("useLocalWallet outside provider");
   return ctx;
+}
+
+/** Keystore de la wallet activa (p. ej. para biometría en unlock). */
+export function useActiveKeystoreAddress(): string | undefined {
+  const { activeWalletId } = useLocalWallet();
+  if (!activeWalletId) return loadKeystore()?.address;
+  return loadKeystoreById(activeWalletId)?.address;
 }

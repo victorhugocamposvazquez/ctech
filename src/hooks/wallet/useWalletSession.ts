@@ -6,8 +6,16 @@ import { useLocalWallet } from "@/contexts/LocalWalletContext";
 export type WalletMode = "local" | "external" | null;
 
 export function useWalletSession() {
-  const { status: localStatus, address: localAddress, lock, removeWallet } =
-    useLocalWallet();
+  const {
+    status: localStatus,
+    address: localAddress,
+    lock,
+    removeWallet,
+    removeAllWallets,
+    addingWallet,
+    startAddingWallet,
+    wallets,
+  } = useLocalWallet();
   const { address: externalAddress, isConnected: externalConnected } =
     useAccount();
   const { disconnect } = useDisconnect();
@@ -32,8 +40,12 @@ export function useWalletSession() {
     if (localStatus === "unlocked") lock();
   };
 
-  const deleteLocalWallet = () => {
-    removeWallet();
+  const deleteLocalWallet = (id?: string) => {
+    removeWallet(id);
+  };
+
+  const deleteAllLocalWallets = () => {
+    removeAllWallets();
   };
 
   return {
@@ -44,8 +56,12 @@ export function useWalletSession() {
     externalConnected,
     disconnectAll,
     deleteLocalWallet,
+    deleteAllLocalWallets,
+    startAddingWallet,
+    addingWallet,
+    wallets,
     needsOnboarding:
-      localStatus === "none" && !externalConnected,
-    needsUnlock: localStatus === "locked" && !externalConnected,
+      localStatus === "none" && !externalConnected && !addingWallet,
+    needsUnlock: localStatus === "locked" && !externalConnected && !addingWallet,
   };
 }
