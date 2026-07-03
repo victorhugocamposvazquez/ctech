@@ -11,7 +11,7 @@ import { TrustShield } from "@/components/wallet/TrustShield";
 export default function WalletSettingsPage() {
   const { address, mode, disconnectAll, deleteLocalWallet } = useWalletSession();
   const { lock } = useLocalWallet();
-  const { showInstallBanner, install, isStandalone } = useInstallPrompt();
+  const { install, isStandalone } = useInstallPrompt();
 
   return (
     <WalletShell hideNav gradient>
@@ -45,10 +45,10 @@ export default function WalletSettingsPage() {
             </button>
           )}
 
-          {showInstallBanner && (
+          {!isStandalone && (
             <button
               type="button"
-              onClick={() => void install()}
+              onClick={install}
               className="wallet-btn-primary"
             >
               Instalar app
@@ -56,7 +56,7 @@ export default function WalletSettingsPage() {
           )}
 
           {isStandalone && (
-            <p className="text-center text-sm font-medium text-wallet-accent">✓ Installed as app</p>
+            <p className="text-center text-sm font-medium text-wallet-accent">✓ Instalada como app</p>
           )}
 
           <button type="button" onClick={() => disconnectAll()} className="wallet-btn-secondary">

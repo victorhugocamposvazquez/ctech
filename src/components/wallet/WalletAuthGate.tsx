@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { ConnectScreen } from "./ConnectScreen";
 import { UnlockScreen } from "./onboarding/UnlockScreen";
+import { InstallBottomBanner } from "./InstallBanner";
 
 export function WalletAuthGate({ children }: { children: ReactNode }) {
   const { localStatus, needsOnboarding, needsUnlock, isConnected } =
@@ -24,6 +25,7 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
     return (
       <div className="wallet-theme">
         <UnlockScreen />
+        <InstallBottomBanner aboveNav={false} />
       </div>
     );
   }
@@ -32,6 +34,7 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
     return (
       <div className="wallet-theme">
         <ConnectScreen />
+        <InstallBottomBanner aboveNav={false} />
       </div>
     );
   }

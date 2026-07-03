@@ -8,11 +8,18 @@ interface InstallBottomBannerProps {
 }
 
 export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProps) {
-  const { showInstallBanner, isIOS, install, dismiss } = useInstallPrompt();
+  const { showInstallBanner, canNativeInstall, isIOS, install, dismiss } =
+    useInstallPrompt();
+
+  if (!showInstallBanner) return null;
 
   const positionClass = aboveNav ? "bottom-[72px]" : "bottom-3 safe-bottom";
 
-  if (!showInstallBanner) return null;
+  const hint = canNativeInstall
+    ? "Añádela a tu pantalla de inicio con un toque"
+    : isIOS
+      ? "Toca Instalar y sigue los pasos de Safari"
+      : "Toca Instalar para ver cómo añadirla";
 
   return (
     <div
@@ -26,15 +33,11 @@ export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProp
           <p className="text-sm font-semibold leading-tight text-wallet-text">
             Instalar Trust Wallet
           </p>
-          <p className="mt-0.5 text-[11px] leading-snug text-wallet-muted">
-            {isIOS
-              ? "Toca Instalar para ver los pasos en Safari"
-              : "Añádela a tu pantalla de inicio con un toque"}
-          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-wallet-muted">{hint}</p>
         </div>
         <button
           type="button"
-          onClick={() => void install()}
+          onClick={install}
           className="shrink-0 rounded-full bg-wallet-accent px-4 py-2 text-xs font-bold text-[#060608]"
         >
           Instalar
@@ -50,9 +53,4 @@ export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProp
       </div>
     </div>
   );
-}
-
-/** @deprecated Use InstallBottomBanner in WalletShell */
-export function InstallBanner() {
-  return null;
 }

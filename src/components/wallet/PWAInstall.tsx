@@ -1,53 +1,64 @@
 "use client";
 
-import {
-  forwardRef,
-  useEffect,
-  type Ref,
-} from "react";
+import { forwardRef, useCallback, useEffect, useRef } from "react";
 import type { PWAInstallElement } from "@khmyznikov/pwa-install";
 
 interface PWAInstallProps {
+  onReady?: () => void;
+  onInstallAvailable?: () => void;
   onInstallSuccess?: () => void;
 }
 
 export const PWAInstall = forwardRef<PWAInstallElement, PWAInstallProps>(
-  function PWAInstall({ onInstallSuccess }, ref) {
+  function PWAInstall(
+    { onReady, onInstallAvailable, onInstallSuccess },
+    forwardedRef
+  ) {
+    const handlersRef = useRef({ onReady, onInstallAvailable, onInstallSuccess });
+    handlersRef.current = { onReady, onInstallAvailable, onInstallSuccess };
+    const cleanupRef = useRef<(() => void) | null>(null);
+
     useEffect(() => {
-      void import("@khmyznikov/pwa-install");
+      let cancelled = false;
+      void import("@khmyznikov/pwa-install")
+        .then(() => customElements.whenDefined("pwa-install"))
+        .then(() => {
+          if (!cancelled) handlersRef.current.onReady?.();
+        });
+      return () => {
+        cancelled = true;
+      };
     }, []);
 
-    useEffect(() => {
-      const attach = (el: PWAInstallElement | null) => {
-        if (!el || !onInstallSuccess) return undefined;
-        const handler = () => onInstallSuccess();
-        el.addEventListener("pwa-install-success-event", handler);
-        return () => el.removeEventListener("pwa-install-success-event", handler);
-      };
+    const setRef = useCallback(
+      (el: PWAInstallElement | null) => {
+        cleanupRef.current?.();
+        cleanupRef.current = null;
 
-      const el =
-        ref && typeof ref === "object" && "current" in ref ? ref.current : null;
-      let cleanup = attach(el);
+        if (typeof forwardedRef === "function") forwardedRef(el);
+        else if (forwardedRef) forwardedRef.current = el;
 
-      const timer = window.setTimeout(() => {
-        cleanup?.();
-        const late =
-          ref && typeof ref === "object" && "current" in ref ? ref.current : null;
-        cleanup = attach(late);
-      }, 0);
+        if (!el) return;
 
-      return () => {
-        window.clearTimeout(timer);
-        cleanup?.();
-      };
-    }, [onInstallSuccess, ref]);
+        const onSuccess = () => handlersRef.current.onInstallSuccess?.();
+        const onAvailable = () => handlersRef.current.onInstallAvailable?.();
+        el.addEventListener("pwa-install-success-event", onSuccess);
+        el.addEventListener("pwa-install-available-event", onAvailable);
+        cleanupRef.current = () => {
+          el.removeEventListener("pwa-install-success-event", onSuccess);
+          el.removeEventListener("pwa-install-available-event", onAvailable);
+        };
+      },
+      [forwardedRef]
+    );
 
     return (
       <pwa-install
-        ref={ref as Ref<PWAInstallElement>}
+        ref={setRef}
         manual-apple="true"
         manual-chrome="true"
         manifest-url="/manifest.webmanifest"
+        name="Trust Wallet"
         install-description="Instala la app para acceder más rápido a tu wallet"
       />
     );
