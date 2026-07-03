@@ -21,9 +21,10 @@ function bufToBase64(buf: ArrayBuffer | Uint8Array): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
-function base64ToBytes(b64: string): Uint8Array {
+function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
+  const buffer = new ArrayBuffer(bin.length);
+  const bytes = new Uint8Array(buffer);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
 }
@@ -91,8 +92,8 @@ async function decryptPasswordWithPrf(
     false,
     ["decrypt"]
   );
-  const iv = new Uint8Array(base64ToBytes(store.iv)) as Uint8Array<ArrayBuffer>;
-  const ciphertext = base64ToBytes(store.encPassword) as Uint8Array<ArrayBuffer>;
+  const iv = base64ToBytes(store.iv);
+  const ciphertext = base64ToBytes(store.encPassword);
   const decrypted = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
     key,
