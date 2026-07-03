@@ -9,45 +9,77 @@ import {
   type Address,
 } from "viem";
 import {
-  useAccount,
   useSendTransaction,
   useWaitForTransactionReceipt,
 } from "wagmi";
+import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { getWalletTokens, erc20BalanceAbi } from "@/lib/wallet/tokens";
 import { formatTokenAmount } from "@/lib/wallet/format";
 import { usePortfolio } from "@/hooks/wallet/usePortfolio";
+import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { walletChain } from "@/lib/wallet/config";
 
 export function SendForm() {
-  const { address } = useAccount();
+  const { mode } = useWalletSession();
+  const { sendTransaction: sendLocal } = useLocalWallet();
   const { assets } = usePortfolio();
   const tokens = getWalletTokens();
 
   const [tokenId, setTokenId] = useState(tokens[1]?.id ?? "usdt");
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
+  const [localPending, setLocalPending] = useState(false);
+  const [localTxHash, setLocalTxHash] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const selected = tokens.find((t) => t.id === tokenId)!;
   const asset = assets.find((a) => a.token.id === tokenId);
 
   const {
-    sendTransaction,
-    data: txHash,
-    isPending,
-    error,
+    sendTransaction: sendExternal,
+    data: extTxHash,
+    isPending: extPending,
+    error: extError,
   } = useSendTransaction();
 
-  const { isLoading: confirming } = useWaitForTransactionReceipt({
-    hash: txHash,
+  const { isLoading: extConfirming } = useWaitForTransactionReceipt({
+    hash: extTxHash,
   });
 
-  const handleSend = () => {
-    if (!address || !isAddress(to)) return;
+  const handleSend = async () => {
+    if (!isAddress(to)) return;
     const parsed = parseUnits(amount || "0", selected.decimals);
     if (parsed <= 0n) return;
 
+    if (mode === "local") {
+      setLocalPending(true);
+      setLocalError(null);
+      try {
+        let hash: string;
+        if (selected.isNative) {
+          hash = await sendLocal({ to: to as Address, value: parsed });
+        } else {
+          if (!selected.address) return;
+          hash = await sendLocal({
+            to: selected.address,
+            data: encodeFunctionData({
+              abi: erc20BalanceAbi,
+              functionName: "transfer",
+              args: [to as Address, parsed],
+            }),
+          });
+        }
+        setLocalTxHash(hash);
+      } catch (e) {
+        setLocalError(e instanceof Error ? e.message : "Transaction failed");
+      } finally {
+        setLocalPending(false);
+      }
+      return;
+    }
+
     if (selected.isNative) {
-      sendTransaction({
+      sendExternal({
         to: to as Address,
         value: parsed,
         chainId: walletChain.id,
@@ -57,7 +89,7 @@ export function SendForm() {
 
     if (!selected.address) return;
 
-    sendTransaction({
+    sendExternal({
       to: selected.address,
       data: encodeFunctionData({
         abi: erc20BalanceAbi,
@@ -79,6 +111,11 @@ export function SendForm() {
     }
     setAmount(formatUnits(asset.rawBalance, selected.decimals));
   };
+
+  const isPending = mode === "local" ? localPending : extPending;
+  const isConfirming = mode === "local" ? false : extConfirming;
+  const txHash = mode === "local" ? localTxHash : extTxHash;
+  const error = mode === "local" ? localError : extError?.message;
 
   return (
     <div className="space-y-6 px-4 pt-6">
@@ -147,15 +184,15 @@ export function SendForm() {
         type="button"
         disabled={
           isPending ||
-          confirming ||
+          isConfirming ||
           !isAddress(to) ||
           !amount ||
           parseFloat(amount) <= 0
         }
-        onClick={handleSend}
+        onClick={() => void handleSend()}
         className="wallet-btn-primary"
       >
-        {isPending || confirming ? "Sending…" : "Continue"}
+        {isPending || isConfirming ? "Sending…" : "Continue"}
       </button>
 
       {txHash && (
@@ -164,7 +201,7 @@ export function SendForm() {
         </p>
       )}
       {error && (
-        <p className="text-center text-sm text-wallet-danger">{error.message}</p>
+        <p className="text-center text-sm text-wallet-danger">{error}</p>
       )}
     </div>
   );

@@ -1,23 +1,14 @@
 "use client";
 
-import { useAccount } from "wagmi";
 import { WalletShell } from "@/components/wallet/WalletShell";
-import { ConnectScreen } from "@/components/wallet/ConnectScreen";
 import { ReceiveScreen } from "@/components/wallet/ReceiveScreen";
+import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 
 export default function WalletReceivePage() {
-  const { isConnected, address } = useAccount();
-
-  if (!isConnected) {
-    return (
-      <WalletShell hideNav hideHeader gradient>
-        <ConnectScreen />
-      </WalletShell>
-    );
-  }
+  const { address } = useWalletSession();
 
   return (
-    <WalletShell address={address} hideNav>
+    <WalletShell address={address ?? undefined} hideNav>
       <ReceiveScreen />
     </WalletShell>
   );

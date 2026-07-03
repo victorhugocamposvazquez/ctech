@@ -2,7 +2,6 @@
 
 import { useAccount } from "wagmi";
 import { WalletShell } from "@/components/wallet/WalletShell";
-import { ConnectScreen } from "@/components/wallet/ConnectScreen";
 import { BalanceHeader } from "@/components/wallet/BalanceHeader";
 import { TokenList } from "@/components/wallet/TokenList";
 import { QuickActions } from "@/components/wallet/QuickActions";
@@ -10,19 +9,11 @@ import { AssetTabs } from "@/components/wallet/AssetTabs";
 import { usePortfolio } from "@/hooks/wallet/usePortfolio";
 
 export default function WalletHomePage() {
-  const { isConnected } = useAccount();
-  const { assets, totalUsd, isLoading, address } = usePortfolio();
-
-  if (!isConnected) {
-    return (
-      <WalletShell hideNav hideHeader gradient>
-        <ConnectScreen />
-      </WalletShell>
-    );
-  }
+  const { address } = useAccount();
+  const { assets, totalUsd, isLoading, address: sessionAddress } = usePortfolio();
 
   return (
-    <WalletShell address={address} gradient>
+    <WalletShell address={sessionAddress ?? address} gradient>
       <BalanceHeader totalUsd={totalUsd} isLoading={isLoading} />
       <QuickActions />
       <AssetTabs>

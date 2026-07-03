@@ -2,13 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { formatUnits, type Address } from "viem";
-import { useAccount, useBalance, useReadContracts } from "wagmi";
+import { useBalance, useReadContracts } from "wagmi";
 import { fetchBnbUsd, fetchTokenUsd } from "@/lib/wallet/prices";
+import { getPublicClient } from "@/lib/wallet/public-client";
 import {
   getWalletTokens,
   type WalletToken,
   erc20BalanceAbi,
 } from "@/lib/wallet/tokens";
+import { useWalletSession } from "./useWalletSession";
 
 export interface PortfolioAsset {
   token: WalletToken;
@@ -18,25 +20,56 @@ export interface PortfolioAsset {
   usdValue: number;
 }
 
+async function fetchLocalBalances(address: Address, tokens: WalletToken[]) {
+  const client = getPublicClient();
+  const native = tokens.find((t) => t.isNative);
+  const erc20s = tokens.filter((t) => t.address);
+
+  const nativeBal = native
+    ? await client.getBalance({ address })
+    : 0n;
+
+  const erc20Bals = await Promise.all(
+    erc20s.map((t) =>
+      client.readContract({
+        address: t.address!,
+        abi: erc20BalanceAbi,
+        functionName: "balanceOf",
+        args: [address],
+      })
+    )
+  );
+
+  return { nativeBal, erc20Bals, native, erc20s };
+}
+
 export function usePortfolio() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, mode } = useWalletSession();
+  const walletAddress = address ?? undefined;
   const tokens = getWalletTokens();
   const native = tokens.find((t) => t.isNative);
   const erc20s = tokens.filter((t) => t.address);
 
-  const { data: nativeBalance, isLoading: nativeLoading } = useBalance({
-    address,
-    query: { enabled: isConnected && !!address },
+  const { data: externalNative, isLoading: extNativeLoading } = useBalance({
+    address: mode === "external" ? walletAddress : undefined,
+    query: { enabled: mode === "external" && !!walletAddress },
   });
 
-  const { data: erc20Balances, isLoading: erc20Loading } = useReadContracts({
+  const { data: externalErc20, isLoading: extErc20Loading } = useReadContracts({
     contracts: erc20s.map((t) => ({
       address: t.address!,
       abi: erc20BalanceAbi,
       functionName: "balanceOf" as const,
-      args: [address as Address],
+      args: [walletAddress as Address],
     })),
-    query: { enabled: isConnected && !!address },
+    query: { enabled: mode === "external" && !!walletAddress },
+  });
+
+  const { data: localData, isLoading: localLoading } = useQuery({
+    queryKey: ["local-balances", walletAddress],
+    queryFn: () => fetchLocalBalances(walletAddress!, tokens),
+    enabled: mode === "local" && !!walletAddress,
+    refetchInterval: 30_000,
   });
 
   const { data: bnbUsd = 0 } = useQuery({
@@ -55,11 +88,24 @@ export function usePortfolio() {
 
   const assets: PortfolioAsset[] = [];
 
-  if (native && nativeBalance) {
-    const balance = Number(formatUnits(nativeBalance.value, native.decimals));
+  if (mode === "external" && native && externalNative) {
+    const balance = Number(formatUnits(externalNative.value, native.decimals));
     assets.push({
       token: native,
-      rawBalance: nativeBalance.value,
+      rawBalance: externalNative.value,
+      balance,
+      usdPrice: bnbUsd,
+      usdValue: balance * bnbUsd,
+    });
+  }
+
+  if (mode === "local" && native && localData) {
+    const balance = Number(
+      formatUnits(localData.nativeBal, native.decimals)
+    );
+    assets.push({
+      token: native,
+      rawBalance: localData.nativeBal,
       balance,
       usdPrice: bnbUsd,
       usdValue: balance * bnbUsd,
@@ -67,9 +113,14 @@ export function usePortfolio() {
   }
 
   erc20s.forEach((token, i) => {
-    const result = erc20Balances?.[i];
-    const raw =
-      result?.status === "success" ? (result.result as bigint) : 0n;
+    let raw = 0n;
+    if (mode === "external") {
+      const result = externalErc20?.[i];
+      raw = result?.status === "success" ? (result.result as bigint) : 0n;
+    } else if (mode === "local" && localData) {
+      raw = localData.erc20Bals[i] ?? 0n;
+    }
+
     const balance = Number(formatUnits(raw, token.decimals));
     let usdPrice = token.fixedUsdPrice ?? 0;
     if (token.dexScreener) usdPrice = customUsd ?? 0;
@@ -84,12 +135,12 @@ export function usePortfolio() {
   });
 
   const totalUsd = assets.reduce((s, a) => s + a.usdValue, 0);
+  const isLoading =
+    mode === "external"
+      ? extNativeLoading || extErc20Loading
+      : mode === "local"
+        ? localLoading
+        : false;
 
-  return {
-    assets,
-    totalUsd,
-    isLoading: nativeLoading || erc20Loading,
-    isConnected,
-    address,
-  };
+  return { assets, totalUsd, isLoading, isConnected, address, mode };
 }

@@ -1,23 +1,14 @@
 "use client";
 
-import { useAccount } from "wagmi";
 import { WalletShell } from "@/components/wallet/WalletShell";
-import { ConnectScreen } from "@/components/wallet/ConnectScreen";
 import { SendForm } from "@/components/wallet/SendForm";
+import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 
 export default function WalletSendPage() {
-  const { isConnected, address } = useAccount();
-
-  if (!isConnected) {
-    return (
-      <WalletShell hideNav hideHeader gradient>
-        <ConnectScreen />
-      </WalletShell>
-    );
-  }
+  const { address } = useWalletSession();
 
   return (
-    <WalletShell address={address} hideNav>
+    <WalletShell address={address ?? undefined} hideNav>
       <SendForm />
     </WalletShell>
   );

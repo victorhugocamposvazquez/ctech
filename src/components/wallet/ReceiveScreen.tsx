@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { walletChain } from "@/lib/wallet/config";
 
 export function ReceiveScreen() {
-  const { address } = useAccount();
+  const { address } = useWalletSession();
   const [copied, setCopied] = useState(false);
 
   if (!address) return null;
