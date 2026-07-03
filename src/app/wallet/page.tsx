@@ -7,7 +7,6 @@ import { BalanceHeader } from "@/components/wallet/BalanceHeader";
 import { TokenList } from "@/components/wallet/TokenList";
 import { QuickActions } from "@/components/wallet/QuickActions";
 import { AssetTabs } from "@/components/wallet/AssetTabs";
-import { InstallBanner } from "@/components/wallet/InstallBanner";
 import { usePortfolio } from "@/hooks/wallet/usePortfolio";
 
 export default function WalletHomePage() {
@@ -24,7 +23,6 @@ export default function WalletHomePage() {
 
   return (
     <WalletShell address={address} gradient>
-      <InstallBanner />
       <BalanceHeader totalUsd={totalUsd} isLoading={isLoading} />
       <QuickActions />
       <AssetTabs>

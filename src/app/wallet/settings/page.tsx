@@ -11,7 +11,8 @@ export default function WalletSettingsPage() {
   const { address, isConnected, connector } = useAccount();
   const { disconnect } = useDisconnect();
   const { connect, connectors } = useConnect();
-  const { canInstall, install, isStandalone } = useInstallPrompt();
+  const { showInstallBanner, canNativeInstall, install, isStandalone, isIOS } =
+    useInstallPrompt();
 
   return (
     <WalletShell hideNav>
@@ -45,13 +46,18 @@ export default function WalletSettingsPage() {
             )}
           </section>
 
-          {canInstall && !isStandalone && (
+          {showInstallBanner && (
             <button
               type="button"
               onClick={() => void install()}
-              className="wallet-btn-primary"
+              disabled={!canNativeInstall && !isIOS}
+              className="wallet-btn-primary disabled:opacity-50"
             >
-              Install App
+              {canNativeInstall
+                ? "Install App"
+                : isIOS
+                  ? "Install (see banner below)"
+                  : "Install App"}
             </button>
           )}
 
