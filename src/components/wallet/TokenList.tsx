@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
-import { formatTokenAmount, formatUsd } from "@/lib/wallet/format";
+import { formatUsd, formatTokenAmount } from "@/lib/wallet/format";
+import { t } from "@/lib/wallet/i18n";
 import type { PortfolioAsset } from "@/hooks/wallet/usePortfolio";
 
 function TokenRow({ asset }: { asset: PortfolioAsset }) {
@@ -17,22 +19,17 @@ function TokenRow({ asset }: { asset: PortfolioAsset }) {
           width={44}
           height={44}
           className="h-full w-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
         />
       </div>
-
       <div className="min-w-0 flex-1">
         <p className="text-[16px] font-semibold leading-tight text-wallet-text">
           {token.symbol}
         </p>
         <p className="mt-0.5 truncate text-[13px] text-wallet-muted">{token.name}</p>
       </div>
-
       <div className="shrink-0 text-right">
         <p className="text-[16px] font-semibold tabular-nums tracking-tight text-wallet-text">
-          {hasBalance ? formatUsd(usdValue) : "$0.00"}
+          {hasBalance ? formatUsd(usdValue) : "$0,00"}
         </p>
         <p className="mt-0.5 text-[13px] tabular-nums text-wallet-muted">
           {formatTokenAmount(asset.rawBalance, token.decimals, 5)} {token.symbol}
@@ -45,9 +42,13 @@ function TokenRow({ asset }: { asset: PortfolioAsset }) {
 export function TokenList({
   assets,
   isLoading,
+  isError,
+  onRetry,
 }: {
   assets: PortfolioAsset[];
   isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
 }) {
   if (isLoading) {
     return (
@@ -66,14 +67,36 @@ export function TokenList({
     );
   }
 
-  const sorted = [...assets].sort((a, b) => b.usdValue - a.usdValue);
+  if (isError) {
+    return (
+      <div className="wallet-empty py-12">
+        <p className="font-semibold text-wallet-text">{t.portfolioError}</p>
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="wallet-btn-secondary mt-4 max-w-xs">
+            {t.retry}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const withBalance = assets.filter((a) => a.rawBalance > 0n);
+  const sorted = [...withBalance].sort((a, b) => b.usdValue - a.usdValue);
 
   if (sorted.length === 0) {
     return (
-      <div className="wallet-empty">
+      <div className="wallet-empty py-12">
         <div className="wallet-empty-icon">◎</div>
-        <p className="font-semibold text-wallet-text">No crypto yet</p>
-        <p className="mt-1 text-sm text-wallet-muted">Buy or receive to get started</p>
+        <p className="font-semibold text-wallet-text">{t.noCrypto}</p>
+        <p className="mt-1 text-sm text-wallet-muted">{t.noCryptoHint}</p>
+        <div className="wallet-cta-row mt-4 w-full max-w-xs">
+          <Link href="/wallet/receive" className="wallet-btn-primary text-center">
+            {t.receive}
+          </Link>
+          <Link href="/wallet/buy" className="wallet-btn-secondary text-center">
+            {t.buy}
+          </Link>
+        </div>
       </div>
     );
   }

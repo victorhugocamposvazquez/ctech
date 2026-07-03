@@ -65,7 +65,7 @@ export function usePortfolio() {
     query: { enabled: mode === "external" && !!walletAddress },
   });
 
-  const { data: localData, isLoading: localLoading } = useQuery({
+  const { data: localData, isLoading: localLoading, isError: localError } = useQuery({
     queryKey: ["local-balances", walletAddress],
     queryFn: () => fetchLocalBalances(walletAddress!, tokens),
     enabled: mode === "local" && !!walletAddress,
@@ -142,5 +142,7 @@ export function usePortfolio() {
         ? localLoading
         : false;
 
-  return { assets, totalUsd, isLoading, isConnected, address, mode };
+  const isError = mode === "local" ? localError : false;
+
+  return { assets, totalUsd, isLoading, isError, isConnected, address, mode };
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import type { SecretPayload } from "@/lib/wallet/keystore";
+import { t } from "@/lib/wallet/i18n";
 
 function normalizeMnemonic(input: string): string {
   return input.trim().toLowerCase().replace(/\s+/g, " ");
@@ -37,11 +38,11 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
   const submit = async () => {
     setError("");
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t.passwordTooShort);
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t.passwordsMismatch);
       return;
     }
 
@@ -49,7 +50,7 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
     if (tab === "phrase") {
       const normalized = normalizeMnemonic(phrase);
       if (!validateMnemonic(normalized)) {
-        setError("Invalid recovery phrase");
+        setError(t.invalidPhrase);
         return;
       }
       payload = { type: "mnemonic", value: normalized };
@@ -60,7 +61,7 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
         privateKeyToAccount(k as `0x${string}`);
         payload = { type: "privateKey", value: k };
       } catch {
-        setError("Invalid private key");
+        setError(t.invalidKey);
         return;
       }
     }
@@ -69,29 +70,29 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
     try {
       await importWallet(payload, password);
     } catch {
-      setError("Could not import wallet");
+      setError(t.couldNotImport);
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="wallet-screen wallet-gradient-top min-h-dvh pt-8">
+    <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
       <button type="button" onClick={onBack} className="wallet-back-link">
-        ← Back
+        ← {t.back}
       </button>
-      <h1 className="wallet-page-title">Import wallet</h1>
-      <p className="wallet-page-subtitle">Restore with your secret phrase or private key</p>
+      <h1 className="wallet-page-title">{t.importTitle}</h1>
+      <p className="wallet-page-subtitle">{t.importHint}</p>
 
       <div className="wallet-segmented mt-8">
-        {(["phrase", "key"] as const).map((t) => (
+        {(["phrase", "key"] as const).map((tabKey) => (
           <button
-            key={t}
+            key={tabKey}
             type="button"
-            onClick={() => setTab(t)}
-            className={`wallet-segmented-btn ${tab === t ? "active" : ""}`}
+            onClick={() => setTab(tabKey)}
+            className={`wallet-segmented-btn ${tab === tabKey ? "active" : ""}`}
           >
-            {t === "phrase" ? "Secret phrase" : "Private key"}
+            {tabKey === "phrase" ? t.secretPhraseTab : t.privateKeyTab}
           </button>
         ))}
       </div>
@@ -99,18 +100,18 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
       <div className="mt-6 flex-1 space-y-5">
         {tab === "phrase" ? (
           <div>
-            <label className="wallet-label">Recovery phrase</label>
+            <label className="wallet-label">{t.recoveryPhrase}</label>
             <textarea
               value={phrase}
               onChange={(e) => setPhrase(e.target.value)}
-              placeholder="word1 word2 word3 …"
+              placeholder="palabra1 palabra2 palabra3 …"
               rows={4}
               className="wallet-input resize-none font-mono text-sm leading-relaxed"
             />
           </div>
         ) : (
           <div>
-            <label className="wallet-label">Private key</label>
+            <label className="wallet-label">{t.privateKey}</label>
             <input
               type="password"
               value={privateKey}
@@ -122,11 +123,11 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
         )}
 
         <div>
-          <label className="wallet-label">New password</label>
+          <label className="wallet-label">{t.newPassword}</label>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="wallet-input" />
         </div>
         <div>
-          <label className="wallet-label">Confirm password</label>
+          <label className="wallet-label">{t.confirmPassword}</label>
           <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="wallet-input" />
         </div>
       </div>
@@ -134,7 +135,7 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
       {error && <p className="text-sm text-wallet-danger">{error}</p>}
 
       <button type="button" disabled={busy} onClick={() => void submit()} className="wallet-btn-primary mt-6">
-        {busy ? "Importing…" : "Import wallet"}
+        {busy ? t.importing : t.importWallet}
       </button>
     </div>
   );

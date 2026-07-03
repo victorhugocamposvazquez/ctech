@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatUsd } from "@/lib/wallet/format";
+import { t } from "@/lib/wallet/i18n";
 
 interface BalanceHeaderProps {
   totalUsd: number;
@@ -14,12 +15,12 @@ export function BalanceHeader({ totalUsd, isLoading }: BalanceHeaderProps) {
   return (
     <div className="px-5 pb-4 pt-2 text-center">
       <div className="flex items-center justify-center gap-2">
-        <p className="wallet-balance-label">Total balance</p>
+        <p className="wallet-balance-label">{t.totalBalance}</p>
         <button
           type="button"
           onClick={() => setHidden((v) => !v)}
           className="wallet-icon-btn !h-7 !w-7 text-wallet-muted"
-          aria-label={hidden ? "Show balance" : "Hide balance"}
+          aria-label={hidden ? "Mostrar balance" : "Ocultar balance"}
         >
           {hidden ? (
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

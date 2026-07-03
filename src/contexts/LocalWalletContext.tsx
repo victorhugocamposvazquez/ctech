@@ -17,6 +17,7 @@ import {
   type WalletClient,
 } from "viem";
 import { http } from "viem";
+import { getWalletRpcUrl } from "@/lib/wallet/rpc";
 import {
   english,
   generateMnemonic,
@@ -128,7 +129,7 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
     return createWalletClient({
       account,
       chain: walletChain,
-      transport: http(),
+      transport: http(getWalletRpcUrl()),
     });
   }, [account]);
 

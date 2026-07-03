@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Trust Wallet",
-  description: "The most trusted & secure crypto wallet",
+  description: "Tu wallet crypto segura en BNB Smart Chain",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

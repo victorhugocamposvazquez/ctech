@@ -5,6 +5,7 @@ import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { ConnectScreen } from "./ConnectScreen";
 import { UnlockScreen } from "./onboarding/UnlockScreen";
 import { InstallBottomBanner } from "./InstallBanner";
+import { t } from "@/lib/wallet/i18n";
 
 export function WalletAuthGate({ children }: { children: ReactNode }) {
   const { localStatus, needsOnboarding, needsUnlock, isConnected } =
@@ -16,7 +17,7 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
         <div className="wallet-hero-glow">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-wallet-accent border-t-transparent" />
         </div>
-        <p className="mt-6 text-sm font-medium text-wallet-muted">Loading wallet…</p>
+        <p className="mt-6 text-sm font-medium text-wallet-muted">{t.loading}</p>
       </div>
     );
   }

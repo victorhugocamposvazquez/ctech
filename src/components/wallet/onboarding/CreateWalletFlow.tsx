@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { english, generateMnemonic } from "viem/accounts";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
+import { t } from "@/lib/wallet/i18n";
 
 interface CreateWalletFlowProps {
   onBack: () => void;
@@ -24,11 +25,11 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
   const goToPhrase = () => {
     setError("");
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t.passwordTooShort);
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t.passwordsMismatch);
       return;
     }
     const m = generateMnemonic(english);
@@ -43,7 +44,7 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
     try {
       await importWallet({ type: "mnemonic", value: mnemonic }, password);
     } catch {
-      setError("Could not save wallet");
+      setError(t.couldNotSave);
     } finally {
       setBusy(false);
     }
@@ -51,40 +52,36 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
 
   if (step === "password") {
     return (
-      <div className="wallet-screen wallet-gradient-top min-h-dvh pt-8">
+      <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
         <button type="button" onClick={onBack} className="wallet-back-link">
-          ← Back
+          ← {t.back}
         </button>
-        <h1 className="wallet-page-title">Create password</h1>
-        <p className="wallet-page-subtitle">
-          Encrypts your wallet on this device. Cannot be recovered if lost.
-        </p>
+        <h1 className="wallet-page-title">{t.createPassword}</h1>
+        <p className="wallet-page-subtitle">{t.createPasswordHint}</p>
 
         <div className="mt-10 space-y-5">
           <div>
-            <label className="wallet-label">Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="wallet-input" placeholder="Min. 8 characters" />
+            <label className="wallet-label">{t.password}</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="wallet-input" placeholder={t.passwordMin} />
           </div>
           <div>
-            <label className="wallet-label">Confirm</label>
+            <label className="wallet-label">{t.confirmPassword}</label>
             <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="wallet-input" />
           </div>
         </div>
 
         {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
         <button type="button" onClick={goToPhrase} className="wallet-btn-primary mt-auto">
-          Continue
+          {t.continue}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="wallet-screen wallet-gradient-top min-h-dvh pt-8">
-      <h1 className="wallet-page-title">Secret phrase</h1>
-      <p className="wallet-page-subtitle">
-        Write down these 12 words in order. This is the only way to recover your wallet.
-      </p>
+    <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
+      <h1 className="wallet-page-title">{t.secretPhrase}</h1>
+      <p className="wallet-page-subtitle">{t.secretPhraseHint}</p>
 
       <div className="wallet-mnemonic-grid mt-8">
         {words.map((word, i) => (
@@ -100,18 +97,18 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
         onClick={() => void navigator.clipboard.writeText(mnemonic)}
         className="mt-5 text-sm font-semibold text-wallet-accent"
       >
-        Copy to clipboard
+        {t.copyPhrase}
       </button>
 
       <label className="mt-8 flex items-start gap-3 rounded-2xl border border-wallet-border bg-wallet-accent-soft p-4 text-sm text-wallet-secondary">
         <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 accent-[#48ff91]" />
-        I have saved my secret phrase in a secure place
+        {t.savedPhrase}
       </label>
 
       {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
 
       <button type="button" disabled={!saved || busy} onClick={() => void finalize()} className="wallet-btn-primary mt-6">
-        {busy ? "Creating wallet…" : "Continue to wallet"}
+        {busy ? t.creating : t.continueToWallet}
       </button>
     </div>
   );

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { shortenAddress } from "@/lib/wallet/format";
+import { walletChain } from "@/lib/wallet/config";
+import { isSubpage, routeTitle, t } from "@/lib/wallet/i18n";
 
 interface WalletHeaderProps {
   address?: string;
@@ -14,41 +16,33 @@ export function WalletHeader({
   showWalletSelector = true,
 }: WalletHeaderProps) {
   const pathname = usePathname();
-  const isSettings = pathname.startsWith("/wallet/settings");
+  const sub = isSubpage(pathname);
+  const title = routeTitle(pathname);
 
   return (
     <header className="safe-top flex items-center justify-between px-5 pb-3 pt-4">
-      <Link
-        href="/wallet/settings"
-        className="wallet-icon-btn"
-        aria-label="Ajustes"
-      >
-        {isSettings ? (
+      {sub ? (
+        <Link href="/wallet" className="wallet-icon-btn" aria-label={t.back}>
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-        ) : (
+        </Link>
+      ) : (
+        <Link href="/wallet/settings" className="wallet-icon-btn" aria-label={t.navSettings}>
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-        )}
-      </Link>
+        </Link>
+      )}
 
-      {showWalletSelector ? (
-        <button type="button" className="wallet-selector">
+      {showWalletSelector && !sub ? (
+        <span className="wallet-network-pill">
           <span className="h-2 w-2 rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
-          <span>Main Wallet</span>
-          <svg className="h-4 w-4 text-wallet-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+          {walletChain.name}
+        </span>
       ) : (
         <span className="text-[17px] font-semibold tracking-tight text-wallet-text">
-          {pathname.includes("/send")
-            ? "Send"
-            : pathname.includes("/receive")
-              ? "Receive"
-              : "Trust Wallet"}
+          {title}
         </span>
       )}
 
@@ -58,7 +52,7 @@ export function WalletHeader({
             type="button"
             onClick={() => void navigator.clipboard.writeText(address)}
             className="wallet-icon-btn"
-            aria-label="Copiar dirección"
+            aria-label={t.copyAddressShort}
             title={shortenAddress(address, 4)}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -66,7 +60,7 @@ export function WalletHeader({
             </svg>
           </button>
         )}
-        <Link href="/wallet/receive" className="wallet-icon-btn" aria-label="QR">
+        <Link href="/wallet/receive" className="wallet-icon-btn" aria-label={t.receive}>
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
           </svg>

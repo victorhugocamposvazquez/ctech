@@ -5,124 +5,246 @@ import {
   parseUnits,
   isAddress,
   encodeFunctionData,
+  formatEther,
   type Address,
 } from "viem";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
+import Image from "next/image";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { getWalletTokens, erc20BalanceAbi } from "@/lib/wallet/tokens";
 import { formatTokenAmount } from "@/lib/wallet/format";
+import { getPublicClient } from "@/lib/wallet/public-client";
 import { usePortfolio } from "@/hooks/wallet/usePortfolio";
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { walletChain } from "@/lib/wallet/config";
+import { t } from "@/lib/wallet/i18n";
+import { ConfirmSheet } from "./ConfirmSheet";
+import { TxReceipt } from "./TxReceipt";
+
+type Step = "form" | "success";
 
 export function SendForm() {
-  const { mode } = useWalletSession();
+  const { mode, address: fromAddress } = useWalletSession();
   const { sendTransaction: sendLocal } = useLocalWallet();
   const { assets } = usePortfolio();
   const tokens = getWalletTokens();
 
-  const [tokenId, setTokenId] = useState(tokens[1]?.id ?? "usdt");
+  const [tokenId, setTokenId] = useState(tokens[0]?.id ?? "bnb");
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
-  const [localPending, setLocalPending] = useState(false);
+  const [step, setStep] = useState<Step>("form");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [gasEstimate, setGasEstimate] = useState<string | null>(null);
   const [localTxHash, setLocalTxHash] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const selected = tokens.find((t) => t.id === tokenId)!;
+  const selected = tokens.find((tok) => tok.id === tokenId)!;
   const asset = assets.find((a) => a.token.id === tokenId);
 
-  const { sendTransaction: sendExternal, data: extTxHash, isPending: extPending, error: extError } = useSendTransaction();
-  const { isLoading: extConfirming } = useWaitForTransactionReceipt({ hash: extTxHash });
+  const { sendTransaction: sendExternal, data: extTxHash, isPending: extPending, error: extError } =
+    useSendTransaction();
+  const { isLoading: extConfirming, isSuccess: extSuccess } =
+    useWaitForTransactionReceipt({ hash: extTxHash });
 
-  const handleSend = async () => {
-    if (!isAddress(to)) return;
-    const parsed = parseUnits(amount || "0", selected.decimals);
-    if (parsed <= 0n) return;
+  const parsedAmount =
+    amount && !Number.isNaN(Number(amount))
+      ? parseUnits(amount, selected.decimals)
+      : 0n;
 
-    if (mode === "local") {
-      setLocalPending(true);
-      setLocalError(null);
+  const valid =
+    isAddress(to) && parsedAmount > 0n && asset && parsedAmount <= asset.rawBalance;
+
+  useEffect(() => {
+    if (!valid || !fromAddress) {
+      setGasEstimate(null);
+      return;
+    }
+    let cancelled = false;
+    const client = getPublicClient();
+    void (async () => {
       try {
-        let hash: string;
+        let estimate: bigint;
         if (selected.isNative) {
-          hash = await sendLocal({ to: to as Address, value: parsed });
-        } else {
-          if (!selected.address) return;
+          estimate = await client.estimateGas({
+            account: fromAddress as Address,
+            to: to as Address,
+            value: parsedAmount,
+          });
+        } else if (selected.address) {
+          estimate = await client.estimateGas({
+            account: fromAddress as Address,
+            to: selected.address,
+            data: encodeFunctionData({
+              abi: erc20BalanceAbi,
+              functionName: "transfer",
+              args: [to as Address, parsedAmount],
+            }),
+          });
+        } else return;
+        const gasPrice = await client.getGasPrice();
+        if (!cancelled) setGasEstimate(formatEther(estimate * gasPrice));
+      } catch {
+        if (!cancelled) setGasEstimate(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [valid, fromAddress, to, parsedAmount, selected]);
+
+  const executeSend = async () => {
+    if (!valid) return;
+    setBusy(true);
+    setLocalError(null);
+
+    try {
+      if (mode === "local") {
+        let hash: `0x${string}`;
+        if (selected.isNative) {
+          hash = await sendLocal({ to: to as Address, value: parsedAmount });
+        } else if (selected.address) {
           hash = await sendLocal({
             to: selected.address,
             data: encodeFunctionData({
               abi: erc20BalanceAbi,
               functionName: "transfer",
-              args: [to as Address, parsed],
+              args: [to as Address, parsedAmount],
             }),
           });
-        }
+        } else return;
+
+        const client = getPublicClient();
+        await client.waitForTransactionReceipt({ hash });
         setLocalTxHash(hash);
-      } catch (e) {
-        setLocalError(e instanceof Error ? e.message : "Transaction failed");
-      } finally {
-        setLocalPending(false);
+        setStep("success");
+        setConfirmOpen(false);
+        return;
       }
-      return;
-    }
 
-    if (selected.isNative) {
-      sendExternal({ to: to as Address, value: parsed, chainId: walletChain.id });
-      return;
+      if (selected.isNative) {
+        sendExternal({ to: to as Address, value: parsedAmount, chainId: walletChain.id });
+      } else if (selected.address) {
+        sendExternal({
+          to: selected.address,
+          data: encodeFunctionData({
+            abi: erc20BalanceAbi,
+            functionName: "transfer",
+            args: [to as Address, parsedAmount],
+          }),
+          chainId: walletChain.id,
+        });
+      }
+      setConfirmOpen(false);
+    } catch (e) {
+      setLocalError(e instanceof Error ? e.message : t.txFailed);
+    } finally {
+      setBusy(false);
     }
-    if (!selected.address) return;
-    sendExternal({
-      to: selected.address,
-      data: encodeFunctionData({ abi: erc20BalanceAbi, functionName: "transfer", args: [to as Address, parsed] }),
-      chainId: walletChain.id,
-    });
   };
 
-  const setMax = () => {
-    if (!asset) return;
-    if (selected.isNative && asset.rawBalance > 0n) {
-      const max = asset.rawBalance > parseUnits("0.001", 18) ? asset.rawBalance - parseUnits("0.001", 18) : 0n;
-      setAmount(formatUnits(max, selected.decimals));
-      return;
+  useEffect(() => {
+    if (extSuccess && extTxHash) {
+      setStep("success");
+      setLocalTxHash(extTxHash);
     }
-    setAmount(formatUnits(asset.rawBalance, selected.decimals));
+  }, [extSuccess, extTxHash]);
+
+  const reset = () => {
+    setStep("form");
+    setTo("");
+    setAmount("");
+    setLocalTxHash(null);
+    setLocalError(null);
   };
 
-  const isPending = mode === "local" ? localPending : extPending;
-  const isConfirming = mode === "local" ? false : extConfirming;
-  const txHash = mode === "local" ? localTxHash : extTxHash;
-  const error = mode === "local" ? localError : extError?.message;
+  const txHash = localTxHash ?? extTxHash ?? null;
+  const error = localError ?? extError?.message;
+  const isPending = mode === "local" ? busy : extPending || extConfirming;
+
+  if (step === "success" && txHash) {
+    return (
+      <div className="wallet-screen pt-4">
+        <TxReceipt hash={txHash} onReset={reset} />
+      </div>
+    );
+  }
 
   return (
     <div className="wallet-screen pt-4">
-      <h1 className="wallet-page-title">Send</h1>
-      <p className="wallet-page-subtitle">Transfer crypto to another wallet</p>
+      <h1 className="wallet-page-title">{t.sendTitle}</h1>
+      <p className="wallet-page-subtitle">{t.sendSubtitle}</p>
 
       <div className="mt-8 space-y-5">
         <div>
-          <label className="wallet-label">Asset</label>
-          <select value={tokenId} onChange={(e) => setTokenId(e.target.value)} className="wallet-input appearance-none">
-            {tokens.map((t) => (
-              <option key={t.id} value={t.id} className="bg-wallet-elevated">{t.symbol} — {t.name}</option>
+          <label className="wallet-label">{t.asset}</label>
+          <div className="wallet-token-picker">
+            {tokens.map((tok) => (
+              <button
+                key={tok.id}
+                type="button"
+                onClick={() => setTokenId(tok.id)}
+                className={`wallet-token-option ${tokenId === tok.id ? "active" : ""}`}
+              >
+                <Image src={tok.logo} alt="" width={32} height={32} className="rounded-full" />
+                <div className="flex-1">
+                  <p className="font-semibold text-wallet-text">{tok.symbol}</p>
+                  <p className="text-xs text-wallet-muted">{tok.name}</p>
+                </div>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         <div>
-          <label className="wallet-label">To address</label>
-          <input type="text" placeholder="0x…" value={to} onChange={(e) => setTo(e.target.value)} className="wallet-input font-mono text-sm" />
+          <label className="wallet-label">{t.toAddress}</label>
+          <input
+            type="text"
+            placeholder="0x…"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="wallet-input font-mono text-sm"
+          />
         </div>
 
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <label className="wallet-label !mb-0">Amount</label>
-            <button type="button" onClick={setMax} className="text-xs font-bold text-wallet-accent">MAX</button>
+            <label className="wallet-label !mb-0">{t.amount}</label>
+            <button
+              type="button"
+              onClick={() => {
+                if (!asset) return;
+                if (selected.isNative && asset.rawBalance > parseUnits("0.001", 18)) {
+                  setAmount(
+                    formatUnits(asset.rawBalance - parseUnits("0.001", 18), selected.decimals)
+                  );
+                } else {
+                  setAmount(formatUnits(asset.rawBalance, selected.decimals));
+                }
+              }}
+              className="text-xs font-bold text-wallet-accent"
+            >
+              {t.max}
+            </button>
           </div>
-          <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="wallet-input text-2xl font-bold" />
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="wallet-input text-2xl font-bold"
+          />
           {asset && (
             <p className="mt-2 text-sm text-wallet-muted">
-              Available: {formatTokenAmount(asset.rawBalance, selected.decimals)} {selected.symbol}
+              {t.available}: {formatTokenAmount(asset.rawBalance, selected.decimals)}{" "}
+              {selected.symbol}
+            </p>
+          )}
+          {gasEstimate && selected.isNative && (
+            <p className="mt-1 text-xs text-wallet-muted">
+              {t.networkFee}: ~{gasEstimate} BNB
             </p>
           )}
         </div>
@@ -130,15 +252,29 @@ export function SendForm() {
 
       <button
         type="button"
-        disabled={isPending || isConfirming || !isAddress(to) || !amount || parseFloat(amount) <= 0}
-        onClick={() => void handleSend()}
+        disabled={!valid || isPending}
+        onClick={() => setConfirmOpen(true)}
         className="wallet-btn-primary mt-8"
       >
-        {isPending || isConfirming ? "Sending…" : "Send"}
+        {isPending ? t.sending : t.review}
       </button>
 
-      {txHash && <p className="mt-4 break-all text-center text-xs text-wallet-accent">Tx: {txHash.slice(0, 10)}…{txHash.slice(-8)}</p>}
-      {error && <p className="mt-2 text-center text-sm text-wallet-danger">{error}</p>}
+      {error && <p className="mt-3 text-center text-sm text-wallet-danger">{error}</p>}
+
+      <ConfirmSheet
+        open={confirmOpen}
+        title={t.confirmSend}
+        busy={isPending}
+        rows={[
+          { label: t.asset, value: `${amount} ${selected.symbol}` },
+          { label: t.toAddress, value: to, mono: true },
+          ...(gasEstimate && selected.isNative
+            ? [{ label: t.networkFee, value: `~${gasEstimate} BNB` }]
+            : []),
+        ]}
+        onConfirm={() => void executeSend()}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }

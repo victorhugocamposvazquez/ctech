@@ -1,42 +1,41 @@
 "use client";
 
 import { WalletShell } from "@/components/wallet/WalletShell";
+import { t } from "@/lib/wallet/i18n";
 
 const PROVIDERS = [
-  { name: "MoonPay", desc: "Card & bank transfer" },
-  { name: "Transak", desc: "150+ countries" },
-  { name: "Ramp", desc: "Low fees" },
+  { name: "MoonPay", desc: "Tarjeta y transferencia bancaria", url: "https://www.moonpay.com/buy/bnb" },
+  { name: "Transak", desc: "Más de 150 países", url: "https://global.transak.com/" },
+  { name: "Ramp", desc: "Comisiones bajas", url: "https://ramp.network/buy" },
 ];
 
 export default function BuyPage() {
   return (
     <WalletShell hideNav gradient>
       <div className="wallet-screen pt-2">
-        <h1 className="wallet-page-title">Buy Crypto</h1>
-        <p className="wallet-page-subtitle">
-          Purchase crypto with card or bank transfer via on-ramp partners.
-        </p>
+        <h1 className="wallet-page-title">{t.buyTitle}</h1>
+        <p className="wallet-page-subtitle">{t.buySubtitle}</p>
 
         <div className="wallet-settings-group mt-8">
-          {PROVIDERS.map(({ name, desc }, i) => (
-            <button
+          {PROVIDERS.map(({ name, desc, url }) => (
+            <a
               key={name}
-              type="button"
-              className={`wallet-settings-row flex w-full items-center justify-between text-left transition hover:bg-white/[0.02] ${i > 0 ? "" : ""}`}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="wallet-link-row"
             >
               <div>
                 <p className="font-semibold text-wallet-text">{name}</p>
                 <p className="mt-0.5 text-sm text-wallet-muted">{desc}</p>
               </div>
-              <span className="rounded-full bg-wallet-accent-soft px-3 py-1 text-xs font-semibold text-wallet-accent">
-                Soon
-              </span>
-            </button>
+              <span className="wallet-badge-soon">{t.soon}</span>
+            </a>
           ))}
         </div>
 
         <p className="mt-auto pb-4 pt-10 text-center text-xs text-wallet-muted-dim">
-          KYC required by payment provider
+          {t.kycNote}
         </p>
       </div>
     </WalletShell>
