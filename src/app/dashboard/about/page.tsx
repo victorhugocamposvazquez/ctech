@@ -284,6 +284,16 @@ export default function AboutPage() {
 
         <ol className="mt-6 relative border-l border-white/10 ml-3 space-y-8">
           <ChangelogEntry
+            version="1.12.0"
+            date="13 jun 2026"
+            title="Tx fallidas y liquidez en pánico: cerrar los huecos restantes"
+            items={[
+              "Modelo de transacciones fallidas (FailedTxSimulator): en Solana congestionada un % de swaps falla por slippage/congestión pagando el fee igual. Ahora se modela con parámetros conservadores (lado pesimista) y el coste se descuenta del capital, registrado como trade status='failed' para transparencia. El EdgeValidator no lo cuenta como trade, pero el capital sí refleja el drag operativo.",
+              "Quote sombra de SALIDA: además de la entrada, ahora se captura la cotización real de Jupiter en el instante exacto del cierre. Si el stop salta durante un crash, esa quote mide la liquidez de pánico real — no un parámetro inventado. Si Jupiter no encuentra ruta al salir, el token estaba efectivamente invendible (rug consumado).",
+              "Con esto, de las cuatro brechas paper→real: MEV (CompetitionSimulator), hueco quote→fill (MicroVolatility) y liquidez en pánico (ahora medida) están cubiertas; las tx fallidas pasan de no-modeladas a modeladas. El residual no medible (front-running real en mempool) solo se cuantifica ejecutando — y para eso está el plan de Fase 2 con paper en paralelo.",
+            ]}
+          />
+          <ChangelogEntry
             version="1.11.0"
             date="11 jun 2026"
             title="Quotes sombra de Jupiter: medir el peaje paper→real sin arriesgar dinero"

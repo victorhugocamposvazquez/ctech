@@ -11,6 +11,7 @@ import { CompetitionSimulator } from "./competition-simulator";
 import { MicroVolatility } from "./micro-volatility";
 import { StressEventSimulator } from "./stress-events";
 import type { StressEvent } from "./stress-events";
+import { FailedTxSimulator } from "./failed-tx-simulator";
 
 /**
  * PaperBroker — ejecuta órdenes contra datos de mercado reales
@@ -104,6 +105,26 @@ export class PaperBroker {
           1e-12,
           quote.price * (1 + stressEvent.priceImpactPct)
         ),
+      };
+    }
+
+    // Transacción fallida (congestión/slippage): paga fee, no hay fill.
+    // Se evalúa con la liquidez ya ajustada por stress de este ciclo.
+    const gasIfFailed = estimateGasUsd(quote.network);
+    const failedTx = FailedTxSimulator.roll(
+      order.network,
+      quote.liquidityUsd,
+      (order.metadata?.priceChange1h as number) ?? 0,
+      order.layer,
+      gasIfFailed
+    );
+    if (failedTx.failed) {
+      return {
+        executed: false,
+        reason: failedTx.reason,
+        fill: null,
+        trade: null,
+        failedGasUsd: failedTx.gasCostUsd,
       };
     }
 
@@ -241,4 +262,6 @@ export interface PaperBrokerResult {
   reason: string | null;
   fill: FillResult | null;
   trade: TradeRecord | null;
+  /** Fee pagado en una tx fallida (entrada no ejecutada). Coste real. */
+  failedGasUsd?: number;
 }

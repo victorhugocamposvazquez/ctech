@@ -457,6 +457,10 @@ export class Orchestrator {
     }
 
     if (!brokerResult.executed || !brokerResult.trade) {
+      // Tx fallida: el fee es un coste real aunque no haya posición.
+      if (brokerResult.failedGasUsd && brokerResult.failedGasUsd > 0) {
+        await this.applyFailedTxCost(riskState, brokerResult.failedGasUsd, conf);
+      }
       return {
         symbol: conf.token,
         layer: conf.layer,
@@ -654,6 +658,56 @@ export class Orchestrator {
         entryLiquidity: conf.sources.momentum?.liquidityUsd ?? conf.sources.early?.liquidityUsd,
       },
     });
+  }
+
+  /**
+   * Aplica el coste de una transacción de entrada fallida: descuenta el fee
+   * del capital y deja constancia con una fila trades status="failed"
+   * (quantity 0). El EdgeValidator solo cuenta status="closed", así que el
+   * fallo no contamina la expectancia por trade, pero el capital sí refleja
+   * el drag operativo — que es lo honesto.
+   */
+  private async applyFailedTxCost(
+    riskState: RiskState,
+    gasUsd: number,
+    conf: ConfluenceResult
+  ): Promise<void> {
+    riskState.capital = Math.max(0, riskState.capital - gasUsd);
+    riskState.pnlToday -= gasUsd;
+    riskState.pnlThisWeek -= gasUsd;
+
+    await this.supabase
+      .from("risk_state")
+      .update({
+        capital: riskState.capital,
+        pnl_today: riskState.pnlToday,
+        pnl_this_week: riskState.pnlThisWeek,
+      })
+      .eq("user_id", this.userId);
+
+    try {
+      await this.supabase.from("trades").insert({
+        user_id: this.userId,
+        symbol: conf.token,
+        side: "buy",
+        status: "failed",
+        quantity: 0,
+        entry_price: 0,
+        execution_mode: "paper",
+        layer: conf.layer,
+        fees_abs: gasUsd,
+        pnl_abs: -gasUsd,
+        exit_reason: "tx_failed",
+        metadata: {
+          tokenAddress: conf.tokenAddress,
+          network: conf.network,
+          signalSource: conf.signalSource,
+          failedTx: true,
+        },
+      });
+    } catch {
+      // registro best-effort — el capital ya quedó actualizado
+    }
   }
 
   private async getRiskState(): Promise<RiskState> {

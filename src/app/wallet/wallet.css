@@ -1,0 +1,31 @@
+.wallet-theme {
+  --wallet-bg: #0a0a0b;
+  --wallet-surface: #141416;
+  --wallet-card: #1c1c1f;
+  --wallet-border: #2a2a2e;
+  --wallet-text: #f4f4f5;
+  --wallet-muted: #71717a;
+  --wallet-accent: #3375bb;
+}
+
+.wallet-root {
+  background: var(--wallet-bg);
+  min-height: 100dvh;
+}
+
+.bg-wallet-bg { background-color: var(--wallet-bg); }
+.bg-wallet-surface { background-color: var(--wallet-surface); }
+.bg-wallet-card { background-color: var(--wallet-card); }
+.border-wallet-border { border-color: var(--wallet-border); }
+.text-wallet-text { color: var(--wallet-text); }
+.text-wallet-muted { color: var(--wallet-muted); }
+.text-wallet-accent { color: var(--wallet-accent); }
+.bg-wallet-accent { background-color: var(--wallet-accent); }
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

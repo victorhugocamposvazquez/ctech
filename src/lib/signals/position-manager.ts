@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DexScreenerClient } from "../market/dexscreener";
+import { JupiterClient } from "../market/jupiter";
 import { SlippageModel } from "../engine/slippage-model";
 import { estimateGasUsd } from "../engine/paper-broker";
 import type { Layer } from "../engine/types";
@@ -115,6 +116,7 @@ const DEFAULT_CONFIG: PositionManagerConfig = {
  */
 export class PositionManager {
   private dex: DexScreenerClient;
+  private jupiter: JupiterClient;
   private config: PositionManagerConfig;
   private openMoonbagCount = 0;
 
@@ -123,6 +125,7 @@ export class PositionManager {
     config?: Partial<PositionManagerConfig>
   ) {
     this.dex = new DexScreenerClient();
+    this.jupiter = new JupiterClient();
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
@@ -142,6 +145,7 @@ export class PositionManager {
       const exit = await this.evaluatePosition(pos);
       if (exit) {
         if (exit.kind === "full") {
+          await this.captureExitShadowQuote(pos, exit);
           await this.closeTrade(exit, pos);
         }
         exits.push(exit);
@@ -149,6 +153,41 @@ export class PositionManager {
     }
 
     return exits;
+  }
+
+  /**
+   * Quote sombra de Jupiter en el MOMENTO EXACTO de la salida. Mide la
+   * liquidez real cuando cerramos — que en un stop durante un crash es el
+   * momento de pánico, justo lo que el modelo no captura. hasRoute=false =
+   * token efectivamente invendible en ese instante (rug consumado).
+   *
+   * Se usa el impacto buy-side como proxy del sell-side: en un AMM
+   * constant-product el impacto de mover $X es simétrico en magnitud para
+   * tamaños pequeños relativos a las reservas. Aproximación documentada,
+   * pero medida en el instante real — no un parámetro inventado.
+   */
+  private async captureExitShadowQuote(
+    pos: OpenPosition,
+    exit: ExitSignal
+  ): Promise<void> {
+    if (pos.network !== "solana") return;
+    try {
+      const exitUsd = exit.exitPrice * pos.quantity;
+      if (exitUsd <= 0) return;
+      const shadow = await this.jupiter.getShadowQuote(pos.tokenAddress, exitUsd);
+      if (shadow) {
+        pos.metadata = {
+          ...pos.metadata,
+          exitShadowQuote: {
+            ...shadow,
+            modelExitSlippagePct: exit.exitSlippagePct,
+            note: "buy-side proxy del impacto sell, medido al cerrar",
+          },
+        };
+      }
+    } catch {
+      // sin quote sombra de salida — no bloquea el cierre
+    }
   }
 
   private async evaluatePosition(pos: OpenPosition): Promise<ExitSignal | null> {

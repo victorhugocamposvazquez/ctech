@@ -23,6 +23,12 @@ export default function HomePage() {
           >
             Registrarse
           </Link>
+          <Link
+            href="/wallet"
+            className="px-6 py-3 rounded-lg border border-blue-400 text-blue-700 dark:text-blue-300 font-medium hover:bg-blue-50 dark:hover:bg-blue-950 transition"
+          >
+            Wallet Web (PWA)
+          </Link>
         </div>
       </div>
     </main>
