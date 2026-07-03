@@ -16,15 +16,7 @@ export default function WalletSwapPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
             </svg>
           </div>
-          <p className="text-sm text-wallet-muted">{t.swapDisclaimer}</p>
-          <a
-            href="https://pancakeswap.finance/swap?chain=bsc"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="wallet-btn-primary mt-8 max-w-xs"
-          >
-            {t.openPancake}
-          </a>
+          <p className="max-w-xs text-sm leading-relaxed text-wallet-muted">{t.swapComingSoon}</p>
         </div>
       </div>
     </WalletShell>

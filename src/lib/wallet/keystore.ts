@@ -1,3 +1,5 @@
+import { clearBiometricEnrollment } from "@/lib/wallet/biometrics";
+
 const STORAGE_KEY = "tw_keystore_v1";
 
 export type SecretPayload =
@@ -102,6 +104,7 @@ export function loadKeystore(): StoredKeystore | null {
 export function clearKeystore() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem("wallet_mode");
+  clearBiometricEnrollment();
 }
 
 export function hasKeystore(): boolean {

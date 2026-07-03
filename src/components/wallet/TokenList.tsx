@@ -6,6 +6,17 @@ import { formatUsd, formatTokenAmount } from "@/lib/wallet/format";
 import { t } from "@/lib/wallet/i18n";
 import type { PortfolioAsset } from "@/hooks/wallet/usePortfolio";
 
+function ChangeBadge({ change }: { change: number | null }) {
+  if (change == null) return null;
+  const up = change >= 0;
+  return (
+    <p className={`mt-0.5 text-[13px] tabular-nums ${up ? "wallet-badge-change-up" : "wallet-badge-change-down"}`}>
+      {up ? "+" : ""}
+      {change.toFixed(2)}%
+    </p>
+  );
+}
+
 function TokenRow({ asset }: { asset: PortfolioAsset }) {
   const { token, usdValue } = asset;
   const hasBalance = asset.rawBalance > 0n;
@@ -34,6 +45,7 @@ function TokenRow({ asset }: { asset: PortfolioAsset }) {
         <p className="mt-0.5 text-[13px] tabular-nums text-wallet-muted">
           {formatTokenAmount(asset.rawBalance, token.decimals, 5)} {token.symbol}
         </p>
+        <ChangeBadge change={asset.change24h} />
       </div>
     </div>
   );

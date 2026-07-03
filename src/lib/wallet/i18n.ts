@@ -26,6 +26,9 @@ export const t = {
   noNftsHint: "Tus coleccionables aparecerán aquí",
   portfolioError: "No se pudieron cargar los balances",
   retry: "Reintentar",
+  refresh: "Actualizar",
+  recentActivity: "Actividad reciente",
+  sentTo: "A",
 
   // Onboarding
   createWallet: "Crear wallet nueva",
@@ -54,6 +57,12 @@ export const t = {
   creating: "Creando wallet…",
   continueToWallet: "Entrar a la wallet",
   couldNotSave: "No se pudo guardar la wallet",
+
+  verifyPhrase: "Verifica tu frase",
+  verifyPhraseHint: "Selecciona las palabras correctas para confirmar que la guardaste.",
+  wordNumber: "Palabra",
+  verifyWrong: "Palabra incorrecta. Revisa tu frase secreta.",
+  verifyContinue: "Verificar y continuar",
 
   importTitle: "Importar wallet",
   importHint: "Restaura con tu frase secreta o clave privada",
@@ -95,6 +104,7 @@ export const t = {
   txFailed: "La transacción falló",
   networkFee: "Comisión de red (est.)",
   cancel: "Cancelar",
+  paste: "Pegar",
 
   // Receive
   receiveTitle: "Recibir",
@@ -150,9 +160,56 @@ export const t = {
   securityNote:
     "Las wallets locales se cifran en este dispositivo. Nunca compartas tu frase secreta.",
   version: "Web App · v1.0",
+  autoLock: "Bloqueo automático",
+  autoLockHint: "Bloquea la wallet tras inactividad",
+  autoLockOff: "Desactivado",
+  autoLock5: "5 minutos",
+  autoLock15: "15 minutos",
+  autoLock60: "1 hora",
+
+  appearance: "Apariencia",
+  appearanceHint: "Elige el tema de la interfaz",
+  themeLight: "Claro",
+  themeDark: "Oscuro",
+
+  biometric: "Biometría",
+  biometricHint: "Desbloquea con Face ID, Touch ID o huella",
+  enableBiometric: "Activar",
+  enablingBiometric: "Activando…",
+  unlockBiometric: "Desbloquear con biometría",
+  biometricFailed: "No se pudo verificar la biometría",
+  biometricUnsupported: "Tu dispositivo no soporta biometría para esta app. Usa Safari o Chrome reciente.",
+  biometricCancelled: "Verificación cancelada",
 
   back: "Atrás",
   copyAddressShort: "Copiar dirección",
+  copyHash: "Copiar hash",
+  close: "Cerrar",
+  txDetail: "Detalle de transacción",
+
+  // iOS install (no hay instalación programática — guía in-app)
+  iosInstallTitle: "Instalar en tu iPhone",
+  iosInstallSubtitle:
+    "Apple no permite instalar apps con un toque. Sigue estos pasos en Safari:",
+  iosOpenSafari:
+    "Estás en un navegador distinto de Safari. Copia la URL y ábrela en Safari, o usa Compartir → Abrir en Safari.",
+  iosStep1Title: "Pulsa Compartir",
+  iosStep1Desc: "Icono de compartir en la barra inferior de Safari (cuadrado con flecha).",
+  iosStep2Title: "Añadir a pantalla de inicio",
+  iosStep2Desc: 'Desplázate en el menú y pulsa "Añadir a pantalla de inicio".',
+  iosStep3Title: "Confirma",
+  iosStep3Desc: 'Pulsa "Añadir" arriba a la derecha. La app aparecerá en tu inicio.',
+  iosInstallNote:
+    "Es el único método en iOS. Una vez instalada, abre la app desde el icono en tu pantalla de inicio.",
+  iosInstallDone: "Entendido",
+  iosCopyUrl: "Copiar enlace de la app",
+  iosUrlCopied: "Enlace copiado — pégalo en Safari",
+
+  // In-app only placeholders
+  swapComingSoon: "El swap dentro de la app estará disponible pronto.",
+  buyComingSoon: "La compra con tarjeta estará integrada aquí próximamente.",
+  discoverEmpty: "Explora tokens en Tendencias dentro de la app.",
+  earnComingSoon: "Earn estará disponible en una próxima versión.",
 } as const;
 
 export type WalletRouteTitle =

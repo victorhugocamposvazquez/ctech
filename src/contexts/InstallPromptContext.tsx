@@ -12,12 +12,10 @@ import {
 } from "react";
 import type { PWAInstallElement } from "@khmyznikov/pwa-install";
 import { PWAInstall } from "@/components/wallet/PWAInstall";
+import { IosInstallGuide } from "@/components/wallet/IosInstallGuide";
 
-/** Instalación completada (Chromium): persistente */
 const INSTALLED_KEY = "wallet-pwa-installed";
-/** Banner cerrado por el usuario: solo esta sesión */
 const DISMISS_KEY = "wallet-install-dismissed";
-/** Auto-prompt ya lanzado: solo esta sesión */
 const AUTO_KEY = "wallet-auto-install-tried";
 
 type Platform = "ios" | "android" | "desktop";
@@ -26,7 +24,6 @@ function detectPlatform(): Platform {
   if (typeof navigator === "undefined") return "desktop";
   const ua = navigator.userAgent;
   const isClassicIOS = /iPad|iPhone|iPod/.test(ua);
-  // iPadOS 13+ se identifica como Mac pero tiene pantalla táctil
   const isModernIPad = /Mac/.test(ua) && navigator.maxTouchPoints > 2;
   if (isClassicIOS || isModernIPad) return "ios";
   if (/android/i.test(ua)) return "android";
@@ -50,9 +47,7 @@ interface InstallPromptContextValue {
   dismiss: () => void;
 }
 
-const InstallPromptContext = createContext<InstallPromptContextValue | null>(
-  null
-);
+const InstallPromptContext = createContext<InstallPromptContextValue | null>(null);
 
 export function InstallPromptProvider({ children }: { children: ReactNode }) {
   const pwaRef = useRef<PWAInstallElement>(null);
@@ -62,6 +57,7 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
   const [dismissed, setDismissed] = useState(false);
   const [nativeAvailable, setNativeAvailable] = useState(false);
   const [componentReady, setComponentReady] = useState(false);
+  const [iosGuideOpen, setIosGuideOpen] = useState(false);
 
   useEffect(() => {
     setPlatform(detectPlatform());
@@ -70,8 +66,6 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
     setDismissed(!!sessionStorage.getItem(DISMISS_KEY));
   }, []);
 
-  // beforeinstallprompt: hay instalación nativa (Chromium). El web component
-  // también lo escucha y lo intercepta; aquí solo registramos disponibilidad.
   useEffect(() => {
     const onBeforeInstall = () => setNativeAvailable(true);
     const onInstalled = () => {
@@ -96,26 +90,33 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
     sessionStorage.setItem(DISMISS_KEY, "1");
   }, []);
 
-  /** Forzado: muestra el diálogo en cualquier plataforma (con instrucciones
-   *  paso a paso si no hay instalación nativa). */
   const install = useCallback(() => {
-    pwaRef.current?.showDialog(true);
+    // iOS: Apple no expone API de instalación — guía in-app propia (siempre funciona)
+    if (detectPlatform() === "ios") {
+      setIosGuideOpen(true);
+      return;
+    }
+    // Android / desktop Chromium: diálogo nativo vía web component
+    if (pwaRef.current?.showDialog) {
+      pwaRef.current.showDialog(true);
+    }
   }, []);
 
-  // Auto-prompt: una vez por sesión.
-  // - iOS: forzado en cuanto el componente está listo (no existe prompt nativo)
-  // - Android/desktop: cuando beforeinstallprompt confirma instalación nativa
   useEffect(() => {
     if (!componentReady || isStandalone || installed || dismissed) return;
     if (sessionStorage.getItem(AUTO_KEY)) return;
 
-    const forced = platform === "ios";
-    if (!forced && !nativeAvailable) return;
+    const isIos = platform === "ios";
+    if (!isIos && !nativeAvailable) return;
 
     sessionStorage.setItem(AUTO_KEY, "1");
     const timer = window.setTimeout(() => {
-      pwaRef.current?.showDialog(forced);
-    }, 600);
+      if (isIos) {
+        setIosGuideOpen(true);
+      } else {
+        pwaRef.current?.showDialog(true);
+      }
+    }, 800);
     return () => window.clearTimeout(timer);
   }, [componentReady, nativeAvailable, platform, isStandalone, installed, dismissed]);
 
@@ -142,14 +143,13 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
         onInstallAvailable={() => setNativeAvailable(true)}
         onInstallSuccess={markInstalled}
       />
+      <IosInstallGuide open={iosGuideOpen} onClose={() => setIosGuideOpen(false)} />
     </InstallPromptContext.Provider>
   );
 }
 
 export function useInstallPrompt() {
   const ctx = useContext(InstallPromptContext);
-  if (!ctx) {
-    throw new Error("useInstallPrompt outside InstallPromptProvider");
-  }
+  if (!ctx) throw new Error("useInstallPrompt outside InstallPromptProvider");
   return ctx;
 }

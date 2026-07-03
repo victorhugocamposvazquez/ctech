@@ -32,11 +32,11 @@
   ],
   "shortcuts": [
     {
-      "name": "Send",
+      "name": "Enviar",
       "url": "/wallet/send"
     },
     {
-      "name": "Receive",
+      "name": "Recibir",
       "url": "/wallet/receive"
     }
   ]

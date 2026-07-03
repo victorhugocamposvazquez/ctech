@@ -51,13 +51,7 @@ export function TrendingList() {
         const change = pair.priceChange?.h24 ?? 0;
         const up = change >= 0;
         return (
-          <a
-            key={pair.pairAddress}
-            href={pair.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="wallet-link-row"
-          >
+          <div key={pair.pairAddress} className="wallet-link-row !cursor-default">
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-wallet-text">
                 {pair.baseToken.symbol}
@@ -78,7 +72,7 @@ export function TrendingList() {
                 {change.toFixed(2)}%
               </p>
             </div>
-          </a>
+          </div>
         );
       })}
     </div>

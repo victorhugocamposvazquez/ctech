@@ -5,10 +5,18 @@ import { useState, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import { LocalWalletProvider } from "@/contexts/LocalWalletContext";
 import { InstallPromptProvider } from "@/contexts/InstallPromptContext";
+import { WalletThemeProvider } from "@/contexts/WalletThemeContext";
 import { wagmiConfig } from "@/lib/wallet/config";
 import { WalletAuthGate } from "@/components/wallet/WalletAuthGate";
+import { AutoLockGuard } from "@/components/wallet/AutoLockGuard";
 
-export function WalletProviders({ children }: { children: ReactNode }) {
+export function WalletProviders({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -24,11 +32,16 @@ export function WalletProviders({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <InstallPromptProvider>
-          <LocalWalletProvider>
-            <WalletAuthGate>{children}</WalletAuthGate>
-          </LocalWalletProvider>
-        </InstallPromptProvider>
+        <WalletThemeProvider className={className}>
+          <InstallPromptProvider>
+            <LocalWalletProvider>
+              <WalletAuthGate>
+                <AutoLockGuard />
+                {children}
+              </WalletAuthGate>
+            </LocalWalletProvider>
+          </InstallPromptProvider>
+        </WalletThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

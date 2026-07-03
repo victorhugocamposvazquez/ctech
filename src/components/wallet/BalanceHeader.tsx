@@ -7,15 +7,43 @@ import { t } from "@/lib/wallet/i18n";
 interface BalanceHeaderProps {
   totalUsd: number;
   isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
-export function BalanceHeader({ totalUsd, isLoading }: BalanceHeaderProps) {
+export function BalanceHeader({ totalUsd, isLoading, onRefresh }: BalanceHeaderProps) {
   const [hidden, setHidden] = useState(false);
+  const [spinning, setSpinning] = useState(false);
+
+  const refresh = () => {
+    if (!onRefresh) return;
+    setSpinning(true);
+    onRefresh();
+    window.setTimeout(() => setSpinning(false), 800);
+  };
 
   return (
     <div className="px-5 pb-4 pt-2 text-center">
       <div className="flex items-center justify-center gap-2">
         <p className="wallet-balance-label">{t.totalBalance}</p>
+        {onRefresh && (
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={isLoading}
+            className="wallet-icon-btn !h-7 !w-7 text-wallet-muted"
+            aria-label={t.refresh}
+          >
+            <svg
+              className={`h-4 w-4 ${spinning ? "animate-spin" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setHidden((v) => !v)}

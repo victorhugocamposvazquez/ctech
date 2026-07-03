@@ -20,12 +20,15 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/wallet/icons/icon.svg",
-    apple: "/wallet/icons/icon.svg",
+    apple: "/wallet/icons/icon-192.png",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#060608",
+  themeColor: "#f4f4f5",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -39,8 +42,8 @@ export default function WalletLayout({
   children: React.ReactNode;
 }) {
   return (
-    <WalletProviders>
-      <div className={`wallet-root ${inter.variable}`}>{children}</div>
+    <WalletProviders className={inter.variable}>
+      {children}
     </WalletProviders>
   );
 }

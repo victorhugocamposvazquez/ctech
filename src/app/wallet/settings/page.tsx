@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { WalletShell } from "@/components/wallet/WalletShell";
@@ -7,13 +8,23 @@ import { shortenAddress } from "@/lib/wallet/format";
 import { walletChain } from "@/lib/wallet/config";
 import { useInstallPrompt } from "@/hooks/wallet/useInstallPrompt";
 import { TrustShield } from "@/components/wallet/TrustShield";
-import { addressExplorerUrl } from "@/lib/wallet/explorer";
+import { AutoLockSettings } from "@/components/wallet/AutoLockSettings";
+import { ThemeSettings } from "@/components/wallet/ThemeSettings";
+import { BiometricSettings } from "@/components/wallet/BiometricSettings";
 import { t } from "@/lib/wallet/i18n";
 
 export default function WalletSettingsPage() {
   const { address, mode, disconnectAll, deleteLocalWallet } = useWalletSession();
   const { lock } = useLocalWallet();
   const { install, isStandalone } = useInstallPrompt();
+  const [copied, setCopied] = useState(false);
+
+  const copyAddress = async () => {
+    if (!address) return;
+    await navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <WalletShell hideNav gradient>
@@ -36,17 +47,23 @@ export default function WalletSettingsPage() {
                 <p className="mt-1.5 text-[16px] font-semibold text-wallet-text">
                   {mode === "local" ? t.walletLocal : t.walletExternal}
                 </p>
-                <a
-                  href={addressExplorerUrl(address)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 font-mono text-sm text-wallet-accent hover:underline"
+                <p className="mt-1 font-mono text-sm text-wallet-muted">{shortenAddress(address, 10)}</p>
+                <button
+                  type="button"
+                  onClick={() => void copyAddress()}
+                  className="mt-2 text-sm font-semibold text-wallet-accent"
                 >
-                  {shortenAddress(address, 10)}
-                </a>
+                  {copied ? t.copied : t.copyAddress}
+                </button>
               </div>
             )}
           </section>
+
+          {mode === "local" && <AutoLockSettings />}
+
+          {mode === "local" && <BiometricSettings />}
+
+          <ThemeSettings />
 
           {mode === "local" && (
             <button type="button" onClick={() => lock()} className="wallet-btn-secondary">

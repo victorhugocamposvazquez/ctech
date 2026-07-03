@@ -19,6 +19,8 @@ import { usePortfolio } from "@/hooks/wallet/usePortfolio";
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { walletChain } from "@/lib/wallet/config";
 import { t } from "@/lib/wallet/i18n";
+import { saveTx } from "@/lib/wallet/tx-history";
+import { notifyTxSaved } from "@/hooks/wallet/useTxHistory";
 import { ConfirmSheet } from "./ConfirmSheet";
 import { TxReceipt } from "./TxReceipt";
 
@@ -52,6 +54,20 @@ export function SendForm() {
     amount && !Number.isNaN(Number(amount))
       ? parseUnits(amount, selected.decimals)
       : 0n;
+
+  const persistTx = (hash: string) => {
+    if (!fromAddress) return;
+    saveTx({
+      hash,
+      from: fromAddress as Address,
+      to: to as Address,
+      symbol: selected.symbol,
+      amount,
+      timestamp: Date.now(),
+      direction: "out",
+    });
+    notifyTxSaved();
+  };
 
   const valid =
     isAddress(to) && parsedAmount > 0n && asset && parsedAmount <= asset.rawBalance;
@@ -117,6 +133,7 @@ export function SendForm() {
 
         const client = getPublicClient();
         await client.waitForTransactionReceipt({ hash });
+        persistTx(hash);
         setLocalTxHash(hash);
         setStep("success");
         setConfirmOpen(false);
@@ -146,6 +163,7 @@ export function SendForm() {
 
   useEffect(() => {
     if (extSuccess && extTxHash) {
+      persistTx(extTxHash);
       setStep("success");
       setLocalTxHash(extTxHash);
     }
@@ -198,7 +216,19 @@ export function SendForm() {
         </div>
 
         <div>
-          <label className="wallet-label">{t.toAddress}</label>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="wallet-label !mb-0">{t.toAddress}</label>
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard.readText().then((text) => {
+                const trimmed = text.trim();
+                if (trimmed.startsWith("0x")) setTo(trimmed);
+              })}
+              className="text-xs font-bold text-wallet-accent"
+            >
+              {t.paste}
+            </button>
+          </div>
           <input
             type="text"
             placeholder="0x…"

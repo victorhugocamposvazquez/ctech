@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { english, generateMnemonic } from "viem/accounts";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { t } from "@/lib/wallet/i18n";
@@ -9,7 +9,30 @@ interface CreateWalletFlowProps {
   onBack: () => void;
 }
 
-type Step = "password" | "phrase";
+type Step = "password" | "phrase" | "verify";
+
+interface QuizItem {
+  index: number;
+  options: string[];
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildQuiz(words: string[]): QuizItem[] {
+  const indices = shuffle(words.map((_, i) => i)).slice(0, 2);
+  return indices.map((index) => {
+    const decoys = words.filter((_, i) => i !== index);
+    const options = shuffle([words[index], ...shuffle(decoys).slice(0, 3)]);
+    return { index, options };
+  });
+}
 
 export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
   const { importWallet } = useLocalWallet();
@@ -18,6 +41,8 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
   const [confirm, setConfirm] = useState("");
   const [mnemonic, setMnemonic] = useState("");
   const [words, setWords] = useState<string[]>([]);
+  const [quiz, setQuiz] = useState<QuizItem[]>([]);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -34,11 +59,28 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
     }
     const m = generateMnemonic(english);
     setMnemonic(m);
-    setWords(m.split(" "));
+    const w = m.split(" ");
+    setWords(w);
+    setQuiz(buildQuiz(w));
+    setAnswers({});
     setStep("phrase");
   };
 
+  const goToVerify = () => {
+    if (!saved) return;
+    setStep("verify");
+  };
+
+  const allAnswered = useMemo(
+    () => quiz.every((q) => answers[q.index] === words[q.index]),
+    [quiz, answers, words]
+  );
+
   const finalize = async () => {
+    if (!quiz.every((q) => answers[q.index] === words[q.index])) {
+      setError(t.verifyWrong);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -78,37 +120,79 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
     );
   }
 
+  if (step === "phrase") {
+    return (
+      <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
+        <h1 className="wallet-page-title">{t.secretPhrase}</h1>
+        <p className="wallet-page-subtitle">{t.secretPhraseHint}</p>
+
+        <div className="wallet-mnemonic-grid mt-8">
+          {words.map((word, i) => (
+            <div key={i} className="wallet-mnemonic-word">
+              <span className="wallet-mnemonic-index">{i + 1}</span>
+              <span className="wallet-mnemonic-text">{word}</span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void navigator.clipboard.writeText(mnemonic)}
+          className="mt-5 text-sm font-semibold text-wallet-accent"
+        >
+          {t.copyPhrase}
+        </button>
+
+        <label className="mt-8 flex items-start gap-3 rounded-2xl border border-wallet-border bg-wallet-accent-soft p-4 text-sm text-wallet-secondary">
+          <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 accent-[#48ff91]" />
+          {t.savedPhrase}
+        </label>
+
+        <button type="button" disabled={!saved} onClick={goToVerify} className="wallet-btn-primary mt-6">
+          {t.continue}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
-      <h1 className="wallet-page-title">{t.secretPhrase}</h1>
-      <p className="wallet-page-subtitle">{t.secretPhraseHint}</p>
+      <h1 className="wallet-page-title">{t.verifyPhrase}</h1>
+      <p className="wallet-page-subtitle">{t.verifyPhraseHint}</p>
 
-      <div className="wallet-mnemonic-grid mt-8">
-        {words.map((word, i) => (
-          <div key={i} className="wallet-mnemonic-word">
-            <span className="wallet-mnemonic-index">{i + 1}</span>
-            <span className="wallet-mnemonic-text">{word}</span>
+      <div className="mt-8 space-y-6">
+        {quiz.map((q) => (
+          <div key={q.index}>
+            <p className="wallet-label">
+              {t.wordNumber} #{q.index + 1}
+            </p>
+            <div className="wallet-mnemonic-grid mt-2 !grid-cols-2">
+              {q.options.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setAnswers((a) => ({ ...a, [q.index]: opt }))}
+                  className={`wallet-mnemonic-word cursor-pointer transition ${
+                    answers[q.index] === opt ? "border-wallet-accent bg-wallet-accent-soft" : ""
+                  }`}
+                >
+                  <span className="wallet-mnemonic-text">{opt}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => void navigator.clipboard.writeText(mnemonic)}
-        className="mt-5 text-sm font-semibold text-wallet-accent"
-      >
-        {t.copyPhrase}
-      </button>
-
-      <label className="mt-8 flex items-start gap-3 rounded-2xl border border-wallet-border bg-wallet-accent-soft p-4 text-sm text-wallet-secondary">
-        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 accent-[#48ff91]" />
-        {t.savedPhrase}
-      </label>
-
       {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
 
-      <button type="button" disabled={!saved || busy} onClick={() => void finalize()} className="wallet-btn-primary mt-6">
-        {busy ? t.creating : t.continueToWallet}
+      <button
+        type="button"
+        disabled={!allAnswered || busy}
+        onClick={() => void finalize()}
+        className="wallet-btn-primary mt-8"
+      >
+        {busy ? t.creating : t.verifyContinue}
       </button>
     </div>
   );

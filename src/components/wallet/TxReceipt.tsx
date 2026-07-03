@@ -1,6 +1,6 @@
 "use client";
 
-import { txExplorerUrl } from "@/lib/wallet/explorer";
+import { useState } from "react";
 import { t } from "@/lib/wallet/i18n";
 
 export function TxReceipt({
@@ -10,6 +10,14 @@ export function TxReceipt({
   hash: string;
   onReset?: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(hash);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="wallet-empty py-10">
       <div className="wallet-empty-icon text-wallet-accent">
@@ -21,14 +29,9 @@ export function TxReceipt({
       <p className="mt-2 break-all font-mono text-xs text-wallet-muted">
         {hash.slice(0, 14)}…{hash.slice(-10)}
       </p>
-      <a
-        href={txExplorerUrl(hash)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="wallet-btn-primary mt-6 max-w-xs"
-      >
-        {t.viewExplorer}
-      </a>
+      <button type="button" onClick={() => void copy()} className="wallet-btn-primary mt-6 max-w-xs">
+        {copied ? t.copied : t.copyHash}
+      </button>
       {onReset && (
         <button type="button" onClick={onReset} className="mt-3 text-sm font-semibold text-wallet-accent">
           {t.sendAnother}

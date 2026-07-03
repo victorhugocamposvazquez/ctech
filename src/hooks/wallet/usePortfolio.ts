@@ -18,6 +18,7 @@ export interface PortfolioAsset {
   balance: number;
   usdPrice: number;
   usdValue: number;
+  change24h: number | null;
 }
 
 async function fetchLocalBalances(address: Address, tokens: WalletToken[]) {
@@ -72,14 +73,16 @@ export function usePortfolio() {
     refetchInterval: 30_000,
   });
 
-  const { data: bnbUsd = 0 } = useQuery({
+  const { data: bnbMarket } = useQuery({
     queryKey: ["bnb-usd"],
     queryFn: fetchBnbUsd,
     staleTime: 60_000,
   });
+  const bnbUsd = bnbMarket?.price ?? 0;
+  const bnbChange = bnbMarket?.change24h ?? null;
 
   const customToken = erc20s.find((t) => t.dexScreener);
-  const { data: customUsd = null } = useQuery({
+  const { data: customMarket = null } = useQuery({
     queryKey: ["token-usd", customToken?.address],
     queryFn: () => fetchTokenUsd(customToken!.address!),
     enabled: !!customToken?.address,
@@ -96,6 +99,7 @@ export function usePortfolio() {
       balance,
       usdPrice: bnbUsd,
       usdValue: balance * bnbUsd,
+      change24h: bnbChange,
     });
   }
 
@@ -109,6 +113,7 @@ export function usePortfolio() {
       balance,
       usdPrice: bnbUsd,
       usdValue: balance * bnbUsd,
+      change24h: bnbChange,
     });
   }
 
@@ -123,7 +128,11 @@ export function usePortfolio() {
 
     const balance = Number(formatUnits(raw, token.decimals));
     let usdPrice = token.fixedUsdPrice ?? 0;
-    if (token.dexScreener) usdPrice = customUsd ?? 0;
+    let change24h: number | null = token.fixedUsdPrice != null ? 0 : null;
+    if (token.dexScreener && customMarket) {
+      usdPrice = customMarket.price;
+      change24h = customMarket.change24h;
+    }
 
     assets.push({
       token,
@@ -131,6 +140,7 @@ export function usePortfolio() {
       balance,
       usdPrice,
       usdValue: balance * usdPrice,
+      change24h,
     });
   });
 

@@ -15,10 +15,10 @@ export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProp
 
   const positionClass = aboveNav ? "bottom-[72px]" : "bottom-3 safe-bottom";
 
-  const hint = canNativeInstall
-    ? "Añádela a tu pantalla de inicio con un toque"
-    : isIOS
-      ? "Toca Instalar y sigue los pasos de Safari"
+  const hint = isIOS
+    ? "Ver instrucciones para añadir a pantalla de inicio"
+    : canNativeInstall
+      ? "Añádela a tu pantalla de inicio con un toque"
       : "Toca Instalar para ver cómo añadirla";
 
   return (
