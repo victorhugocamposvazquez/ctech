@@ -12,10 +12,10 @@ export function PlaceholderPage({
   emoji: string;
 }) {
   return (
-    <WalletShell>
-      <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
-        <span className="text-5xl">{emoji}</span>
-        <h2 className="mt-5 text-xl font-bold text-wallet-text">{title}</h2>
+    <WalletShell gradient>
+      <div className="wallet-empty min-h-[55vh]">
+        <div className="wallet-empty-icon">{emoji}</div>
+        <h2 className="text-xl font-bold text-wallet-text">{title}</h2>
         <p className="mt-2 max-w-xs text-[15px] leading-relaxed text-wallet-muted">
           {description}
         </p>

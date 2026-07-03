@@ -8,7 +8,7 @@ export default function WalletSendPage() {
   const { address } = useWalletSession();
 
   return (
-    <WalletShell address={address ?? undefined} hideNav>
+    <WalletShell address={address ?? undefined} hideNav gradient>
       <SendForm />
     </WalletShell>
   );

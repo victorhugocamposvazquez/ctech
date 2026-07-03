@@ -12,14 +12,14 @@ export function BalanceHeader({ totalUsd, isLoading }: BalanceHeaderProps) {
   const [hidden, setHidden] = useState(false);
 
   return (
-    <div className="px-4 pb-2 pt-1 text-center">
+    <div className="px-5 pb-4 pt-2 text-center">
       <div className="flex items-center justify-center gap-2">
-        <p className="text-sm font-medium text-wallet-muted">Total balance</p>
+        <p className="wallet-balance-label">Total balance</p>
         <button
           type="button"
           onClick={() => setHidden((v) => !v)}
-          className="text-wallet-muted transition hover:text-wallet-text"
-          aria-label={hidden ? "Mostrar balance" : "Ocultar balance"}
+          className="wallet-icon-btn !h-7 !w-7 text-wallet-muted"
+          aria-label={hidden ? "Show balance" : "Hide balance"}
         >
           {hidden ? (
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -34,11 +34,11 @@ export function BalanceHeader({ totalUsd, isLoading }: BalanceHeaderProps) {
         </button>
       </div>
 
-      <div className="mt-2 flex min-h-[52px] items-center justify-center">
+      <div className="mt-3 flex min-h-[56px] items-center justify-center">
         {isLoading ? (
-          <div className="h-11 w-56 animate-pulse rounded-xl bg-wallet-elevated" />
+          <div className="wallet-skeleton h-12 w-52 rounded-2xl" />
         ) : (
-          <h1 className="text-[40px] font-bold leading-none tracking-tight text-wallet-text">
+          <h1 className="wallet-balance-amount">
             {hidden ? "••••••" : formatUsd(totalUsd)}
           </h1>
         )}

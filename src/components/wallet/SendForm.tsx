@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   formatUnits,
   parseUnits,
@@ -8,10 +7,8 @@ import {
   encodeFunctionData,
   type Address,
 } from "viem";
-import {
-  useSendTransaction,
-  useWaitForTransactionReceipt,
-} from "wagmi";
+import { useState } from "react";
+import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { getWalletTokens, erc20BalanceAbi } from "@/lib/wallet/tokens";
 import { formatTokenAmount } from "@/lib/wallet/format";
@@ -35,16 +32,8 @@ export function SendForm() {
   const selected = tokens.find((t) => t.id === tokenId)!;
   const asset = assets.find((a) => a.token.id === tokenId);
 
-  const {
-    sendTransaction: sendExternal,
-    data: extTxHash,
-    isPending: extPending,
-    error: extError,
-  } = useSendTransaction();
-
-  const { isLoading: extConfirming } = useWaitForTransactionReceipt({
-    hash: extTxHash,
-  });
+  const { sendTransaction: sendExternal, data: extTxHash, isPending: extPending, error: extError } = useSendTransaction();
+  const { isLoading: extConfirming } = useWaitForTransactionReceipt({ hash: extTxHash });
 
   const handleSend = async () => {
     if (!isAddress(to)) return;
@@ -79,23 +68,13 @@ export function SendForm() {
     }
 
     if (selected.isNative) {
-      sendExternal({
-        to: to as Address,
-        value: parsed,
-        chainId: walletChain.id,
-      });
+      sendExternal({ to: to as Address, value: parsed, chainId: walletChain.id });
       return;
     }
-
     if (!selected.address) return;
-
     sendExternal({
       to: selected.address,
-      data: encodeFunctionData({
-        abi: erc20BalanceAbi,
-        functionName: "transfer",
-        args: [to as Address, parsed],
-      }),
+      data: encodeFunctionData({ abi: erc20BalanceAbi, functionName: "transfer", args: [to as Address, parsed] }),
       chainId: walletChain.id,
     });
   };
@@ -103,9 +82,7 @@ export function SendForm() {
   const setMax = () => {
     if (!asset) return;
     if (selected.isNative && asset.rawBalance > 0n) {
-      const gasReserve = parseUnits("0.001", 18);
-      const max =
-        asset.rawBalance > gasReserve ? asset.rawBalance - gasReserve : 0n;
+      const max = asset.rawBalance > parseUnits("0.001", 18) ? asset.rawBalance - parseUnits("0.001", 18) : 0n;
       setAmount(formatUnits(max, selected.decimals));
       return;
     }
@@ -118,91 +95,50 @@ export function SendForm() {
   const error = mode === "local" ? localError : extError?.message;
 
   return (
-    <div className="space-y-6 px-4 pt-6">
-      <h1 className="text-2xl font-bold text-wallet-text">Send</h1>
+    <div className="wallet-screen pt-4">
+      <h1 className="wallet-page-title">Send</h1>
+      <p className="wallet-page-subtitle">Transfer crypto to another wallet</p>
 
-      <div>
-        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-wallet-muted">
-          Asset
-        </label>
-        <select
-          value={tokenId}
-          onChange={(e) => setTokenId(e.target.value)}
-          className="wallet-input appearance-none"
-        >
-          {tokens.map((t) => (
-            <option key={t.id} value={t.id} className="bg-wallet-elevated">
-              {t.symbol} — {t.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-wallet-muted">
-          To address
-        </label>
-        <input
-          type="text"
-          placeholder="0x…"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="wallet-input font-mono text-sm"
-        />
-      </div>
-
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <label className="text-xs font-semibold uppercase tracking-wide text-wallet-muted">
-            Amount
-          </label>
-          <button
-            type="button"
-            onClick={setMax}
-            className="text-xs font-bold text-wallet-accent"
-          >
-            MAX
-          </button>
+      <div className="mt-8 space-y-5">
+        <div>
+          <label className="wallet-label">Asset</label>
+          <select value={tokenId} onChange={(e) => setTokenId(e.target.value)} className="wallet-input appearance-none">
+            {tokens.map((t) => (
+              <option key={t.id} value={t.id} className="bg-wallet-elevated">{t.symbol} — {t.name}</option>
+            ))}
+          </select>
         </div>
-        <input
-          type="text"
-          inputMode="decimal"
-          placeholder="0.00"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="wallet-input text-2xl font-bold"
-        />
-        {asset && (
-          <p className="mt-2 text-sm text-wallet-muted">
-            Available: {formatTokenAmount(asset.rawBalance, selected.decimals)}{" "}
-            {selected.symbol}
-          </p>
-        )}
+
+        <div>
+          <label className="wallet-label">To address</label>
+          <input type="text" placeholder="0x…" value={to} onChange={(e) => setTo(e.target.value)} className="wallet-input font-mono text-sm" />
+        </div>
+
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="wallet-label !mb-0">Amount</label>
+            <button type="button" onClick={setMax} className="text-xs font-bold text-wallet-accent">MAX</button>
+          </div>
+          <input type="text" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="wallet-input text-2xl font-bold" />
+          {asset && (
+            <p className="mt-2 text-sm text-wallet-muted">
+              Available: {formatTokenAmount(asset.rawBalance, selected.decimals)} {selected.symbol}
+            </p>
+          )}
+        </div>
       </div>
 
       <button
         type="button"
-        disabled={
-          isPending ||
-          isConfirming ||
-          !isAddress(to) ||
-          !amount ||
-          parseFloat(amount) <= 0
-        }
+        disabled={isPending || isConfirming || !isAddress(to) || !amount || parseFloat(amount) <= 0}
         onClick={() => void handleSend()}
-        className="wallet-btn-primary"
+        className="wallet-btn-primary mt-8"
       >
-        {isPending || isConfirming ? "Sending…" : "Continue"}
+        {isPending || isConfirming ? "Sending…" : "Send"}
       </button>
 
-      {txHash && (
-        <p className="break-all text-center text-xs text-wallet-accent">
-          Tx: {txHash.slice(0, 10)}…{txHash.slice(-8)}
-        </p>
-      )}
-      {error && (
-        <p className="text-center text-sm text-wallet-danger">{error}</p>
-      )}
+      {txHash && <p className="mt-4 break-all text-center text-xs text-wallet-accent">Tx: {txHash.slice(0, 10)}…{txHash.slice(-8)}</p>}
+      {error && <p className="mt-2 text-center text-sm text-wallet-danger">{error}</p>}
     </div>
   );
 }

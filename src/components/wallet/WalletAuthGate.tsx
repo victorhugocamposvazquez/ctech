@@ -11,18 +11,29 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
 
   if (localStatus === "loading") {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-wallet-bg">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-wallet-accent border-t-transparent" />
+      <div className="wallet-theme flex min-h-dvh flex-col items-center justify-center bg-wallet-bg">
+        <div className="wallet-hero-glow">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-wallet-accent border-t-transparent" />
+        </div>
+        <p className="mt-6 text-sm font-medium text-wallet-muted">Loading wallet…</p>
       </div>
     );
   }
 
   if (needsUnlock) {
-    return <UnlockScreen />;
+    return (
+      <div className="wallet-theme">
+        <UnlockScreen />
+      </div>
+    );
   }
 
   if (needsOnboarding && !isConnected) {
-    return <ConnectScreen />;
+    return (
+      <div className="wallet-theme">
+        <ConnectScreen />
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -1,6 +1,5 @@
 "use client";
 
-import { useConnect } from "wagmi";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { WalletShell } from "@/components/wallet/WalletShell";
@@ -12,48 +11,37 @@ import { TrustShield } from "@/components/wallet/TrustShield";
 export default function WalletSettingsPage() {
   const { address, mode, disconnectAll, deleteLocalWallet } = useWalletSession();
   const { lock } = useLocalWallet();
-  const { connect, connectors } = useConnect();
   const { showInstallBanner, canNativeInstall, install, isStandalone, isIOS } =
     useInstallPrompt();
 
   return (
-    <WalletShell hideNav>
-      <div className="px-4 pt-4">
-        <div className="mb-8 flex flex-col items-center pt-4">
-          <TrustShield className="h-14 w-14" />
-          <p className="mt-3 text-lg font-bold text-wallet-text">Trust Wallet</p>
+    <WalletShell hideNav gradient>
+      <div className="wallet-screen pt-2">
+        <div className="wallet-hero-glow mb-8 flex flex-col items-center pt-2">
+          <TrustShield className="relative h-16 w-16" />
+          <p className="mt-4 text-xl font-bold text-wallet-text">Trust Wallet</p>
           <p className="text-sm text-wallet-muted">Web App · v1.0</p>
         </div>
 
-        <div className="space-y-3">
-          <section className="overflow-hidden rounded-2xl bg-wallet-elevated">
-            <div className="border-b border-wallet-border px-4 py-3.5">
-              <p className="text-xs font-medium uppercase tracking-wide text-wallet-muted">
-                Network
-              </p>
-              <p className="mt-1 font-semibold text-wallet-text">{walletChain.name}</p>
+        <div className="space-y-4">
+          <section className="wallet-settings-group">
+            <div className="wallet-settings-row">
+              <p className="wallet-settings-label">Network</p>
+              <p className="mt-1.5 text-[16px] font-semibold text-wallet-text">{walletChain.name}</p>
             </div>
             {address && (
-              <div className="px-4 py-3.5">
-                <p className="text-xs font-medium uppercase tracking-wide text-wallet-muted">
-                  Wallet
-                </p>
-                <p className="mt-1 font-semibold text-wallet-text">
+              <div className="wallet-settings-row">
+                <p className="wallet-settings-label">Wallet</p>
+                <p className="mt-1.5 text-[16px] font-semibold text-wallet-text">
                   {mode === "local" ? "Main Wallet (local)" : "Connected wallet"}
                 </p>
-                <p className="mt-1 break-all font-mono text-sm text-wallet-secondary">
-                  {shortenAddress(address, 10)}
-                </p>
+                <p className="mt-1 font-mono text-sm text-wallet-muted">{shortenAddress(address, 10)}</p>
               </div>
             )}
           </section>
 
           {mode === "local" && (
-            <button
-              type="button"
-              onClick={() => lock()}
-              className="w-full rounded-full border border-wallet-border py-4 text-sm font-semibold text-wallet-text"
-            >
+            <button type="button" onClick={() => lock()} className="wallet-btn-secondary">
               Lock wallet
             </button>
           )}
@@ -70,14 +58,10 @@ export default function WalletSettingsPage() {
           )}
 
           {isStandalone && (
-            <p className="text-center text-sm text-wallet-accent">✓ Installed as app</p>
+            <p className="text-center text-sm font-medium text-wallet-accent">✓ Installed as app</p>
           )}
 
-          <button
-            type="button"
-            onClick={() => disconnectAll()}
-            className="w-full rounded-full border border-wallet-border py-4 text-sm font-semibold text-wallet-text"
-          >
+          <button type="button" onClick={() => disconnectAll()} className="wallet-btn-secondary">
             Disconnect
           </button>
 
@@ -93,30 +77,14 @@ export default function WalletSettingsPage() {
                   deleteLocalWallet();
                 }
               }}
-              className="w-full rounded-full border border-wallet-danger/40 py-4 text-sm font-semibold text-wallet-danger"
+              className="wallet-btn-danger"
             >
               Delete local wallet
             </button>
           )}
-
-          {mode === "external" && (
-            <div className="space-y-2 pt-2">
-              <p className="text-xs text-wallet-muted">Switch to local wallet</p>
-              {connectors.map((c) => (
-                <button
-                  key={c.uid}
-                  type="button"
-                  disabled
-                  className="w-full rounded-full border border-wallet-border py-3 text-sm text-wallet-muted opacity-50"
-                >
-                  Disconnect {c.name} first
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
-        <p className="mt-10 pb-8 text-center text-xs leading-relaxed text-wallet-muted-dim">
+        <p className="mt-10 pb-6 text-center text-xs leading-relaxed text-wallet-muted-dim">
           Local wallets are encrypted on this device. Never share your secret phrase.
         </p>
       </div>

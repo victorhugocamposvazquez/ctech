@@ -24,10 +24,12 @@ export function UnlockScreen() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6 pb-12 pt-16">
-      <TrustShield className="h-20 w-20" />
-      <h1 className="mt-6 text-2xl font-bold text-wallet-text">Welcome back</h1>
-      <p className="mt-2 text-sm text-wallet-muted">Enter your password to unlock</p>
+    <div className="wallet-screen wallet-gradient-top wallet-screen-centered min-h-dvh pt-16">
+      <div className="wallet-hero-glow">
+        <TrustShield className="relative mx-auto h-24 w-24" />
+      </div>
+      <h1 className="mt-8 text-[28px] font-bold text-wallet-text">Welcome back</h1>
+      <p className="mt-2 text-wallet-muted">Enter your password to unlock</p>
 
       <form onSubmit={(e) => void submit(e)} className="mt-10 w-full max-w-sm space-y-4">
         <input
@@ -40,7 +42,7 @@ export function UnlockScreen() {
         />
         {error && <p className="text-center text-sm text-wallet-danger">{error}</p>}
         <button type="submit" disabled={busy || !password} className="wallet-btn-primary">
-          {busy ? "Unlocking…" : "Unlock"}
+          {busy ? "Unlocking…" : "Unlock wallet"}
         </button>
       </form>
     </div>

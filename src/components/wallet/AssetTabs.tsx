@@ -9,8 +9,8 @@ export function AssetTabs({ children }: { children: ReactNode }) {
   const [tab, setTab] = useState<Tab>("crypto");
 
   return (
-    <div className="px-4">
-      <div className="flex gap-6 border-b border-wallet-border">
+    <div className="px-5">
+      <div className="wallet-tabs">
         <button
           type="button"
           onClick={() => setTab("crypto")}
@@ -27,17 +27,15 @@ export function AssetTabs({ children }: { children: ReactNode }) {
         </button>
       </div>
 
-      <div className="pt-2">
+      <div className="pt-4 pb-2">
         {tab === "crypto" ? (
           children
         ) : (
-          <div className="flex flex-col items-center py-16 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-wallet-elevated text-3xl">
-              🖼
-            </div>
+          <div className="wallet-empty py-16">
+            <div className="wallet-empty-icon">🖼</div>
             <p className="font-semibold text-wallet-text">No NFTs yet</p>
             <p className="mt-1 max-w-xs text-sm text-wallet-muted">
-              Your NFTs will appear here once you receive them.
+              Your collectibles will appear here
             </p>
           </div>
         )}

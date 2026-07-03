@@ -76,84 +76,64 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col px-5 pb-8 pt-6">
-      <button type="button" onClick={onBack} className="mb-4 text-sm text-wallet-accent">
+    <div className="wallet-screen wallet-gradient-top min-h-dvh pt-8">
+      <button type="button" onClick={onBack} className="wallet-back-link">
         ← Back
       </button>
-      <h1 className="text-2xl font-bold text-wallet-text">Import wallet</h1>
-      <p className="mt-2 text-sm text-wallet-muted">
-        Restore with your 12-word phrase or private key
-      </p>
+      <h1 className="wallet-page-title">Import wallet</h1>
+      <p className="wallet-page-subtitle">Restore with your secret phrase or private key</p>
 
-      <div className="mt-6 flex rounded-full bg-wallet-elevated p-1">
+      <div className="wallet-segmented mt-8">
         {(["phrase", "key"] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`flex-1 rounded-full py-2.5 text-sm font-semibold transition ${
-              tab === t
-                ? "bg-wallet-accent text-[#0b0b0c]"
-                : "text-wallet-muted"
-            }`}
+            className={`wallet-segmented-btn ${tab === t ? "active" : ""}`}
           >
             {t === "phrase" ? "Secret phrase" : "Private key"}
           </button>
         ))}
       </div>
 
-      <div className="mt-5 flex-1 space-y-4">
+      <div className="mt-6 flex-1 space-y-5">
         {tab === "phrase" ? (
-          <textarea
-            value={phrase}
-            onChange={(e) => setPhrase(e.target.value)}
-            placeholder="Enter your 12 or 24 word recovery phrase…"
-            rows={4}
-            className="wallet-input resize-none font-mono text-sm"
-          />
+          <div>
+            <label className="wallet-label">Recovery phrase</label>
+            <textarea
+              value={phrase}
+              onChange={(e) => setPhrase(e.target.value)}
+              placeholder="word1 word2 word3 …"
+              rows={4}
+              className="wallet-input resize-none font-mono text-sm leading-relaxed"
+            />
+          </div>
         ) : (
-          <input
-            type="password"
-            value={privateKey}
-            onChange={(e) => setPrivateKey(e.target.value)}
-            placeholder="0x…"
-            className="wallet-input font-mono text-sm"
-          />
+          <div>
+            <label className="wallet-label">Private key</label>
+            <input
+              type="password"
+              value={privateKey}
+              onChange={(e) => setPrivateKey(e.target.value)}
+              placeholder="0x…"
+              className="wallet-input font-mono text-sm"
+            />
+          </div>
         )}
 
         <div>
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-wallet-muted">
-            New password
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Min. 8 characters"
-            className="wallet-input"
-          />
+          <label className="wallet-label">New password</label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="wallet-input" />
         </div>
         <div>
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-wallet-muted">
-            Confirm password
-          </label>
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            className="wallet-input"
-          />
+          <label className="wallet-label">Confirm password</label>
+          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="wallet-input" />
         </div>
       </div>
 
       {error && <p className="text-sm text-wallet-danger">{error}</p>}
 
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => void submit()}
-        className="wallet-btn-primary mt-4"
-      >
+      <button type="button" disabled={busy} onClick={() => void submit()} className="wallet-btn-primary mt-6">
         {busy ? "Importing…" : "Import wallet"}
       </button>
     </div>

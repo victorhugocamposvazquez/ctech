@@ -51,34 +51,27 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
 
   if (step === "password") {
     return (
-      <div className="flex min-h-dvh flex-col px-5 pb-8 pt-6">
-        <button type="button" onClick={onBack} className="mb-4 text-sm text-wallet-accent">
+      <div className="wallet-screen wallet-gradient-top min-h-dvh pt-8">
+        <button type="button" onClick={onBack} className="wallet-back-link">
           ← Back
         </button>
-        <h1 className="text-2xl font-bold text-wallet-text">Create password</h1>
-        <p className="mt-2 text-sm text-wallet-muted">
-          This password encrypts your wallet on this device. It cannot be recovered.
+        <h1 className="wallet-page-title">Create password</h1>
+        <p className="wallet-page-subtitle">
+          Encrypts your wallet on this device. Cannot be recovered if lost.
         </p>
 
-        <div className="mt-8 space-y-4">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="wallet-input"
-          />
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="Confirm password"
-            className="wallet-input"
-          />
+        <div className="mt-10 space-y-5">
+          <div>
+            <label className="wallet-label">Password</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="wallet-input" placeholder="Min. 8 characters" />
+          </div>
+          <div>
+            <label className="wallet-label">Confirm</label>
+            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="wallet-input" />
+          </div>
         </div>
 
         {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
-
         <button type="button" onClick={goToPhrase} className="wallet-btn-primary mt-auto">
           Continue
         </button>
@@ -86,57 +79,40 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
     );
   }
 
-  if (step === "phrase") {
-    return (
-      <div className="flex min-h-dvh flex-col px-5 pb-8 pt-6">
-        <h1 className="text-2xl font-bold text-wallet-text">Secret phrase</h1>
-        <p className="mt-2 text-sm text-wallet-muted">
-          Write down these 12 words in order. Never share them with anyone.
-        </p>
+  return (
+    <div className="wallet-screen wallet-gradient-top min-h-dvh pt-8">
+      <h1 className="wallet-page-title">Secret phrase</h1>
+      <p className="wallet-page-subtitle">
+        Write down these 12 words in order. This is the only way to recover your wallet.
+      </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {words.map((word, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 rounded-xl bg-wallet-elevated px-3 py-2.5"
-            >
-              <span className="text-xs text-wallet-muted">{i + 1}</span>
-              <span className="font-mono text-sm text-wallet-text">{word}</span>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => void navigator.clipboard.writeText(mnemonic)}
-          className="mt-4 text-sm font-semibold text-wallet-accent"
-        >
-          Copy to clipboard
-        </button>
-
-        <label className="mt-6 flex items-start gap-3 text-sm text-wallet-secondary">
-          <input
-            type="checkbox"
-            checked={saved}
-            onChange={(e) => setSaved(e.target.checked)}
-            className="mt-1 accent-[#48ff91]"
-          />
-          I have saved my secret phrase in a secure place
-        </label>
-
-        {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
-
-        <button
-          type="button"
-          disabled={!saved || busy}
-          onClick={() => void finalize()}
-          className="wallet-btn-primary mt-6"
-        >
-          {busy ? "Saving…" : "Continue"}
-        </button>
+      <div className="wallet-mnemonic-grid mt-8">
+        {words.map((word, i) => (
+          <div key={i} className="wallet-mnemonic-word">
+            <span className="wallet-mnemonic-index">{i + 1}</span>
+            <span className="wallet-mnemonic-text">{word}</span>
+          </div>
+        ))}
       </div>
-    );
-  }
 
-  return null;
+      <button
+        type="button"
+        onClick={() => void navigator.clipboard.writeText(mnemonic)}
+        className="mt-5 text-sm font-semibold text-wallet-accent"
+      >
+        Copy to clipboard
+      </button>
+
+      <label className="mt-8 flex items-start gap-3 rounded-2xl border border-wallet-border bg-wallet-accent-soft p-4 text-sm text-wallet-secondary">
+        <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 accent-[#48ff91]" />
+        I have saved my secret phrase in a secure place
+      </label>
+
+      {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
+
+      <button type="button" disabled={!saved || busy} onClick={() => void finalize()} className="wallet-btn-primary mt-6">
+        {busy ? "Creating wallet…" : "Continue to wallet"}
+      </button>
+    </div>
+  );
 }
