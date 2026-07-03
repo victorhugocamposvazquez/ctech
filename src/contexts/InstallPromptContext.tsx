@@ -12,7 +12,8 @@ import {
 } from "react";
 import type { PWAInstallElement } from "@khmyznikov/pwa-install";
 import { PWAInstall } from "@/components/wallet/PWAInstall";
-import { IosInstallGuide } from "@/components/wallet/IosInstallGuide";
+import { IosSafariEscapeSheet } from "@/components/wallet/IosSafariEscapeSheet";
+import { canInstallOnIos, isStandalonePwa } from "@/lib/wallet/pwa-ios";
 
 const INSTALLED_KEY = "wallet-pwa-installed";
 const DISMISS_KEY = "wallet-install-dismissed";
@@ -30,19 +31,12 @@ function detectPlatform(): Platform {
   return "desktop";
 }
 
-function isStandaloneMode(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
-
 interface InstallPromptContextValue {
   showInstallBanner: boolean;
   canNativeInstall: boolean;
   isStandalone: boolean;
   isIOS: boolean;
+  needsSafari: boolean;
   install: () => void;
   dismiss: () => void;
 }
@@ -57,13 +51,15 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
   const [dismissed, setDismissed] = useState(false);
   const [nativeAvailable, setNativeAvailable] = useState(false);
   const [componentReady, setComponentReady] = useState(false);
-  const [iosGuideOpen, setIosGuideOpen] = useState(false);
+  const [escapeSheetOpen, setEscapeSheetOpen] = useState(false);
+  const [needsSafari, setNeedsSafari] = useState(false);
 
   useEffect(() => {
     setPlatform(detectPlatform());
-    setIsStandalone(isStandaloneMode());
+    setIsStandalone(isStandalonePwa());
     setInstalled(!!localStorage.getItem(INSTALLED_KEY));
     setDismissed(!!sessionStorage.getItem(DISMISS_KEY));
+    setNeedsSafari(!canInstallOnIos() && detectPlatform() === "ios");
   }, []);
 
   useEffect(() => {
@@ -91,15 +87,20 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const install = useCallback(() => {
-    // iOS: Apple no expone API de instalación — guía in-app propia (siempre funciona)
-    if (detectPlatform() === "ios") {
-      setIosGuideOpen(true);
+    const isIos = detectPlatform() === "ios";
+
+    // iOS fuera de Safari: primero hay que escapar al navegador del sistema
+    if (isIos && !canInstallOnIos()) {
+      setEscapeSheetOpen(true);
       return;
     }
-    // Android / desktop Chromium: diálogo nativo vía web component
-    if (pwaRef.current?.showDialog) {
-      pwaRef.current.showDialog(true);
+
+    // iOS Safari + Android + Desktop: un toque → diálogo nativo del navegador / pwa-install
+    if (pwaRef.current?.install) {
+      pwaRef.current.install();
+      return;
     }
+    pwaRef.current?.showDialog(true);
   }, []);
 
   useEffect(() => {
@@ -111,12 +112,12 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
 
     sessionStorage.setItem(AUTO_KEY, "1");
     const timer = window.setTimeout(() => {
-      if (isIos) {
-        setIosGuideOpen(true);
+      if (isIos && !canInstallOnIos()) {
+        setEscapeSheetOpen(true);
       } else {
-        pwaRef.current?.showDialog(true);
+        pwaRef.current?.install?.() ?? pwaRef.current?.showDialog(true);
       }
-    }, 800);
+    }, 1500);
     return () => window.clearTimeout(timer);
   }, [componentReady, nativeAvailable, platform, isStandalone, installed, dismissed]);
 
@@ -125,13 +126,14 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       showInstallBanner,
-      canNativeInstall: nativeAvailable,
+      canNativeInstall: nativeAvailable || (platform === "ios" && canInstallOnIos()),
       isStandalone: isStandalone || installed,
       isIOS: platform === "ios",
+      needsSafari,
       install,
       dismiss,
     }),
-    [showInstallBanner, nativeAvailable, isStandalone, installed, platform, install, dismiss]
+    [showInstallBanner, nativeAvailable, isStandalone, installed, platform, needsSafari, install, dismiss]
   );
 
   return (
@@ -143,7 +145,7 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
         onInstallAvailable={() => setNativeAvailable(true)}
         onInstallSuccess={markInstalled}
       />
-      <IosInstallGuide open={iosGuideOpen} onClose={() => setIosGuideOpen(false)} />
+      <IosSafariEscapeSheet open={escapeSheetOpen} onClose={() => setEscapeSheetOpen(false)} />
     </InstallPromptContext.Provider>
   );
 }

@@ -1,16 +1,24 @@
 {
+  "id": "/wallet/",
   "name": "Trust Wallet",
   "short_name": "Trust",
   "description": "Tu wallet crypto segura en BNB Smart Chain",
-  "start_url": "/wallet",
-  "scope": "/wallet",
+  "start_url": "/wallet/?source=pwa",
+  "scope": "/wallet/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "background_color": "#060608",
-  "theme_color": "#060608",
+  "background_color": "#f4f4f5",
+  "theme_color": "#f4f4f5",
   "lang": "es",
   "categories": ["finance", "utilities"],
   "icons": [
+    {
+      "src": "/wallet/icons/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "/wallet/icons/icon-192.png",
       "sizes": "192x192",

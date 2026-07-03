@@ -8,18 +8,20 @@ interface InstallBottomBannerProps {
 }
 
 export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProps) {
-  const { showInstallBanner, canNativeInstall, isIOS, install, dismiss } =
+  const { showInstallBanner, canNativeInstall, isIOS, needsSafari, install, dismiss } =
     useInstallPrompt();
 
   if (!showInstallBanner) return null;
 
   const positionClass = aboveNav ? "bottom-[72px]" : "bottom-3 safe-bottom";
 
-  const hint = isIOS
-    ? "Ver instrucciones para añadir a pantalla de inicio"
-    : canNativeInstall
-      ? "Añádela a tu pantalla de inicio con un toque"
-      : "Toca Instalar para ver cómo añadirla";
+  const hint = needsSafari
+    ? "Abre en Safari para poder instalar"
+    : isIOS
+      ? "Tus ajustes se sincronizan al instalar"
+      : canNativeInstall
+        ? "Un toque para instalar en tu dispositivo"
+        : "Toca Instalar";
 
   return (
     <div

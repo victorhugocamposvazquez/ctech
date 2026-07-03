@@ -9,6 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  scheduleWalletSnapshotPush,
+  WALLET_SYNC_APPLIED_EVENT,
+} from "@/lib/wallet/pwa-sync";
 
 export type WalletTheme = "light" | "dark";
 
@@ -49,11 +53,16 @@ export function WalletThemeProvider({
 
   useEffect(() => {
     setThemeState(readTheme());
+
+    const onSync = () => setThemeState(readTheme());
+    window.addEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
+    return () => window.removeEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
   }, []);
 
   const setTheme = useCallback((next: WalletTheme) => {
     setThemeState(next);
     localStorage.setItem(STORAGE_KEY, next);
+    scheduleWalletSnapshotPush();
   }, []);
 
   const themeClass = theme === "light" ? "wallet-theme-light" : "wallet-theme-dark";

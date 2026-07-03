@@ -204,6 +204,17 @@ export const t = {
   iosInstallDone: "Entendido",
   iosCopyUrl: "Copiar enlace de la app",
   iosUrlCopied: "Enlace copiado — pégalo en Safari",
+  iosOpenSafariBtn: "Abrir en Safari",
+  iosOpenSafariFirst: "Abre en Safari primero",
+  iosAfterSafariHint: "En Safari, pulsa Instalar de nuevo para añadir la app.",
+  iosInAppWarning:
+    "Estás dentro de {app}. Abre Safari para instalar la app.",
+  iosInAppGeneric: "otra app",
+  installTapHint: "Pulsa el botón para abrir el instalador de tu dispositivo.",
+  pwaSyncSuccess: "Ajustes sincronizados desde Safari",
+  pwaSyncBioHint: "Activa la biometría de nuevo en Ajustes (cada app es independiente en iPhone).",
+  pwaInstallOrderHint:
+    "En iPhone: configura la wallet en Safari, luego instala. Al abrir la app se sincronizarán tus ajustes.",
 
   // In-app only placeholders
   swapComingSoon: "El swap dentro de la app estará disponible pronto.",

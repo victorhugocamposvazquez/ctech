@@ -1,3 +1,4 @@
+import { scheduleWalletSnapshotPush } from "./pwa-sync";
 import { loadKeystore } from "./keystore";
 
 const BIO_STORAGE_KEY = "wallet_bio_v1";
@@ -59,6 +60,7 @@ export async function isBiometricSupported(): Promise<boolean> {
 
 export function clearBiometricEnrollment(): void {
   localStorage.removeItem(BIO_STORAGE_KEY);
+  scheduleWalletSnapshotPush();
 }
 
 async function encryptPasswordWithPrf(
@@ -150,6 +152,7 @@ export async function enrollBiometric(password: string): Promise<void> {
       iv,
     } satisfies BioStore)
   );
+  scheduleWalletSnapshotPush();
 }
 
 /** Desbloquea con Face ID / Touch ID / huella. Devuelve la contraseña de la wallet. */

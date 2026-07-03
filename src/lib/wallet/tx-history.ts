@@ -1,4 +1,5 @@
 import type { Address } from "viem";
+import { scheduleWalletSnapshotPush } from "./pwa-sync";
 
 export interface StoredTx {
   hash: string;
@@ -31,6 +32,7 @@ export function saveTx(tx: StoredTx): void {
     const all = JSON.parse(localStorage.getItem(KEY) ?? "[]") as StoredTx[];
     const next = [tx, ...all.filter((t) => t.hash !== tx.hash)].slice(0, MAX * 3);
     localStorage.setItem(KEY, JSON.stringify(next));
+    scheduleWalletSnapshotPush();
   } catch {
     /* ignore */
   }

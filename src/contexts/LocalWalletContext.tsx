@@ -34,6 +34,7 @@ import {
   saveKeystore,
   type SecretPayload,
 } from "@/lib/wallet/keystore";
+import { WALLET_SYNC_APPLIED_EVENT } from "@/lib/wallet/pwa-sync";
 
 type LocalStatus = "loading" | "none" | "locked" | "unlocked";
 
@@ -73,6 +74,12 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setStatus(hasKeystore() ? "locked" : "none");
+
+    const onSync = () => {
+      setStatus(hasKeystore() ? "locked" : "none");
+    };
+    window.addEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
+    return () => window.removeEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
   }, []);
 
   const unlockWithSecret = useCallback((payload: SecretPayload) => {

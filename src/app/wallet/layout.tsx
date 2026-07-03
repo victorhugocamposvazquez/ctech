@@ -15,12 +15,17 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Trust Wallet",
   },
   icons: {
-    icon: "/wallet/icons/icon.svg",
-    apple: "/wallet/icons/icon-192.png",
+    icon: [
+      { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+      { url: "/wallet/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   other: {
     "mobile-web-app-capable": "yes",

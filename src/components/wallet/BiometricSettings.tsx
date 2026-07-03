@@ -21,6 +21,13 @@ export function BiometricSettings() {
   useEffect(() => {
     void isBiometricSupported().then(setSupported);
     setEnabled(isBiometricEnabled());
+
+    const refresh = () => {
+      void isBiometricSupported().then(setSupported);
+      setEnabled(isBiometricEnabled());
+    };
+    window.addEventListener("wallet-sync-applied", refresh);
+    return () => window.removeEventListener("wallet-sync-applied", refresh);
   }, []);
 
   const disable = () => {

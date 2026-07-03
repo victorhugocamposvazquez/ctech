@@ -1,4 +1,5 @@
 import { clearBiometricEnrollment } from "@/lib/wallet/biometrics";
+import { scheduleWalletSnapshotPush } from "./pwa-sync";
 
 const STORAGE_KEY = "tw_keystore_v1";
 
@@ -89,6 +90,7 @@ export async function decryptSecret(
 export function saveKeystore(store: StoredKeystore) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
   localStorage.setItem("wallet_mode", "local");
+  scheduleWalletSnapshotPush();
 }
 
 export function loadKeystore(): StoredKeystore | null {
@@ -105,6 +107,7 @@ export function clearKeystore() {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem("wallet_mode");
   clearBiometricEnrollment();
+  scheduleWalletSnapshotPush();
 }
 
 export function hasKeystore(): boolean {

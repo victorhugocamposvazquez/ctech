@@ -9,6 +9,8 @@ import { WalletThemeProvider } from "@/contexts/WalletThemeContext";
 import { wagmiConfig } from "@/lib/wallet/config";
 import { WalletAuthGate } from "@/components/wallet/WalletAuthGate";
 import { AutoLockGuard } from "@/components/wallet/AutoLockGuard";
+import { WalletServiceWorkerRegister } from "@/components/wallet/WalletServiceWorkerRegister";
+import { PwaStorageSync } from "@/components/wallet/PwaStorageSync";
 
 export function WalletProviders({
   children,
@@ -36,6 +38,8 @@ export function WalletProviders({
           <InstallPromptProvider>
             <LocalWalletProvider>
               <WalletAuthGate>
+                <WalletServiceWorkerRegister />
+                <PwaStorageSync />
                 <AutoLockGuard />
                 {children}
               </WalletAuthGate>

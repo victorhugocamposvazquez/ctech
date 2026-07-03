@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
+import { scheduleWalletSnapshotPush } from "@/lib/wallet/pwa-sync";
 
 const DEFAULT_MS = 5 * 60 * 1000;
 const STORAGE_KEY = "wallet_autolock_ms";
@@ -16,6 +17,7 @@ export function getAutoLockMs(): number {
 
 export function setAutoLockMs(ms: number): void {
   localStorage.setItem(STORAGE_KEY, String(ms));
+  scheduleWalletSnapshotPush();
 }
 
 const EVENTS = ["mousedown", "keydown", "touchstart", "scroll"] as const;

@@ -9,6 +9,7 @@ const withPWA = withPWAInit({
   sw: "wallet-sw.js",
   workboxOptions: {
     disableDevLogs: true,
+    importScripts: ["/wallet-sw-bridge.js"],
   },
 });
 

@@ -56,9 +56,11 @@ export const PWAInstall = forwardRef<PWAInstallElement, PWAInstallProps>(
       <pwa-install
         ref={setRef}
         manual-apple="true"
-        manual-chrome="true"
+        disable-chrome="true"
         manifest-url="/manifest.webmanifest"
         name="Trust Wallet"
+        description="Tu wallet crypto segura en BNB Smart Chain"
+        icon="/wallet/icons/icon-180.png"
         install-description="Instala la app para acceder más rápido a tu wallet"
       />
     );
