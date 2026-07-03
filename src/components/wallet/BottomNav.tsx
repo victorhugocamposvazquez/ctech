@@ -3,108 +3,51 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV = [
+const SIDE_NAV = [
   {
     href: "/wallet",
-    label: "Wallet",
+    label: "Home",
+    match: (p: string) => p === "/wallet",
     icon: (active: boolean) => (
-      <svg
-        className="h-6 w-6"
-        fill={active ? "currentColor" : "none"}
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={active ? 0 : 1.8}
-      >
+      <svg className="h-6 w-6" fill={active ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 1.6}>
         {active ? (
-          <path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v11A2.5 2.5 0 0117.5 20h-11A2.5 2.5 0 014 17.5v-11zM16 12.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+          <path d="M12 2.5L3 9v11a1 1 0 001 1h6v-6h4v6h6a1 1 0 001-1V9L12 2.5z" />
         ) : (
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3 7.5A2.5 2.5 0 015.5 5h13A2.5 2.5 0 0121 7.5V18a2 2 0 01-2 2H5a2 2 0 01-2-2V7.5z"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-7 9 7M5 10v10h5v-6h4v6h5V10" />
         )}
       </svg>
     ),
   },
   {
-    href: "/wallet/swap",
-    label: "Swap",
+    href: "/wallet/trending",
+    label: "Trending",
+    match: (p: string) => p.startsWith("/wallet/trending"),
     icon: (active: boolean) => (
-      <svg
-        className="h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={active ? 2.2 : 1.8}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"
-        />
+      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+      </svg>
+    ),
+  },
+];
+
+const SIDE_NAV_RIGHT = [
+  {
+    href: "/wallet/earn",
+    label: "Earn",
+    match: (p: string) => p.startsWith("/wallet/earn"),
+    icon: (active: boolean) => (
+      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
     ),
   },
   {
-    href: "/wallet/send",
-    label: "Enviar",
+    href: "/wallet/discover",
+    label: "Discover",
+    match: (p: string) => p.startsWith("/wallet/discover"),
     icon: (active: boolean) => (
-      <svg
-        className="h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={active ? 2.2 : 1.8}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M12 19V5m0 0l-7 7m7-7l7 7"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "/wallet/receive",
-    label: "Recibir",
-    icon: (active: boolean) => (
-      <svg
-        className="h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={active ? 2.2 : 1.8}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M12 5v14m0 0l7-7m-7 7l-7-7"
-        />
-      </svg>
-    ),
-  },
-  {
-    href: "/wallet/settings",
-    label: "Ajustes",
-    icon: (active: boolean) => (
-      <svg
-        className="h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={active ? 2.2 : 1.8}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-        />
+      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.6}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
     ),
   },
@@ -112,25 +55,34 @@ const NAV = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const swapActive = pathname.startsWith("/wallet/swap");
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-wallet-border bg-wallet-surface/95 backdrop-blur-lg safe-bottom">
-      <div className="mx-auto flex max-w-lg items-stretch justify-around px-2 pt-2 pb-1">
-        {NAV.map(({ href, label, icon }) => {
-          const active =
-            href === "/wallet"
-              ? pathname === "/wallet"
-              : pathname.startsWith(href);
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-wallet-border bg-wallet-surface safe-bottom">
+      <div className="mx-auto flex max-w-lg items-end justify-around px-2 pb-1 pt-1">
+        {SIDE_NAV.map(({ href, label, icon, match }) => {
+          const active = match(pathname);
           return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex min-w-[56px] flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-[10px] font-medium transition-colors ${
-                active
-                  ? "text-wallet-accent"
-                  : "text-wallet-muted hover:text-wallet-text"
-              }`}
-            >
+            <Link key={href} href={href} className={`wallet-nav-item ${active ? "active" : ""}`}>
+              {icon(active)}
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+
+        <Link href="/wallet/swap" className="wallet-nav-item mb-1">
+          <span className={`wallet-nav-swap ${swapActive ? "" : "inactive"}`}>
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+          </span>
+          <span className={swapActive ? "text-wallet-accent" : ""}>Swap</span>
+        </Link>
+
+        {SIDE_NAV_RIGHT.map(({ href, label, icon, match }) => {
+          const active = match(pathname);
+          return (
+            <Link key={href} href={href} className={`wallet-nav-item ${active ? "active" : ""}`}>
               {icon(active)}
               <span>{label}</span>
             </Link>

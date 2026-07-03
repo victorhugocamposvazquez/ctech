@@ -1,14 +1,14 @@
 {
-  "name": "Trust Wallet Web",
-  "short_name": "Wallet",
-  "description": "Billetera web BNB Smart Chain — USDT, BNB y tokens",
+  "name": "Trust Wallet",
+  "short_name": "Trust",
+  "description": "The most trusted & secure crypto wallet",
   "start_url": "/wallet",
   "scope": "/wallet",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0a0a0b",
-  "theme_color": "#3375bb",
-  "lang": "es",
+  "background_color": "#0b0b0c",
+  "theme_color": "#0b0b0c",
+  "lang": "en",
   "categories": ["finance", "utilities"],
   "icons": [
     {
@@ -28,24 +28,16 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    },
-    {
-      "src": "/wallet/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
     }
   ],
   "shortcuts": [
     {
-      "name": "Enviar",
-      "url": "/wallet/send",
-      "description": "Enviar tokens"
+      "name": "Send",
+      "url": "/wallet/send"
     },
     {
-      "name": "Recibir",
-      "url": "/wallet/receive",
-      "description": "Recibir tokens"
+      "name": "Receive",
+      "url": "/wallet/receive"
     }
   ]
 }

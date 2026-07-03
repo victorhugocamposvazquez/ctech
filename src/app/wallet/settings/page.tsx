@@ -5,6 +5,7 @@ import { WalletShell } from "@/components/wallet/WalletShell";
 import { shortenAddress } from "@/lib/wallet/format";
 import { walletChain } from "@/lib/wallet/config";
 import { useInstallPrompt } from "@/hooks/wallet/useInstallPrompt";
+import { TrustShield } from "@/components/wallet/TrustShield";
 
 export default function WalletSettingsPage() {
   const { address, isConnected, connector } = useAccount();
@@ -13,90 +14,80 @@ export default function WalletSettingsPage() {
   const { canInstall, install, isStandalone } = useInstallPrompt();
 
   return (
-    <WalletShell title="Ajustes">
-      <div className="space-y-4 px-4 pt-4">
-        <section className="rounded-2xl bg-wallet-card p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-wallet-muted">
-            Red
-          </h2>
-          <p className="mt-2 font-medium text-wallet-text">{walletChain.name}</p>
-          <p className="text-xs text-wallet-muted">Chain ID {walletChain.id}</p>
-        </section>
+    <WalletShell hideNav>
+      <div className="px-4 pt-4">
+        <div className="mb-8 flex flex-col items-center pt-4">
+          <TrustShield className="h-14 w-14" />
+          <p className="mt-3 text-lg font-bold text-wallet-text">Trust Wallet</p>
+          <p className="text-sm text-wallet-muted">Web App · v1.0</p>
+        </div>
 
-        {isConnected && address && (
-          <section className="rounded-2xl bg-wallet-card p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-wallet-muted">
-              Wallet conectada
-            </h2>
-            <p className="mt-2 font-mono text-sm text-wallet-text">
-              {shortenAddress(address, 8)}
+        <div className="space-y-3">
+          <section className="overflow-hidden rounded-2xl bg-wallet-elevated">
+            <div className="border-b border-wallet-border px-4 py-3.5">
+              <p className="text-xs font-medium uppercase tracking-wide text-wallet-muted">
+                Network
+              </p>
+              <p className="mt-1 font-semibold text-wallet-text">{walletChain.name}</p>
+            </div>
+            {isConnected && address && (
+              <div className="px-4 py-3.5">
+                <p className="text-xs font-medium uppercase tracking-wide text-wallet-muted">
+                  Wallet address
+                </p>
+                <p className="mt-1 break-all font-mono text-sm text-wallet-secondary">
+                  {shortenAddress(address, 10)}
+                </p>
+                <p className="mt-0.5 text-xs text-wallet-muted">
+                  {connector?.name ?? "Injected"}
+                </p>
+              </div>
+            )}
+          </section>
+
+          {canInstall && !isStandalone && (
+            <button
+              type="button"
+              onClick={() => void install()}
+              className="wallet-btn-primary"
+            >
+              Install App
+            </button>
+          )}
+
+          {isStandalone && (
+            <p className="text-center text-sm text-wallet-accent">
+              ✓ Installed as app
             </p>
-            <p className="text-xs text-wallet-muted">
-              {connector?.name ?? "Injected"}
-            </p>
+          )}
+
+          {isConnected ? (
             <button
               type="button"
               onClick={() => disconnect()}
-              className="mt-4 w-full rounded-xl border border-red-500/40 py-3 text-sm font-semibold text-red-400"
+              className="w-full rounded-full border border-wallet-danger/40 py-4 text-sm font-semibold text-wallet-danger"
             >
-              Desconectar
+              Disconnect Wallet
             </button>
-          </section>
-        )}
-
-        {!isConnected && (
-          <section className="rounded-2xl bg-wallet-card p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-wallet-muted">
-              Conectar
-            </h2>
-            <div className="mt-3 space-y-2">
+          ) : (
+            <div className="space-y-2">
               {connectors.map((c) => (
                 <button
                   key={c.uid}
                   type="button"
                   onClick={() => connect({ connector: c })}
-                  className="w-full rounded-xl bg-wallet-accent py-3 text-sm font-semibold text-white"
+                  className="wallet-btn-primary"
                 >
-                  {c.name}
+                  Connect {c.name}
                 </button>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </div>
 
-        {canInstall && !isStandalone && (
-          <section className="rounded-2xl bg-wallet-card p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-wallet-muted">
-              Instalar app
-            </h2>
-            <p className="mt-2 text-sm text-wallet-muted">
-              Añade la billetera a tu pantalla de inicio (PWA).
-            </p>
-            <button
-              type="button"
-              onClick={() => void install()}
-              className="mt-4 w-full rounded-xl bg-wallet-accent py-3 text-sm font-semibold text-white"
-            >
-              Instalar
-            </button>
-          </section>
-        )}
-
-        {isStandalone && (
-          <p className="text-center text-xs text-green-400">
-            ✓ App instalada en modo standalone
-          </p>
-        )}
-
-        <section className="rounded-2xl bg-wallet-card p-4">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-wallet-muted">
-            Acerca de
-          </h2>
-          <p className="mt-2 text-sm text-wallet-muted">
-            Billetera web non-custodial. Tus claves permanecen en tu wallet
-            (MetaMask, Trust Wallet, etc.).
-          </p>
-        </section>
+        <p className="mt-10 pb-8 text-center text-xs leading-relaxed text-wallet-muted-dim">
+          Non-custodial wallet. Your keys remain in your browser extension.
+        </p>
       </div>
     </WalletShell>
   );

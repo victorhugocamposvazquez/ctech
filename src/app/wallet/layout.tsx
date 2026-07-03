@@ -1,16 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import { WalletProviders } from "@/components/wallet/WalletProviders";
-import { APP_NAME } from "@/lib/wallet/config";
 import "@/app/wallet/wallet.css";
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-trust",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: APP_NAME,
-  description: "Billetera web BNB Smart Chain — USDT, BNB y tokens",
+  title: "Trust Wallet",
+  description: "The most trusted & secure crypto wallet",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: APP_NAME,
+    title: "Trust Wallet",
   },
   icons: {
     icon: "/wallet/icons/icon.svg",
@@ -19,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0b",
+  themeColor: "#0b0b0c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -34,7 +40,7 @@ export default function WalletLayout({
 }) {
   return (
     <WalletProviders>
-      <div className="wallet-root">{children}</div>
+      <div className={`wallet-root ${inter.variable}`}>{children}</div>
     </WalletProviders>
   );
 }

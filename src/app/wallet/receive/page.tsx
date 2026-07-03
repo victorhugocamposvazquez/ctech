@@ -6,18 +6,18 @@ import { ConnectScreen } from "@/components/wallet/ConnectScreen";
 import { ReceiveScreen } from "@/components/wallet/ReceiveScreen";
 
 export default function WalletReceivePage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
 
   if (!isConnected) {
     return (
-      <WalletShell title="Recibir" hideNav>
+      <WalletShell hideNav hideHeader gradient>
         <ConnectScreen />
       </WalletShell>
     );
   }
 
   return (
-    <WalletShell title="Recibir">
+    <WalletShell address={address} hideNav>
       <ReceiveScreen />
     </WalletShell>
   );

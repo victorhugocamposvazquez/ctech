@@ -81,16 +81,20 @@ export function SendForm() {
   };
 
   return (
-    <div className="space-y-5 px-4 pt-4">
+    <div className="space-y-6 px-4 pt-6">
+      <h1 className="text-2xl font-bold text-wallet-text">Send</h1>
+
       <div>
-        <label className="text-xs font-medium text-wallet-muted">Activo</label>
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-wallet-muted">
+          Asset
+        </label>
         <select
           value={tokenId}
           onChange={(e) => setTokenId(e.target.value)}
-          className="mt-1 w-full rounded-2xl border border-wallet-border bg-wallet-card px-4 py-3.5 text-wallet-text outline-none focus:border-wallet-accent"
+          className="wallet-input appearance-none"
         >
           {tokens.map((t) => (
-            <option key={t.id} value={t.id}>
+            <option key={t.id} value={t.id} className="bg-wallet-elevated">
               {t.symbol} — {t.name}
             </option>
           ))}
@@ -98,25 +102,29 @@ export function SendForm() {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-wallet-muted">Destino</label>
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-wallet-muted">
+          To address
+        </label>
         <input
           type="text"
           placeholder="0x…"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="mt-1 w-full rounded-2xl border border-wallet-border bg-wallet-card px-4 py-3.5 font-mono text-sm text-wallet-text outline-none focus:border-wallet-accent"
+          className="wallet-input font-mono text-sm"
         />
       </div>
 
       <div>
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-wallet-muted">Cantidad</label>
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-xs font-semibold uppercase tracking-wide text-wallet-muted">
+            Amount
+          </label>
           <button
             type="button"
             onClick={setMax}
-            className="text-xs font-semibold text-wallet-accent"
+            className="text-xs font-bold text-wallet-accent"
           >
-            Máx
+            MAX
           </button>
         </div>
         <input
@@ -125,12 +133,11 @@ export function SendForm() {
           placeholder="0.00"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="mt-1 w-full rounded-2xl border border-wallet-border bg-wallet-card px-4 py-3.5 text-lg font-semibold text-wallet-text outline-none focus:border-wallet-accent"
+          className="wallet-input text-2xl font-bold"
         />
         {asset && (
-          <p className="mt-1 text-xs text-wallet-muted">
-            Disponible:{" "}
-            {formatTokenAmount(asset.rawBalance, selected.decimals)}{" "}
+          <p className="mt-2 text-sm text-wallet-muted">
+            Available: {formatTokenAmount(asset.rawBalance, selected.decimals)}{" "}
             {selected.symbol}
           </p>
         )}
@@ -146,18 +153,18 @@ export function SendForm() {
           parseFloat(amount) <= 0
         }
         onClick={handleSend}
-        className="w-full rounded-2xl bg-wallet-accent py-4 font-bold text-white transition hover:bg-blue-500 disabled:opacity-50"
+        className="wallet-btn-primary"
       >
-        {isPending || confirming ? "Enviando…" : "Enviar"}
+        {isPending || confirming ? "Sending…" : "Continue"}
       </button>
 
       {txHash && (
-        <p className="break-all text-center text-xs text-green-400">
+        <p className="break-all text-center text-xs text-wallet-accent">
           Tx: {txHash.slice(0, 10)}…{txHash.slice(-8)}
         </p>
       )}
       {error && (
-        <p className="text-center text-sm text-red-400">{error.message}</p>
+        <p className="text-center text-sm text-wallet-danger">{error.message}</p>
       )}
     </div>
   );

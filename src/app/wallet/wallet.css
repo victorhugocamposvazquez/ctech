@@ -1,26 +1,54 @@
+/* Trust Wallet — dark mode design tokens (2024 rebrand) */
 .wallet-theme {
-  --wallet-bg: #0a0a0b;
-  --wallet-surface: #141416;
-  --wallet-card: #1c1c1f;
-  --wallet-border: #2a2a2e;
-  --wallet-text: #f4f4f5;
-  --wallet-muted: #71717a;
-  --wallet-accent: #3375bb;
+  --wallet-bg: #0b0b0c;
+  --wallet-bg-top: #121214;
+  --wallet-surface: #171719;
+  --wallet-elevated: #222226;
+  --wallet-card: #1a1a1d;
+  --wallet-border: #2c2c30;
+  --wallet-border-light: #3a3a40;
+  --wallet-text: #ffffff;
+  --wallet-text-secondary: #ebebf0;
+  --wallet-muted: #8e8e93;
+  --wallet-muted-dim: #636366;
+  --wallet-accent: #48ff91;
+  --wallet-accent-dim: #3dd47a;
+  --wallet-blue: #0500ff;
+  --wallet-blue-soft: #4d6bff;
+  --wallet-danger: #ff6b6b;
+  --wallet-radius: 16px;
+  --wallet-radius-sm: 12px;
+  --wallet-radius-pill: 999px;
+  font-family: var(--font-trust), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
 }
 
 .wallet-root {
   background: var(--wallet-bg);
   min-height: 100dvh;
+  color: var(--wallet-text);
+}
+
+.wallet-gradient-top {
+  background: linear-gradient(
+    180deg,
+    var(--wallet-bg-top) 0%,
+    var(--wallet-bg) 280px
+  );
 }
 
 .bg-wallet-bg { background-color: var(--wallet-bg); }
 .bg-wallet-surface { background-color: var(--wallet-surface); }
+.bg-wallet-elevated { background-color: var(--wallet-elevated); }
 .bg-wallet-card { background-color: var(--wallet-card); }
 .border-wallet-border { border-color: var(--wallet-border); }
 .text-wallet-text { color: var(--wallet-text); }
+.text-wallet-secondary { color: var(--wallet-text-secondary); }
 .text-wallet-muted { color: var(--wallet-muted); }
 .text-wallet-accent { color: var(--wallet-accent); }
 .bg-wallet-accent { background-color: var(--wallet-accent); }
+.bg-wallet-blue { background-color: var(--wallet-blue); }
+.text-wallet-danger { color: var(--wallet-danger); }
 
 .safe-top {
   padding-top: env(safe-area-inset-top, 0px);
@@ -28,4 +56,133 @@
 
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.wallet-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 72px;
+}
+
+.wallet-action-icon {
+  display: flex;
+  height: 52px;
+  width: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--wallet-elevated);
+  border: 1px solid var(--wallet-border);
+  color: var(--wallet-text);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.wallet-action-btn:hover .wallet-action-icon {
+  background: var(--wallet-border);
+  border-color: var(--wallet-border-light);
+}
+
+.wallet-tab {
+  position: relative;
+  padding: 12px 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wallet-muted);
+  transition: color 0.15s;
+}
+
+.wallet-tab.active {
+  color: var(--wallet-text);
+}
+
+.wallet-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--wallet-accent);
+}
+
+.wallet-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--wallet-muted);
+  transition: color 0.15s;
+  min-width: 56px;
+}
+
+.wallet-nav-item.active {
+  color: var(--wallet-accent);
+}
+
+.wallet-nav-swap {
+  display: flex;
+  height: 48px;
+  width: 48px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--wallet-accent);
+  color: #0b0b0c;
+  margin-top: -20px;
+  box-shadow: 0 4px 16px rgba(72, 255, 145, 0.35);
+}
+
+.wallet-nav-swap.inactive {
+  background: var(--wallet-elevated);
+  color: var(--wallet-muted);
+  box-shadow: none;
+  border: 1px solid var(--wallet-border);
+}
+
+.wallet-btn-primary {
+  width: 100%;
+  border-radius: var(--wallet-radius-pill);
+  background: var(--wallet-accent);
+  color: #0b0b0c;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 16px 24px;
+  transition: opacity 0.15s;
+}
+
+.wallet-btn-primary:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.wallet-btn-primary:disabled {
+  opacity: 0.45;
+}
+
+.wallet-input {
+  width: 100%;
+  border-radius: var(--wallet-radius-sm);
+  border: 1px solid var(--wallet-border);
+  background: var(--wallet-elevated);
+  color: var(--wallet-text);
+  padding: 14px 16px;
+  font-size: 16px;
+  outline: none;
+}
+
+.wallet-input:focus {
+  border-color: var(--wallet-accent);
+}
+
+.wallet-input::placeholder {
+  color: var(--wallet-muted-dim);
+}
+
+.wallet-token-row + .wallet-token-row {
+  border-top: 1px solid var(--wallet-border);
 }

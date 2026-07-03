@@ -1,7 +1,7 @@
 "use client";
 
 import { useConnect, useAccount } from "wagmi";
-import { APP_NAME } from "@/lib/wallet/config";
+import { TrustShield } from "./TrustShield";
 
 export function ConnectScreen() {
   const { connect, connectors, isPending, error } = useConnect();
@@ -10,38 +10,45 @@ export function ConnectScreen() {
   const busy = isPending || isConnecting;
 
   return (
-    <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
-      <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-wallet-accent to-blue-600 shadow-lg shadow-wallet-accent/30">
-        <svg className="h-12 w-12 text-white" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v11A2.5 2.5 0 0117.5 20h-11A2.5 2.5 0 014 17.5v-11zM16 12.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-        </svg>
-      </div>
-      <h1 className="text-2xl font-bold text-wallet-text">{APP_NAME}</h1>
-      <p className="mt-2 max-w-xs text-sm text-wallet-muted">
-        Billetera web en BNB Smart Chain. Conecta MetaMask, Trust Wallet u otra
-        wallet compatible.
+    <div className="flex min-h-dvh flex-col items-center justify-center px-6 pb-12 pt-16 text-center">
+      <TrustShield className="h-20 w-20" />
+      <h1 className="mt-6 text-[28px] font-bold tracking-tight text-wallet-text">
+        Trust Wallet
+      </h1>
+      <p className="mt-2 max-w-[280px] text-[15px] leading-relaxed text-wallet-muted">
+        The most trusted &amp; secure crypto wallet. Connect to access your
+        assets on BNB Smart Chain.
       </p>
 
-      <div className="mt-10 w-full max-w-sm space-y-3">
+      <div className="mt-12 w-full max-w-sm space-y-3">
         {connectors.map((connector) => (
           <button
             key={connector.uid}
             type="button"
             disabled={busy}
             onClick={() => connect({ connector })}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-wallet-accent py-4 text-base font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
+            className="wallet-btn-primary flex items-center justify-center gap-2"
           >
-            {busy ? "Conectando…" : `Conectar ${connector.name}`}
+            {busy ? (
+              "Connecting…"
+            ) : (
+              <>
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v11A2.5 2.5 0 0117.5 20h-11A2.5 2.5 0 014 17.5v-11z" />
+                </svg>
+                Connect {connector.name}
+              </>
+            )}
           </button>
         ))}
       </div>
 
       {error && (
-        <p className="mt-4 text-sm text-red-400">{error.message}</p>
+        <p className="mt-4 text-sm text-wallet-danger">{error.message}</p>
       )}
 
-      <p className="mt-8 text-xs text-wallet-muted">
-        Non-custodial · Tus claves, tus fondos
+      <p className="mt-10 text-xs text-wallet-muted-dim">
+        By connecting, you agree to our Terms of Service
       </p>
     </div>
   );

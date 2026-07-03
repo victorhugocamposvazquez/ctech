@@ -15,5 +15,4 @@ export const wagmiConfig = createConfig({
   ssr: true,
 });
 
-export const APP_NAME =
-  process.env.NEXT_PUBLIC_WALLET_APP_NAME ?? "Trust Wallet Web";
+export const APP_NAME = process.env.NEXT_PUBLIC_WALLET_APP_NAME ?? "Trust Wallet";

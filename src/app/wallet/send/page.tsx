@@ -6,18 +6,18 @@ import { ConnectScreen } from "@/components/wallet/ConnectScreen";
 import { SendForm } from "@/components/wallet/SendForm";
 
 export default function WalletSendPage() {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
 
   if (!isConnected) {
     return (
-      <WalletShell title="Enviar" hideNav>
+      <WalletShell hideNav hideHeader gradient>
         <ConnectScreen />
       </WalletShell>
     );
   }
 
   return (
-    <WalletShell title="Enviar">
+    <WalletShell address={address} hideNav>
       <SendForm />
     </WalletShell>
   );

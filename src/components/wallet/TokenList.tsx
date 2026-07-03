@@ -5,38 +5,37 @@ import { formatTokenAmount, formatUsd } from "@/lib/wallet/format";
 import type { PortfolioAsset } from "@/hooks/wallet/usePortfolio";
 
 function TokenRow({ asset }: { asset: PortfolioAsset }) {
-  const { token, balance, usdValue, usdPrice } = asset;
-  const showPrice = token.fixedUsdPrice === undefined && usdPrice > 0;
+  const { token, usdValue } = asset;
+  const hasBalance = asset.rawBalance > 0n;
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl px-4 py-3.5 transition hover:bg-wallet-card/80">
-      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-wallet-border">
+    <div className="wallet-token-row flex items-center gap-3 py-3.5">
+      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-wallet-elevated ring-1 ring-wallet-border">
         <Image
           src={token.logo}
           alt={token.symbol}
-          width={44}
-          height={44}
-          className="h-11 w-11 object-cover"
+          width={40}
+          height={40}
+          className="h-10 w-10 object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}
         />
-        <span className="absolute text-xs font-bold text-wallet-text">
-          {token.symbol.slice(0, 2)}
-        </span>
       </div>
+
       <div className="min-w-0 flex-1">
-        <p className="font-semibold text-wallet-text">{token.name}</p>
-        <p className="text-xs text-wallet-muted">
-          {showPrice ? formatUsd(usdPrice) : token.symbol}
+        <p className="text-[15px] font-semibold leading-tight text-wallet-text">
+          {token.symbol}
         </p>
+        <p className="truncate text-[13px] text-wallet-muted">{token.name}</p>
       </div>
-      <div className="text-right">
-        <p className="font-semibold tabular-nums text-wallet-text">
-          {formatTokenAmount(asset.rawBalance, token.decimals, 4)}
+
+      <div className="shrink-0 text-right">
+        <p className="text-[15px] font-semibold tabular-nums text-wallet-text">
+          {hasBalance ? formatUsd(usdValue) : "$0.00"}
         </p>
-        <p className="text-xs tabular-nums text-wallet-muted">
-          {formatUsd(usdValue)}
+        <p className="text-[13px] tabular-nums text-wallet-muted">
+          {formatTokenAmount(asset.rawBalance, token.decimals, 5)} {token.symbol}
         </p>
       </div>
     </div>
@@ -52,12 +51,16 @@ export function TokenList({
 }) {
   if (isLoading) {
     return (
-      <div className="space-y-2 px-4">
+      <div className="space-y-0 py-2">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-16 animate-pulse rounded-2xl bg-wallet-card"
-          />
+          <div key={i} className="flex items-center gap-3 py-3.5">
+            <div className="h-10 w-10 animate-pulse rounded-full bg-wallet-elevated" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-16 animate-pulse rounded bg-wallet-elevated" />
+              <div className="h-3 w-24 animate-pulse rounded bg-wallet-elevated" />
+            </div>
+            <div className="h-8 w-20 animate-pulse rounded bg-wallet-elevated" />
+          </div>
         ))}
       </div>
     );
@@ -66,20 +69,15 @@ export function TokenList({
   const sorted = [...assets].sort((a, b) => b.usdValue - a.usdValue);
 
   return (
-    <div className="px-2">
-      <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-wallet-muted">
-        Activos
-      </p>
-      <div className="rounded-2xl bg-wallet-card/60">
-        {sorted.map((asset) => (
-          <TokenRow key={asset.token.id} asset={asset} />
-        ))}
-        {sorted.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-wallet-muted">
-            Sin activos en esta red
-          </p>
-        )}
-      </div>
+    <div>
+      {sorted.map((asset) => (
+        <TokenRow key={asset.token.id} asset={asset} />
+      ))}
+      {sorted.length === 0 && (
+        <p className="py-12 text-center text-sm text-wallet-muted">
+          No crypto yet
+        </p>
+      )}
     </div>
   );
 }
