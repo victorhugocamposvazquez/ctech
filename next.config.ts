@@ -1,5 +1,22 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { mkdirSync, writeFileSync } from "fs";
+import { join } from "path";
+
+const walletBuildId =
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ??
+  process.env.NEXT_PUBLIC_WALLET_BUILD_ID ??
+  `local-${Date.now()}`;
+
+try {
+  mkdirSync(join(process.cwd(), "public/wallet"), { recursive: true });
+  writeFileSync(
+    join(process.cwd(), "public/wallet/version.json"),
+    JSON.stringify({ v: walletBuildId })
+  );
+} catch {
+  /* entorno sin FS */
+}
 
 const withPWA = withPWAInit({
   dest: "public",
@@ -14,6 +31,9 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_WALLET_BUILD_ID: walletBuildId,
+  },
   images: {
     remotePatterns: [
       {
@@ -21,6 +41,19 @@ const nextConfig: NextConfig = {
         hostname: "api.qrserver.com",
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/wallet/version.json",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+    ];
   },
 };
 

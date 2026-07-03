@@ -11,6 +11,7 @@ import { WalletAuthGate } from "@/components/wallet/WalletAuthGate";
 import { AutoLockGuard } from "@/components/wallet/AutoLockGuard";
 import { WalletServiceWorkerRegister } from "@/components/wallet/WalletServiceWorkerRegister";
 import { PwaStorageSync } from "@/components/wallet/PwaStorageSync";
+import { PwaUpdateBanner } from "@/components/wallet/PwaUpdateBanner";
 
 export function WalletProviders({
   children,
@@ -37,8 +38,9 @@ export function WalletProviders({
         <WalletThemeProvider className={className}>
           <InstallPromptProvider>
             <LocalWalletProvider>
+              <WalletServiceWorkerRegister />
+              <PwaUpdateBanner />
               <WalletAuthGate>
-                <WalletServiceWorkerRegister />
                 <PwaStorageSync />
                 <AutoLockGuard />
                 {children}

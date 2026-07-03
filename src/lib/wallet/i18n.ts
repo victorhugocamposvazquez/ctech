@@ -229,6 +229,14 @@ export const t = {
   pwaInstallOrderHint:
     "En iPhone: configura la wallet en Safari, luego instala. Al abrir la app se sincronizarán tus ajustes.",
 
+  pwaUpdateTitle: "Nueva versión disponible",
+  pwaUpdateHint: "Actualiza para ver los últimos cambios",
+  pwaUpdateAction: "Actualizar",
+  pwaUpdateRefreshing: "Actualizando…",
+  pwaUpdateManual: "Buscar actualización",
+  pwaUpdateChecking: "Comprobando…",
+  pwaUpdateNone: "Ya tienes la última versión",
+
   // In-app only placeholders
   swapComingSoon: "El swap dentro de la app estará disponible pronto.",
   buyComingSoon: "La compra con tarjeta estará integrada aquí próximamente.",

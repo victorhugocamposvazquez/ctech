@@ -12,6 +12,7 @@ import { AutoLockSettings } from "@/components/wallet/AutoLockSettings";
 import { ThemeSettings } from "@/components/wallet/ThemeSettings";
 import { BiometricSettings } from "@/components/wallet/BiometricSettings";
 import { WalletsSettings } from "@/components/wallet/WalletsSettings";
+import { PwaUpdateSettings } from "@/components/wallet/PwaUpdateSettings";
 import { t } from "@/lib/wallet/i18n";
 
 export default function WalletSettingsPage() {
@@ -67,6 +68,8 @@ export default function WalletSettingsPage() {
           {mode === "local" && <BiometricSettings />}
 
           <ThemeSettings />
+
+          <PwaUpdateSettings />
 
           {mode === "local" && (
             <button type="button" onClick={() => lock()} className="wallet-btn-secondary">
