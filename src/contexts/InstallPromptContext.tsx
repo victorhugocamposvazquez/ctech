@@ -10,11 +10,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import type { PWAInstallElement } from "@khmyznikov/pwa-install";
+import { PWAInstall } from "@/components/wallet/PWAInstall";
 
 const DISMISS_KEY = "wallet-install-dismissed";
 const AUTO_TRIED_KEY = "wallet-auto-install-tried";
@@ -50,14 +47,10 @@ const InstallPromptContext = createContext<InstallPromptContextValue | null>(
 );
 
 export function InstallPromptProvider({ children }: { children: ReactNode }) {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
-    null
-  );
+  const pwaRef = useRef<PWAInstallElement>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  const [autoPromptFailed, setAutoPromptFailed] = useState(false);
-  const [isPrompting, setIsPrompting] = useState(false);
   const autoTriedRef = useRef(false);
 
   useEffect(() => {
@@ -66,101 +59,56 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
     if (localStorage.getItem(DISMISS_KEY)) setDismissed(true);
   }, []);
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+  const markInstalled = useCallback(() => {
+    setDismissed(true);
+    setIsStandalone(true);
+    localStorage.setItem(DISMISS_KEY, "1");
   }, []);
-
-  const runInstall = useCallback(async (event: BeforeInstallPromptEvent) => {
-    setIsPrompting(true);
-    try {
-      await event.prompt();
-      const { outcome } = await event.userChoice;
-      setDeferred(null);
-      if (outcome === "accepted") {
-        setDismissed(true);
-        localStorage.setItem(DISMISS_KEY, "1");
-        return true;
-      }
-      return false;
-    } catch {
-      setAutoPromptFailed(true);
-      return false;
-    } finally {
-      setIsPrompting(false);
-    }
-  }, []);
-
-  const install = useCallback(async () => {
-    if (!deferred) return false;
-    return runInstall(deferred);
-  }, [deferred, runInstall]);
-
-  useEffect(() => {
-    if (
-      autoTriedRef.current ||
-      !deferred ||
-      dismissed ||
-      isStandalone ||
-      isIOS
-    ) {
-      return;
-    }
-    if (sessionStorage.getItem(AUTO_TRIED_KEY)) return;
-
-    autoTriedRef.current = true;
-    sessionStorage.setItem(AUTO_TRIED_KEY, "1");
-
-    const timer = window.setTimeout(() => {
-      void runInstall(deferred).then((ok) => {
-        if (!ok) setAutoPromptFailed(true);
-      });
-    }, 800);
-
-    return () => window.clearTimeout(timer);
-  }, [deferred, dismissed, isStandalone, isIOS, runInstall]);
 
   const dismiss = useCallback(() => {
     setDismissed(true);
     localStorage.setItem(DISMISS_KEY, "1");
   }, []);
 
-  const canNativeInstall = !!deferred;
+  const install = useCallback(async () => {
+    pwaRef.current?.showDialog(true);
+    return true;
+  }, []);
 
-  const showInstallBanner =
-    !isStandalone &&
-    !dismissed &&
-    !isPrompting &&
-    (isIOS || autoPromptFailed || (!canNativeInstall && !isIOS));
+  useEffect(() => {
+    if (autoTriedRef.current || dismissed || isStandalone) return;
+    if (sessionStorage.getItem(AUTO_TRIED_KEY)) return;
+
+    autoTriedRef.current = true;
+    sessionStorage.setItem(AUTO_TRIED_KEY, "1");
+
+    const timer = window.setTimeout(() => {
+      // iOS: no hay beforeinstallprompt — forzar diálogo con instrucciones Safari
+      pwaRef.current?.showDialog(isIOS);
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [dismissed, isStandalone, isIOS]);
+
+  const showInstallBanner = !isStandalone && !dismissed;
 
   const value = useMemo(
     () => ({
       showInstallBanner,
-      canNativeInstall,
+      canNativeInstall: true,
       isStandalone,
       isIOS,
-      isPrompting,
+      isPrompting: false,
       install,
       dismiss,
     }),
-    [
-      showInstallBanner,
-      canNativeInstall,
-      isStandalone,
-      isIOS,
-      isPrompting,
-      install,
-      dismiss,
-    ]
+    [showInstallBanner, isStandalone, isIOS, install, dismiss]
   );
 
   return (
     <InstallPromptContext.Provider value={value}>
       {children}
+      <PWAInstall ref={pwaRef} onInstallSuccess={markInstalled} />
     </InstallPromptContext.Provider>
   );
 }
