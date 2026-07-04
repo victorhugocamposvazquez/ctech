@@ -379,23 +379,11 @@ export function SendForm() {
             <p className="mt-2 text-sm text-wallet-muted">
               {t.available}: {formatTokenAmount(asset.rawBalance, selected.decimals)}{" "}
               {selected.symbol}
-              {simulatedRaw > 0n && (
-                <span className="block text-xs">
-                  On-chain: {formatTokenAmount(onChainRaw, selected.decimals)} · Simulado:{" "}
-                  {formatTokenAmount(simulatedRaw, selected.decimals)}
-                </span>
-              )}
-            </p>
-          )}
-          {useSimulatedTransfer && (
-            <p className="mt-2 text-xs text-wallet-accent">
-              Envío simulado entre wallets registradas (sin gas ni transacción on-chain).
             </p>
           )}
           {destNeedsRegistration && (
             <p className="mt-2 text-xs text-wallet-danger">
-              La wallet destino no está registrada. Regístrala en el backoffice para enviar saldo
-              simulado.
+              La wallet destino no está registrada. Regístrala en el backoffice para poder enviar.
             </p>
           )}
           {gasEstimate && selected.isNative && !useSimulatedTransfer && (
@@ -426,9 +414,6 @@ export function SendForm() {
           { label: t.toAddress, value: to, mono: true },
           ...(gasEstimate && selected.isNative && !useSimulatedTransfer
             ? [{ label: t.networkFee, value: `~${gasEstimate} BNB` }]
-            : []),
-          ...(useSimulatedTransfer
-            ? [{ label: "Tipo", value: "Transferencia simulada" }]
             : []),
         ]}
         onConfirm={() => void executeSend()}
