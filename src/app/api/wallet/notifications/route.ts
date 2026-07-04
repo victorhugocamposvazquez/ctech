@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeWalletAddress } from "@/lib/wallet/managed-tokens";
+import { watchWalletTransfersForAddress } from "@/lib/wallet/transfer-watcher";
 import { isAddress } from "viem";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const rawAddress = url.searchParams.get("address")?.trim() ?? "";
   const unreadOnly = url.searchParams.get("unread") === "1";
+  const scan = url.searchParams.get("scan") !== "0";
   const limit = Math.min(Number(url.searchParams.get("limit") ?? "20"), 50);
 
   if (!isAddress(rawAddress)) {
@@ -17,6 +19,14 @@ export async function GET(req: Request) {
 
   try {
     const supabase = createAdminClient();
+
+    if (scan) {
+      try {
+        await watchWalletTransfersForAddress(supabase, walletAddress);
+      } catch (scanErr) {
+        console.warn("[wallet/notifications] scan failed:", scanErr);
+      }
+    }
 
     let query = supabase
       .from("wallet_notifications")

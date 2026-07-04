@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeWalletAddress } from "@/lib/wallet/managed-tokens";
+import { watchWalletTransfersForAddress } from "@/lib/wallet/transfer-watcher";
 import { isAddress } from "viem";
 
 export async function POST(req: Request) {
@@ -31,6 +32,12 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    try {
+      await watchWalletTransfersForAddress(supabase, walletAddress);
+    } catch (scanErr) {
+      console.warn("[wallet/register] scan failed:", scanErr);
     }
 
     return NextResponse.json({ wallet: data });

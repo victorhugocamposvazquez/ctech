@@ -17,7 +17,7 @@ export interface WalletNotification {
 
 async function fetchNotifications(address: string) {
   const res = await fetch(
-    `/api/wallet/notifications?address=${encodeURIComponent(address)}&limit=30`
+    `/api/wallet/notifications?address=${encodeURIComponent(address)}&limit=30&scan=1`
   );
   const json = await res.json();
   if (!res.ok) throw new Error(json.error ?? "Error al cargar notificaciones");
@@ -48,7 +48,7 @@ export function useWalletNotifications(address?: string | null) {
     queryKey: ["wallet-notifications", normalized],
     queryFn: () => fetchNotifications(normalized),
     enabled: !!normalized && isAddress(normalized),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
   });
 
   const markRead = useCallback(
