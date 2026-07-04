@@ -19,8 +19,10 @@ export default function WalletHomePage() {
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["local-balances"] });
+    void queryClient.invalidateQueries({ queryKey: ["wallet-simulated-credits"] });
+    void queryClient.invalidateQueries({ queryKey: ["wallet-notifications"] });
     void queryClient.invalidateQueries({ queryKey: ["bnb-usd"] });
-    void queryClient.invalidateQueries({ queryKey: ["token-usd"] });
+    void queryClient.invalidateQueries({ queryKey: ["token-usd-batch"] });
   };
 
   return (

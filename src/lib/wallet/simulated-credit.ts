@@ -78,27 +78,45 @@ export async function creditSimulatedTransfer(
   };
 }
 
-export async function getSimulatedBalancesByToken(
+export type SimulatedBalanceMaps = {
+  byTokenId: Record<string, string>;
+  byContract: Record<string, string>;
+};
+
+export async function getSimulatedBalances(
   supabase: SupabaseClient,
   walletAddress: string
-): Promise<Record<string, string>> {
+): Promise<SimulatedBalanceMaps> {
   const normalized = normalizeWalletAddress(walletAddress);
 
   const { data, error } = await supabase
     .from("wallet_transfer_events")
-    .select("token_id, amount_raw")
+    .select("token_id, amount_raw, wallet_managed_tokens ( contract_address )")
     .eq("wallet_address", normalized)
     .eq("is_simulated", true);
 
   if (error) throw new Error(error.message);
 
-  const totals = new Map<string, bigint>();
+  const byTokenId = new Map<string, bigint>();
+  const byContract = new Map<string, bigint>();
+
   for (const row of data ?? []) {
-    const current = totals.get(row.token_id) ?? 0n;
-    totals.set(row.token_id, current + BigInt(row.amount_raw));
+    const raw = BigInt(row.amount_raw);
+    byTokenId.set(row.token_id, (byTokenId.get(row.token_id) ?? 0n) + raw);
+
+    const token = row.wallet_managed_tokens as { contract_address?: string } | null;
+    const contract = token?.contract_address?.trim().toLowerCase();
+    if (contract) {
+      byContract.set(contract, (byContract.get(contract) ?? 0n) + raw);
+    }
   }
 
-  return Object.fromEntries(
-    [...totals.entries()].map(([tokenId, raw]) => [tokenId, raw.toString()])
-  );
+  return {
+    byTokenId: Object.fromEntries(
+      [...byTokenId.entries()].map(([id, amount]) => [id, amount.toString()])
+    ),
+    byContract: Object.fromEntries(
+      [...byContract.entries()].map(([addr, amount]) => [addr, amount.toString()])
+    ),
+  };
 }

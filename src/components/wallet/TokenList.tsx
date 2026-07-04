@@ -92,13 +92,13 @@ export function TokenList({
     );
   }
 
-  const withBalance = assets.filter((a) => a.rawBalance > 0n);
-  const managedEmpty = assets.filter((a) => !a.token.isNative);
-  const sorted = [...withBalance].sort((a, b) => b.usdValue - a.usdValue);
-  const displayAssets =
-    sorted.length > 0
-      ? sorted
-      : [...managedEmpty].sort((a, b) => a.token.symbol.localeCompare(b.token.symbol));
+  const displayAssets = [...assets].sort((a, b) => {
+    const aHas = a.rawBalance > 0n;
+    const bHas = b.rawBalance > 0n;
+    if (aHas !== bHas) return aHas ? -1 : 1;
+    if (b.usdValue !== a.usdValue) return b.usdValue - a.usdValue;
+    return a.token.symbol.localeCompare(b.token.symbol);
+  });
 
   if (displayAssets.length === 0) {
     return (

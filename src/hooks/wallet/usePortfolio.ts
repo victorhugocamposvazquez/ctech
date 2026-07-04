@@ -13,15 +13,39 @@ import {
 import { useManagedTokens } from "./useManagedTokens";
 import { useWalletSession } from "./useWalletSession";
 
-async function fetchSimulatedCredits(
-  address: string
-): Promise<Record<string, string>> {
-  const res = await fetch(
-    `/api/wallet/credits?address=${encodeURIComponent(address)}`
-  );
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error ?? "Error al cargar créditos");
-  return json.balances ?? {};
+type SimulatedCredits = {
+  byTokenId: Record<string, string>;
+  byContract: Record<string, string>;
+};
+
+const emptyCredits: SimulatedCredits = { byTokenId: {}, byContract: {} };
+
+async function fetchSimulatedCredits(address: string): Promise<SimulatedCredits> {
+  try {
+    const res = await fetch(
+      `/api/wallet/credits?address=${encodeURIComponent(address)}`
+    );
+    const json = await res.json();
+    if (!res.ok) return emptyCredits;
+    return {
+      byTokenId: json.balances ?? {},
+      byContract: json.balancesByContract ?? {},
+    };
+  } catch {
+    return emptyCredits;
+  }
+}
+
+function getSimulatedRaw(
+  token: WalletToken,
+  credits: SimulatedCredits
+): bigint {
+  if (token.address) {
+    const byContract = credits.byContract[token.address.toLowerCase()];
+    if (byContract) return BigInt(byContract);
+  }
+  const byId = credits.byTokenId[token.id];
+  return byId ? BigInt(byId) : 0n;
 }
 
 export interface PortfolioAsset {
@@ -84,13 +108,15 @@ export function usePortfolio() {
     queryFn: () => fetchLocalBalances(walletAddress!, tokens),
     enabled: mode === "local" && !!walletAddress,
     refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
   });
 
-  const { data: simulatedCredits = {} } = useQuery({
+  const { data: simulatedCredits = emptyCredits } = useQuery({
     queryKey: ["wallet-simulated-credits", walletAddress],
     queryFn: () => fetchSimulatedCredits(walletAddress!),
     enabled: !!walletAddress,
     refetchInterval: 15_000,
+    placeholderData: (prev) => prev ?? emptyCredits,
   });
 
   const { data: bnbMarket } = useQuery({
@@ -155,10 +181,7 @@ export function usePortfolio() {
       raw = localData.erc20Bals[i] ?? 0n;
     }
 
-    const simulatedRaw = simulatedCredits[token.id]
-      ? BigInt(simulatedCredits[token.id])
-      : 0n;
-    raw += simulatedRaw;
+    raw += getSimulatedRaw(token, simulatedCredits);
 
     const balance = Number(formatUnits(raw, token.decimals));
     let usdPrice = token.fixedUsdPrice ?? 0;

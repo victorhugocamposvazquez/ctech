@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useWalletNotifications, type WalletNotification } from "@/hooks/wallet/useWalletNotifications";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useWalletNotifications,
+  notifyWalletTransferReceived,
+  type WalletNotification,
+} from "@/hooks/wallet/useWalletNotifications";
 import { t } from "@/lib/wallet/i18n";
 
 function formatWhen(iso: string): string {
@@ -43,10 +49,53 @@ function NotificationRow({
   );
 }
 
+function TransferToast({
+  item,
+  onDismiss,
+  onOpen,
+}: {
+  item: WalletNotification;
+  onDismiss: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="wallet-transfer-toast" role="status">
+      <button type="button" className="wallet-transfer-toast-body" onClick={onOpen}>
+        <span className="wallet-transfer-toast-icon" aria-hidden>
+          ↓
+        </span>
+        <span className="min-w-0 flex-1 text-left">
+          <span className="block font-semibold text-wallet-text text-[15px]">
+            {item.title}
+          </span>
+          <span className="mt-0.5 block text-sm text-wallet-muted">{item.body}</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="wallet-transfer-toast-close"
+        aria-label={t.close}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 export function WalletNotificationsBell({ address }: { address?: string }) {
+  const queryClient = useQueryClient();
   const { notifications, unreadCount, markRead, markAllRead, refresh } =
     useWalletNotifications(address);
   const [open, setOpen] = useState(false);
+  const [toast, setToast] = useState<WalletNotification | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const readyRef = useRef(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handler = () => void refresh();
@@ -54,7 +103,91 @@ export function WalletNotificationsBell({ address }: { address?: string }) {
     return () => window.removeEventListener("wallet-transfer-received", handler);
   }, [refresh]);
 
+  useEffect(() => {
+    if (!address || notifications.length === 0) return;
+
+    const unread = notifications.filter((n) => !n.read_at);
+    const fresh = unread.filter((n) => !seenIdsRef.current.has(n.id));
+
+    if (readyRef.current && fresh.length > 0) {
+      const latest = fresh[0];
+      setToast(latest);
+      notifyWalletTransferReceived();
+      void queryClient.invalidateQueries({
+        queryKey: ["wallet-simulated-credits", address.toLowerCase()],
+      });
+    }
+
+    seenIdsRef.current = new Set(notifications.map((n) => n.id));
+    readyRef.current = true;
+  }, [notifications, address, queryClient]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   if (!address) return null;
+
+  const sheet = open && mounted ? (
+    <div className="wallet-overlay wallet-overlay--above-nav" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        className="wallet-overlay-backdrop"
+        aria-label={t.close}
+        onClick={() => setOpen(false)}
+      />
+      <div className="wallet-sheet wallet-sheet--nav-safe max-h-[min(70dvh,520px)] overflow-hidden">
+        <div className="wallet-sheet-handle" />
+        <div className="flex items-center justify-between border-b border-wallet-border px-4 pb-3">
+          <h2 className="text-[17px] font-semibold text-wallet-text">{t.notifications}</h2>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={() => void markAllRead()}
+                className="text-xs font-medium text-wallet-accent"
+              >
+                {t.markAllRead}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="wallet-icon-btn !h-8 !w-8"
+              aria-label={t.close}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        <div className="overflow-y-auto max-h-[calc(min(70dvh,520px)-88px)]">
+          {notifications.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-wallet-muted">
+              {t.noNotifications}
+            </div>
+          ) : (
+            notifications.map((item) => (
+              <NotificationRow key={item.id} item={item} onRead={markRead} />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  const toastPortal =
+    toast && mounted ? (
+      <TransferToast
+        item={toast}
+        onDismiss={() => setToast(null)}
+        onOpen={() => {
+          setToast(null);
+          setOpen(true);
+        }}
+      />
+    ) : null;
 
   return (
     <>
@@ -78,55 +211,8 @@ export function WalletNotificationsBell({ address }: { address?: string }) {
         )}
       </button>
 
-      {open && (
-        <div className="wallet-overlay" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/50"
-            aria-label={t.close}
-            onClick={() => setOpen(false)}
-          />
-          <div className="wallet-sheet max-h-[70dvh] overflow-hidden">
-            <div className="flex items-center justify-between border-b border-wallet-border px-4 py-3">
-              <h2 className="text-[17px] font-semibold text-wallet-text">{t.notifications}</h2>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => void markAllRead()}
-                    className="text-xs font-medium text-wallet-accent"
-                  >
-                    {t.markAllRead}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="wallet-icon-btn !h-8 !w-8"
-                  aria-label={t.close}
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="px-4 py-10 text-center text-sm text-wallet-muted">
-                  {t.noNotifications}
-                </div>
-              ) : (
-                notifications.map((item) => (
-                  <NotificationRow
-                    key={item.id}
-                    item={item}
-                    onRead={markRead}
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {mounted && sheet ? createPortal(sheet, document.body) : null}
+      {mounted && toastPortal ? createPortal(toastPortal, document.body) : null}
     </>
   );
 }
