@@ -312,10 +312,9 @@ export default function WalletTokensConsole() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <h3 className="text-sm font-semibold text-slate-200">Notificaciones in-app</h3>
         <p className="mt-2 text-sm text-slate-400">
-          Con la wallet abierta, el escaneo on-chain se ejecuta cada ~15 s y la
-          notificación aparece en segundos tras confirmarse la transferencia.
-          Con la app cerrada, GitHub Actions revisa cada 5 min (Vercel Hobby no
-          admite crons frecuentes).
+          Solo con la wallet abierta: cada ~15 s se escanea la cadena y aparece
+          la notificación en segundos tras confirmarse la transferencia. Si la
+          app está cerrada, no se generan notificaciones.
         </p>
       </div>
     </div>
