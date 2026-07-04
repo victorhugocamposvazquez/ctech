@@ -67,7 +67,13 @@ export function BalanceHeader({ totalUsd, isLoading, onRefresh }: BalanceHeaderP
         {isLoading ? (
           <div className="wallet-skeleton h-12 w-52 rounded-2xl" />
         ) : (
-          <h1 className="wallet-balance-amount">
+          <h1
+            className={`wallet-balance-amount ${
+              !hidden && formatUsd(totalUsd).length > 14
+                ? "wallet-balance-amount--long"
+                : ""
+            }`}
+          >
             {hidden ? "••••••" : formatUsd(totalUsd)}
           </h1>
         )}

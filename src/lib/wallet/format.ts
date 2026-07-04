@@ -1,17 +1,18 @@
 import { formatUnits } from "viem";
 
-/** Formato español completo: 2.000.000,00 $ (sin abreviar a 2M). */
+/** Formato español manual (evita abreviaturas tipo 11M en iOS/Safari). */
+function formatEsDecimal(value: number, fractionDigits: number): string {
+  const negative = value < 0;
+  const abs = Math.abs(value);
+  const [intPart, fracPart] = abs.toFixed(fractionDigits).split(".");
+  const groupedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${negative ? "-" : ""}${groupedInt},${fracPart}`;
+}
+
+/** 2.000.000,00 $ */
 export function formatUsd(value: number): string {
   if (!Number.isFinite(value) || value === 0) return "0,00 $";
-
-  const sign = value < 0 ? "-" : "";
-  const formatted = Math.abs(value).toLocaleString("es-ES", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    useGrouping: true,
-  });
-
-  return `${sign}${formatted} $`;
+  return `${formatEsDecimal(value, 2)} $`;
 }
 
 export function formatTokenAmount(
@@ -23,11 +24,10 @@ export function formatTokenAmount(
   if (n === 0) return "0";
   if (n < 0.000001) return "<0.000001";
 
-  return n.toLocaleString("es-ES", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: maxFraction,
-    useGrouping: true,
-  });
+  const [intPart, fracPart] = n.toFixed(maxFraction).split(".");
+  const trimmedFrac = fracPart.replace(/0+$/, "");
+  const groupedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return trimmedFrac ? `${groupedInt},${trimmedFrac}` : groupedInt;
 }
 
 export function shortenAddress(address: string, chars = 4): string {

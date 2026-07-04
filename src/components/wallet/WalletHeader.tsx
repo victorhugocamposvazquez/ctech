@@ -88,7 +88,7 @@ export function WalletHeader({
         )}
 
         <div className="flex items-center gap-0.5">
-          {address && <WalletNotificationsBell address={address} />}
+          <WalletNotificationsBell />
           {address && (
             <button
               type="button"

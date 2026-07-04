@@ -5,6 +5,7 @@ import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { ConnectScreen } from "./ConnectScreen";
 import { UnlockScreen } from "./onboarding/UnlockScreen";
 import { InstallBottomBanner } from "./InstallBanner";
+import { WalletNotificationProvider } from "@/contexts/WalletNotificationContext";
 import { t } from "@/lib/wallet/i18n";
 
 export function WalletAuthGate({ children }: { children: ReactNode }) {
@@ -48,5 +49,9 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <WalletNotificationProvider>{children}</WalletNotificationProvider>
+    </>
+  );
 }
