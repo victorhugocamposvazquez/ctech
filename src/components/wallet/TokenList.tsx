@@ -40,7 +40,7 @@ function TokenRow({ asset }: { asset: PortfolioAsset }) {
       </div>
       <div className="shrink-0 text-right">
         <p className="text-[16px] font-semibold tabular-nums tracking-tight text-wallet-text">
-          {hasBalance ? formatUsd(usdValue) : "$0,00"}
+          {hasBalance ? formatUsd(usdValue) : "0,00 $"}
         </p>
         <p className="mt-0.5 text-[13px] tabular-nums text-wallet-muted">
           {formatTokenAmount(asset.rawBalance, token.decimals, 5)} {token.symbol}

@@ -1,5 +1,19 @@
 import { formatUnits } from "viem";
 
+/** Formato español completo: 2.000.000,00 $ (sin abreviar a 2M). */
+export function formatUsd(value: number): string {
+  if (!Number.isFinite(value) || value === 0) return "0,00 $";
+
+  const sign = value < 0 ? "-" : "";
+  const formatted = Math.abs(value).toLocaleString("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  });
+
+  return `${sign}${formatted} $`;
+}
+
 export function formatTokenAmount(
   raw: bigint,
   decimals: number,
@@ -12,17 +26,7 @@ export function formatTokenAmount(
   return n.toLocaleString("es-ES", {
     minimumFractionDigits: 0,
     maximumFractionDigits: maxFraction,
-  });
-}
-
-export function formatUsd(value: number): string {
-  if (!Number.isFinite(value) || value === 0) return "$0,00";
-
-  return value.toLocaleString("es-ES", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    useGrouping: true,
   });
 }
 
