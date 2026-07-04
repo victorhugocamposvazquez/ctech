@@ -1,5 +1,10 @@
 import { type Address, erc20Abi, isAddress } from "viem";
 import { walletChain } from "./config";
+import {
+  DEFAULT_MANAGED_TOKENS,
+  managedTokenToWalletToken,
+  type WalletTokenConfig,
+} from "./managed-tokens";
 
 export interface WalletToken {
   id: string;
@@ -14,6 +19,8 @@ export interface WalletToken {
   /** Buscar precio en DexScreener */
   dexScreener?: boolean;
 }
+
+export type { WalletTokenConfig };
 
 /** USDT en BNB Smart Chain (BEP-20) */
 export const USDT_BSC =
@@ -34,27 +41,37 @@ function customToken(): WalletToken | null {
   };
 }
 
-export function getWalletTokens(): WalletToken[] {
-  const tokens: WalletToken[] = [
-    {
-      id: "bnb",
-      symbol: "BNB",
-      name: "BNB",
-      decimals: 18,
-      isNative: true,
-      logo: "/wallet/icons/bnb.svg",
-      dexScreener: false,
-    },
-    {
-      id: "usdt",
-      symbol: "USDT",
-      name: "Tether USD",
-      decimals: 18,
-      address: USDT_BSC,
-      logo: "/wallet/icons/usdt.svg",
-      fixedUsdPrice: 1,
-    },
-  ];
+function getNativeToken(): WalletToken {
+  return {
+    id: "bnb",
+    symbol: "BNB",
+    name: "BNB",
+    decimals: 18,
+    isNative: true,
+    logo: "/wallet/icons/bnb.svg",
+    dexScreener: false,
+  };
+}
+
+function getDefaultManagedTokens(): WalletToken[] {
+  return DEFAULT_MANAGED_TOKENS.filter((t) => t.is_active)
+    .map((token) =>
+      managedTokenToWalletToken({
+        ...token,
+        id: `default-${token.symbol.toLowerCase()}`,
+        metadata: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+    )
+    .filter((t): t is WalletTokenConfig => t != null);
+}
+
+export function getWalletTokens(managed?: WalletTokenConfig[]): WalletToken[] {
+  const tokens: WalletToken[] = [getNativeToken()];
+
+  const managedTokens = managed?.length ? managed : getDefaultManagedTokens();
+  tokens.push(...managedTokens);
 
   const custom = customToken();
   if (custom) tokens.push(custom);

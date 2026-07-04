@@ -93,9 +93,14 @@ export function TokenList({
   }
 
   const withBalance = assets.filter((a) => a.rawBalance > 0n);
+  const managedEmpty = assets.filter((a) => !a.token.isNative);
   const sorted = [...withBalance].sort((a, b) => b.usdValue - a.usdValue);
+  const displayAssets =
+    sorted.length > 0
+      ? sorted
+      : [...managedEmpty].sort((a, b) => a.token.symbol.localeCompare(b.token.symbol));
 
-  if (sorted.length === 0) {
+  if (displayAssets.length === 0) {
     return (
       <div className="wallet-empty py-12">
         <div className="wallet-empty-icon">◎</div>
@@ -115,7 +120,7 @@ export function TokenList({
 
   return (
     <div className="wallet-card wallet-card-inner">
-      {sorted.map((asset) => (
+      {displayAssets.map((asset) => (
         <TokenRow key={asset.token.id} asset={asset} />
       ))}
     </div>

@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/risk-reset",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/wallet-watch",
+      "schedule": "*/5 * * * *"
     }
   ]
 }

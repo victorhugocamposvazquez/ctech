@@ -10,6 +10,7 @@ import {
   type WalletToken,
   erc20BalanceAbi,
 } from "@/lib/wallet/tokens";
+import { useManagedTokens } from "./useManagedTokens";
 import { useWalletSession } from "./useWalletSession";
 
 export interface PortfolioAsset {
@@ -46,8 +47,9 @@ async function fetchLocalBalances(address: Address, tokens: WalletToken[]) {
 
 export function usePortfolio() {
   const { address, isConnected, mode } = useWalletSession();
+  const { data: managedTokens } = useManagedTokens();
   const walletAddress = address ?? undefined;
-  const tokens = getWalletTokens();
+  const tokens = getWalletTokens(managedTokens);
   const native = tokens.find((t) => t.isNative);
   const erc20s = tokens.filter((t) => t.address);
 
@@ -81,11 +83,20 @@ export function usePortfolio() {
   const bnbUsd = bnbMarket?.price ?? 0;
   const bnbChange = bnbMarket?.change24h ?? null;
 
-  const customToken = erc20s.find((t) => t.dexScreener);
-  const { data: customMarket = null } = useQuery({
-    queryKey: ["token-usd", customToken?.address],
-    queryFn: () => fetchTokenUsd(customToken!.address!),
-    enabled: !!customToken?.address,
+  const pricedTokens = erc20s.filter((t) => t.dexScreener);
+
+  const { data: customMarkets = {} } = useQuery({
+    queryKey: ["token-usd-batch", pricedTokens.map((t) => t.address).join(",")],
+    queryFn: async () => {
+      const entries = await Promise.all(
+        pricedTokens.map(async (token) => {
+          const market = await fetchTokenUsd(token.address!);
+          return [token.id, market] as const;
+        })
+      );
+      return Object.fromEntries(entries);
+    },
+    enabled: pricedTokens.length > 0,
     staleTime: 60_000,
   });
 
@@ -129,9 +140,12 @@ export function usePortfolio() {
     const balance = Number(formatUnits(raw, token.decimals));
     let usdPrice = token.fixedUsdPrice ?? 0;
     let change24h: number | null = token.fixedUsdPrice != null ? 0 : null;
-    if (token.dexScreener && customMarket) {
-      usdPrice = customMarket.price;
-      change24h = customMarket.change24h;
+    if (token.dexScreener) {
+      const market = customMarkets[token.id];
+      if (market) {
+        usdPrice = market.price;
+        change24h = market.change24h;
+      }
     }
 
     assets.push({

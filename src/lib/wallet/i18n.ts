@@ -29,6 +29,10 @@ export const t = {
   refresh: "Actualizar",
   recentActivity: "Actividad reciente",
   sentTo: "A",
+  receivedFrom: "De",
+  notifications: "Notificaciones",
+  noNotifications: "Sin notificaciones",
+  markAllRead: "Marcar todo leído",
 
   // Onboarding
   createWallet: "Crear wallet nueva",

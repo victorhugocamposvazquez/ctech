@@ -8,6 +8,7 @@ import { shortenAddress } from "@/lib/wallet/format";
 import { walletChain } from "@/lib/wallet/config";
 import { isSubpage, routeTitle, t } from "@/lib/wallet/i18n";
 import { WalletPickerSheet } from "./WalletPickerSheet";
+import { WalletNotificationsBell } from "./WalletNotifications";
 
 interface WalletHeaderProps {
   address?: string;
@@ -87,6 +88,7 @@ export function WalletHeader({
         )}
 
         <div className="flex items-center gap-0.5">
+          {address && <WalletNotificationsBell address={address} />}
           {address && (
             <button
               type="button"
