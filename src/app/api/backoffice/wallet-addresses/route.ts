@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireBackofficeAdmin } from "@/lib/backoffice/auth";
 import { normalizeWalletAddress } from "@/lib/wallet/managed-tokens";
-import { watchWalletTransfersForAddress } from "@/lib/wallet/transfer-watcher";
+import { scheduleWalletTransferScan } from "@/lib/wallet/transfer-watcher";
 import { isAddress } from "viem";
 
 export async function GET() {
@@ -51,11 +51,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: upsertError.message }, { status: 500 });
   }
 
-  try {
-    await watchWalletTransfersForAddress(supabase, walletAddress);
-  } catch (scanErr) {
-    console.warn("[backoffice/wallet-addresses] scan failed:", scanErr);
-  }
+  scheduleWalletTransferScan(supabase, walletAddress);
 
   return NextResponse.json({ wallet: data }, { status: 201 });
 }
