@@ -166,19 +166,30 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
             <p className="wallet-label">
               {t.wordNumber} #{q.index + 1}
             </p>
-            <div className="wallet-mnemonic-grid mt-2 !grid-cols-2">
-              {q.options.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setAnswers((a) => ({ ...a, [q.index]: opt }))}
-                  className={`wallet-mnemonic-word cursor-pointer transition ${
-                    answers[q.index] === opt ? "border-wallet-accent bg-wallet-accent-soft" : ""
-                  }`}
-                >
-                  <span className="wallet-mnemonic-text">{opt}</span>
-                </button>
-              ))}
+            <div className="wallet-mnemonic-grid mt-2 wallet-mnemonic-grid--verify">
+              {q.options.map((opt) => {
+                const selected = answers[q.index] === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setAnswers((a) => ({ ...a, [q.index]: opt }))}
+                    className={`wallet-mnemonic-word wallet-mnemonic-word--selectable ${
+                      selected ? "wallet-mnemonic-word--selected" : ""
+                    }`}
+                  >
+                    <span className="wallet-mnemonic-text">{opt}</span>
+                    {selected && (
+                      <span className="wallet-mnemonic-check" aria-hidden="true">
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}

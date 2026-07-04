@@ -35,7 +35,6 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
     return (
       <div className="wallet-theme">
         <UnlockScreen />
-        <InstallBottomBanner aboveNav={false} />
       </div>
     );
   }
