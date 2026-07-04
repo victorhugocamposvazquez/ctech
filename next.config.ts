@@ -24,9 +24,13 @@ const withPWA = withPWAInit({
   register: true,
   scope: "/wallet",
   sw: "wallet-sw.js",
+  publicExcludes: ["!wallet/version.json"],
   workboxOptions: {
     disableDevLogs: true,
+    skipWaiting: false,
+    clientsClaim: true,
     importScripts: ["/wallet-sw-bridge.js"],
+    exclude: [/version\.json$/],
   },
 });
 

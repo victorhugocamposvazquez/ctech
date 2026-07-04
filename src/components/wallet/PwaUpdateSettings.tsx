@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { applyPwaUpdate, checkForPwaUpdateNow } from "@/lib/wallet/pwa-update";
+import { checkForPwaUpdateNow } from "@/lib/wallet/pwa-update";
 import { isStandalonePwa } from "@/lib/wallet/pwa-ios";
 import { t } from "@/lib/wallet/i18n";
 
@@ -17,7 +17,7 @@ export function PwaUpdateSettings() {
     try {
       const available = await checkForPwaUpdateNow();
       if (available) {
-        applyPwaUpdate();
+        setMessage(t.pwaUpdateReady);
         return;
       }
       setMessage(t.pwaUpdateNone);

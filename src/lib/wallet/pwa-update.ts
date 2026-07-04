@@ -6,6 +6,7 @@ const listeners = new Set<UpdateListener>();
 let updateAvailable = false;
 let registration: ServiceWorkerRegistration | null = null;
 let initialized = false;
+let skipWaitingPending = false;
 
 const LOCAL_VERSION = process.env.NEXT_PUBLIC_WALLET_BUILD_ID;
 
@@ -31,9 +32,20 @@ function markUpdateAvailable(): void {
 
 async function checkRemoteVersion(): Promise<void> {
   if (!LOCAL_VERSION || LOCAL_VERSION === "dev") return;
+
   try {
-    const res = await fetch(`/wallet/version.json?_=${Date.now()}`, { cache: "no-store" });
+    const res = await fetch(
+      `/wallet/version.json?_=${Date.now()}`,
+      {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      }
+    );
     if (!res.ok) return;
+
     const data = (await res.json()) as { v?: string };
     if (data.v && data.v !== LOCAL_VERSION) {
       markUpdateAvailable();
@@ -51,12 +63,18 @@ function watchRegistration(reg: ServiceWorkerRegistration, hadController: boolea
   reg.addEventListener("updatefound", () => {
     const worker = reg.installing;
     if (!worker) return;
+
     worker.addEventListener("statechange", () => {
       if (worker.state === "installed" && hadController) {
         markUpdateAvailable();
       }
     });
   });
+}
+
+async function runUpdateChecks(): Promise<void> {
+  await registration?.update();
+  await checkRemoteVersion();
 }
 
 /** Detecta nuevas versiones del SW / build y expone banner de actualización. */
@@ -68,7 +86,9 @@ export async function initPwaUpdateCheck(): Promise<void> {
   const hadController = !!navigator.serviceWorker.controller;
 
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (hadController) markUpdateAvailable();
+    if (skipWaitingPending) {
+      window.location.reload();
+    }
   });
 
   registration = await registerWalletServiceWorker();
@@ -76,32 +96,38 @@ export async function initPwaUpdateCheck(): Promise<void> {
     watchRegistration(registration, hadController);
   }
 
-  document.addEventListener("visibilitychange", () => {
+  const onVisible = () => {
     if (document.visibilityState !== "visible") return;
-    void registration?.update();
-    void checkRemoteVersion();
-  });
+    void runUpdateChecks();
+  };
 
-  void checkRemoteVersion();
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("focus", onVisible);
+
+  void runUpdateChecks();
 
   window.setInterval(() => {
-    void registration?.update();
-    void checkRemoteVersion();
-  }, 30 * 60 * 1000);
+    if (document.visibilityState === "visible") {
+      void runUpdateChecks();
+    }
+  }, 2 * 60 * 1000);
 }
 
 /** Recarga la app aplicando el service worker / assets más recientes. */
 export function applyPwaUpdate(): void {
+  skipWaitingPending = true;
   const waiting = registration?.waiting;
+
   if (waiting) {
     waiting.postMessage({ type: "SKIP_WAITING" });
+    return;
   }
+
   window.location.reload();
 }
 
 /** Comprueba manualmente si hay versión nueva (p. ej. desde Ajustes). */
 export async function checkForPwaUpdateNow(): Promise<boolean> {
-  await registration?.update();
-  await checkRemoteVersion();
+  await runUpdateChecks();
   return updateAvailable;
 }

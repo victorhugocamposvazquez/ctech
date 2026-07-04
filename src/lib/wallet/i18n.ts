@@ -240,6 +240,7 @@ export const t = {
   pwaUpdateManual: "Buscar actualización",
   pwaUpdateChecking: "Comprobando…",
   pwaUpdateNone: "Ya tienes la última versión",
+  pwaUpdateReady: "Hay una actualización — pulsa el banner superior",
 
   // In-app only placeholders
   swapComingSoon: "El swap dentro de la app estará disponible pronto.",

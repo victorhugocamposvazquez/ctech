@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { usePwaUpdate } from "@/hooks/wallet/usePwaUpdate";
-import { isStandalonePwa } from "@/lib/wallet/pwa-ios";
 import { t } from "@/lib/wallet/i18n";
 
 export function PwaUpdateBanner() {
@@ -18,9 +17,7 @@ export function PwaUpdateBanner() {
 
   return (
     <div
-      className={`fixed left-0 right-0 top-0 z-[70] px-4 pt-[max(0.75rem,env(safe-area-inset-top))] ${
-        isStandalonePwa() ? "" : ""
-      }`}
+      className="fixed left-0 right-0 top-0 z-[900] px-4 pt-[max(0.75rem,env(safe-area-inset-top))]"
       role="region"
       aria-live="polite"
       aria-label={t.pwaUpdateTitle}

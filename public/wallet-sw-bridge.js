@@ -10,34 +10,11 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(handleSync(event.request));
 });
 
-/** Recarga clientes /wallet al activar un SW nuevo (PWA sin pull-to-refresh). */
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    (async () => {
-      const clients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-      const walletClients = clients.filter((c) => {
-        try {
-          return new URL(c.url).pathname.startsWith("/wallet");
-        } catch {
-          return false;
-        }
-      });
-      if (walletClients.length === 0) return;
-
-      await Promise.all(
-        walletClients.map((client) => {
-          try {
-            return client.navigate(client.url);
-          } catch {
-            return Promise.resolve();
-          }
-        })
-      );
-    })()
-  );
+/** Activa el SW nuevo solo cuando el usuario pulsa "Actualizar" en la app. */
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 async function handleSync(request) {
