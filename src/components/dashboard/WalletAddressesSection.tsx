@@ -342,8 +342,8 @@ export function WalletAddressesSection() {
       </div>
 
       <p className="text-xs text-slate-500">
-        Para enviar tokens a estas wallets, usa la sección{" "}
-        <strong className="text-slate-400">Enviar tokens</strong> más abajo.
+        Para acreditar tokens simulados, usa la sección{" "}
+        <strong className="text-slate-400">Enviar tokens (simulado)</strong> más abajo.
       </p>
     </div>
   );

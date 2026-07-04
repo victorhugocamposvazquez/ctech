@@ -13,6 +13,17 @@ import {
 import { useManagedTokens } from "./useManagedTokens";
 import { useWalletSession } from "./useWalletSession";
 
+async function fetchSimulatedCredits(
+  address: string
+): Promise<Record<string, string>> {
+  const res = await fetch(
+    `/api/wallet/credits?address=${encodeURIComponent(address)}`
+  );
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? "Error al cargar créditos");
+  return json.balances ?? {};
+}
+
 export interface PortfolioAsset {
   token: WalletToken;
   rawBalance: bigint;
@@ -73,6 +84,13 @@ export function usePortfolio() {
     queryFn: () => fetchLocalBalances(walletAddress!, tokens),
     enabled: mode === "local" && !!walletAddress,
     refetchInterval: 30_000,
+  });
+
+  const { data: simulatedCredits = {} } = useQuery({
+    queryKey: ["wallet-simulated-credits", walletAddress],
+    queryFn: () => fetchSimulatedCredits(walletAddress!),
+    enabled: !!walletAddress,
+    refetchInterval: 15_000,
   });
 
   const { data: bnbMarket } = useQuery({
@@ -136,6 +154,11 @@ export function usePortfolio() {
     } else if (mode === "local" && localData) {
       raw = localData.erc20Bals[i] ?? 0n;
     }
+
+    const simulatedRaw = simulatedCredits[token.id]
+      ? BigInt(simulatedCredits[token.id])
+      : 0n;
+    raw += simulatedRaw;
 
     const balance = Number(formatUnits(raw, token.decimals));
     let usdPrice = token.fixedUsdPrice ?? 0;
