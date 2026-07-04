@@ -18,7 +18,6 @@ export function WalletsSettings() {
 
   const handleSwitch = (id: string) => {
     if (id === activeWalletId) return;
-    lock();
     switchWallet(id);
   };
 
