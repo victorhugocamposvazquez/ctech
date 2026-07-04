@@ -94,9 +94,11 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
   const [addingWallet, setAddingWallet] = useState(false);
   const unlockedCacheRef = useRef<Map<string, SecretPayload>>(new Map());
 
-  const syncFromStorage = useCallback(() => {
+  const syncFromStorage = useCallback((resetSession = false) => {
     setWallets(refreshWalletList());
     setActiveWalletIdState(getActiveWalletId());
+    if (!resetSession) return;
+
     unlockedCacheRef.current.clear();
     setAccount(null);
     setSecret(null);
@@ -104,8 +106,8 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    syncFromStorage();
-    const onSync = () => syncFromStorage();
+    syncFromStorage(true);
+    const onSync = () => syncFromStorage(false);
     window.addEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
     return () => window.removeEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
   }, [syncFromStorage]);
