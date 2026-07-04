@@ -32,7 +32,6 @@ export function WalletHeader({
   const handleSelect = (id: string) => {
     setShowPicker(false);
     if (id !== activeWalletId) {
-      lock();
       switchWallet(id);
     }
   };
