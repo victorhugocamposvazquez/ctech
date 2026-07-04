@@ -23,11 +23,11 @@ export function WalletShell({
 
   const mainPb = hideNav
     ? showInstallBanner
-      ? "pb-28"
-      : "pb-8"
+      ? "wallet-main-pb-compact"
+      : "wallet-main-pb-min"
     : showInstallBanner
-      ? "pb-[148px]"
-      : "pb-[88px]";
+      ? "wallet-main-pb-nav-banner"
+      : "wallet-main-pb-nav";
 
   return (
     <div

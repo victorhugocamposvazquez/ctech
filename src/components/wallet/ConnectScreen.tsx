@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useConnect } from "wagmi";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { TrustShield } from "./TrustShield";
+import { WalletAuthScreen } from "./WalletAuthScreen";
 import { CreateWalletFlow } from "./onboarding/CreateWalletFlow";
 import { ImportWalletFlow } from "./onboarding/ImportWalletFlow";
 import { t } from "@/lib/wallet/i18n";
@@ -23,22 +24,22 @@ export function ConnectScreen() {
     return <ImportWalletFlow onBack={() => setView("hub")} />;
   }
 
-  return (
-    <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-12">
-      {addingWallet && (
-        <button
-          type="button"
-          onClick={cancelAddingWallet}
-          className="mb-4 flex items-center gap-1 text-sm font-semibold text-wallet-accent"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-          {t.backToUnlock}
-        </button>
-      )}
+  const backButton = addingWallet ? (
+    <button
+      type="button"
+      onClick={cancelAddingWallet}
+      className="wallet-back-link"
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+      {t.backToUnlock}
+    </button>
+  ) : null;
 
-      <div className="wallet-hero-glow mx-auto flex flex-col items-center text-center">
+  return (
+    <WalletAuthScreen centered topBar={backButton ?? undefined}>
+      <div className="wallet-hero-glow flex flex-col items-center text-center">
         <TrustShield className="relative h-24 w-24" />
         <h1 className="mt-8 text-[32px] font-bold tracking-tight text-wallet-text">
           {addingWallet ? t.addWallet : t.appName}
@@ -48,7 +49,7 @@ export function ConnectScreen() {
         </p>
       </div>
 
-      <div className="mx-auto mt-14 w-full max-w-sm flex-1 space-y-3">
+      <div className="mt-10 w-full space-y-3">
         <button
           type="button"
           onClick={() => setView("create")}
@@ -104,10 +105,10 @@ export function ConnectScreen() {
       )}
 
       {!addingWallet && (
-        <p className="mx-auto mt-auto max-w-xs pt-10 text-center text-[11px] leading-relaxed text-wallet-muted-dim">
+        <p className="mx-auto mt-8 max-w-xs text-center text-[11px] leading-relaxed text-wallet-muted-dim">
           {t.termsHint}
         </p>
       )}
-    </div>
+    </WalletAuthScreen>
   );
 }

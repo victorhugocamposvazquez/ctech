@@ -45,7 +45,7 @@ export function WalletHeader({
 
   return (
     <>
-      <header className="safe-top flex items-center justify-between px-5 pb-3 pt-4">
+      <header className="wallet-app-header">
         {sub ? (
           <Link href="/wallet" className="wallet-icon-btn" aria-label={t.back}>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

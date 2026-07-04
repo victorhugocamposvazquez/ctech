@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { english, generateMnemonic } from "viem/accounts";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
+import { WalletAuthScreen } from "../WalletAuthScreen";
 import { t } from "@/lib/wallet/i18n";
 
 interface CreateWalletFlowProps {
@@ -94,10 +95,14 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
 
   if (step === "password") {
     return (
-      <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
-        <button type="button" onClick={onBack} className="wallet-back-link">
-          ← {t.back}
-        </button>
+      <WalletAuthScreen
+        centered={false}
+        topBar={
+          <button type="button" onClick={onBack} className="wallet-back-link">
+            ← {t.back}
+          </button>
+        }
+      >
         <h1 className="wallet-page-title">{t.createPassword}</h1>
         <p className="wallet-page-subtitle">{t.createPasswordHint}</p>
 
@@ -113,16 +118,16 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
         </div>
 
         {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
-        <button type="button" onClick={goToPhrase} className="wallet-btn-primary mt-auto">
+        <button type="button" onClick={goToPhrase} className="wallet-btn-primary mt-8">
           {t.continue}
         </button>
-      </div>
+      </WalletAuthScreen>
     );
   }
 
   if (step === "phrase") {
     return (
-      <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
+      <WalletAuthScreen centered={false}>
         <h1 className="wallet-page-title">{t.secretPhrase}</h1>
         <p className="wallet-page-subtitle">{t.secretPhraseHint}</p>
 
@@ -151,12 +156,12 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
         <button type="button" disabled={!saved} onClick={goToVerify} className="wallet-btn-primary mt-6">
           {t.continue}
         </button>
-      </div>
+      </WalletAuthScreen>
     );
   }
 
   return (
-    <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
+    <WalletAuthScreen centered={false}>
       <h1 className="wallet-page-title">{t.verifyPhrase}</h1>
       <p className="wallet-page-subtitle">{t.verifyPhraseHint}</p>
 
@@ -205,6 +210,6 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
       >
         {busy ? t.creating : t.verifyContinue}
       </button>
-    </div>
+    </WalletAuthScreen>
   );
 }

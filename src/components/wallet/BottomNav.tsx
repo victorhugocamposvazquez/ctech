@@ -60,7 +60,7 @@ export function BottomNav() {
   const swapActive = pathname.startsWith("/wallet/swap");
 
   return (
-    <nav className="wallet-bottom-nav safe-bottom">
+    <nav className="wallet-bottom-nav">
       <div className="mx-auto flex max-w-lg items-end justify-around px-3 pb-2 pt-1">
         {SIDE_NAV.map(({ href, label, icon, match }) => {
           const active = match(pathname);
