@@ -121,9 +121,9 @@ export default function WalletTokensConsole() {
         <div>
           <h1 className="text-2xl font-bold text-white">Gestión de Wallets</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-400">
-            Tokens simulados con símbolos y direcciones reales en BSC (USDT, USDC, BTC, ETH).
-            Actívalos o desactívalos para controlar qué aparece en la wallet y qué transferencias
-            generan notificaciones in-app.
+            Tokens BEP-20 en BSC y wallets destino para enviar fondos simulados. Activa
+            tokens, registra direcciones y envía desde MetaMask; la app detecta la
+            transferencia y muestra la notificación.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
