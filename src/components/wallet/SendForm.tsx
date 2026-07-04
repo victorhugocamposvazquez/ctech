@@ -8,7 +8,8 @@ import {
   formatEther,
   type Address,
 } from "viem";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import Image from "next/image";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
@@ -16,6 +17,7 @@ import { getWalletTokens, erc20BalanceAbi } from "@/lib/wallet/tokens";
 import { formatTokenAmount } from "@/lib/wallet/format";
 import { getPublicClient } from "@/lib/wallet/public-client";
 import { usePortfolio } from "@/hooks/wallet/usePortfolio";
+import { useManagedTokens } from "@/hooks/wallet/useManagedTokens";
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { walletChain } from "@/lib/wallet/config";
 import { t } from "@/lib/wallet/i18n";
@@ -30,7 +32,8 @@ export function SendForm() {
   const { mode, address: fromAddress } = useWalletSession();
   const { sendTransaction: sendLocal } = useLocalWallet();
   const { assets } = usePortfolio();
-  const tokens = getWalletTokens();
+  const { data: managedTokens } = useManagedTokens();
+  const tokens = getWalletTokens(managedTokens);
 
   const [tokenId, setTokenId] = useState(tokens[0]?.id ?? "bnb");
   const [to, setTo] = useState("");
@@ -42,18 +45,53 @@ export function SendForm() {
   const [localTxHash, setLocalTxHash] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+  const { data: simulatedCredits = { byTokenId: {}, byContract: {} } } = useQuery({
+    queryKey: ["wallet-simulated-credits", fromAddress?.toLowerCase()],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/wallet/credits?address=${encodeURIComponent(fromAddress!)}`
+      );
+      const json = await res.json();
+      if (!res.ok) return { byTokenId: {}, byContract: {} };
+      return {
+        byTokenId: json.balances ?? {},
+        byContract: json.balancesByContract ?? {},
+      };
+    },
+    enabled: !!fromAddress,
+    staleTime: 15_000,
+  });
+
   const selected = tokens.find((tok) => tok.id === tokenId)!;
   const asset = assets.find((a) => a.token.id === tokenId);
-
-  const { sendTransaction: sendExternal, data: extTxHash, isPending: extPending, error: extError } =
-    useSendTransaction();
-  const { isLoading: extConfirming, isSuccess: extSuccess } =
-    useWaitForTransactionReceipt({ hash: extTxHash });
 
   const parsedAmount =
     amount && !Number.isNaN(Number(amount))
       ? parseUnits(amount, selected.decimals)
       : 0n;
+
+  const simulatedRaw = useMemo(() => {
+    if (selected.address) {
+      const byContract =
+        simulatedCredits.byContract[selected.address.toLowerCase()];
+      if (byContract) return BigInt(byContract);
+    }
+    const byId = simulatedCredits.byTokenId[selected.id];
+    return byId ? BigInt(byId) : 0n;
+  }, [selected, simulatedCredits]);
+
+  const onChainRaw = asset ? asset.rawBalance - simulatedRaw : 0n;
+  const useSimulatedTransfer =
+    !selected.isNative &&
+    parsedAmount > 0n &&
+    onChainRaw < parsedAmount &&
+    simulatedRaw >= parsedAmount;
+
+  const { sendTransaction: sendExternal, data: extTxHash, isPending: extPending, error: extError } =
+    useSendTransaction();
+  const { isLoading: extConfirming, isSuccess: extSuccess } =
+    useWaitForTransactionReceipt({ hash: extTxHash });
 
   const persistTx = (hash: string) => {
     if (!fromAddress) return;
@@ -70,10 +108,13 @@ export function SendForm() {
   };
 
   const valid =
-    isAddress(to) && parsedAmount > 0n && asset && parsedAmount <= asset.rawBalance;
+    isAddress(to) &&
+    parsedAmount > 0n &&
+    asset &&
+    (onChainRaw >= parsedAmount || useSimulatedTransfer);
 
   useEffect(() => {
-    if (!valid || !fromAddress) {
+    if (!valid || !fromAddress || useSimulatedTransfer) {
       setGasEstimate(null);
       return;
     }
@@ -108,14 +149,42 @@ export function SendForm() {
     return () => {
       cancelled = true;
     };
-  }, [valid, fromAddress, to, parsedAmount, selected]);
+  }, [valid, fromAddress, to, parsedAmount, selected, useSimulatedTransfer]);
 
   const executeSend = async () => {
-    if (!valid) return;
+    if (!valid || !fromAddress) return;
     setBusy(true);
     setLocalError(null);
 
     try {
+      if (useSimulatedTransfer) {
+        const res = await fetch("/api/wallet/transfer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            from_address: fromAddress,
+            to_address: to,
+            token_id: selected.id,
+            amount: amount.trim(),
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error ?? t.txFailed);
+        }
+
+        const txHash = String(json.transfer?.txHash ?? "");
+        persistTx(txHash);
+        setLocalTxHash(txHash);
+        setStep("success");
+        setConfirmOpen(false);
+        void queryClient.invalidateQueries({
+          queryKey: ["wallet-simulated-credits", fromAddress.toLowerCase()],
+        });
+        window.dispatchEvent(new Event("wallet-transfer-received"));
+        return;
+      }
+
       if (mode === "local") {
         let hash: `0x${string}`;
         if (selected.isNative) {
@@ -270,9 +339,20 @@ export function SendForm() {
             <p className="mt-2 text-sm text-wallet-muted">
               {t.available}: {formatTokenAmount(asset.rawBalance, selected.decimals)}{" "}
               {selected.symbol}
+              {simulatedRaw > 0n && (
+                <span className="block text-xs">
+                  On-chain: {formatTokenAmount(onChainRaw, selected.decimals)} · Simulado:{" "}
+                  {formatTokenAmount(simulatedRaw, selected.decimals)}
+                </span>
+              )}
             </p>
           )}
-          {gasEstimate && selected.isNative && (
+          {useSimulatedTransfer && (
+            <p className="mt-2 text-xs text-wallet-accent">
+              Envío simulado entre wallets registradas (sin gas ni transacción on-chain).
+            </p>
+          )}
+          {gasEstimate && selected.isNative && !useSimulatedTransfer && (
             <p className="mt-1 text-xs text-wallet-muted">
               {t.networkFee}: ~{gasEstimate} BNB
             </p>
@@ -298,8 +378,11 @@ export function SendForm() {
         rows={[
           { label: t.asset, value: `${amount} ${selected.symbol}` },
           { label: t.toAddress, value: to, mono: true },
-          ...(gasEstimate && selected.isNative
+          ...(gasEstimate && selected.isNative && !useSimulatedTransfer
             ? [{ label: t.networkFee, value: `~${gasEstimate} BNB` }]
+            : []),
+          ...(useSimulatedTransfer
+            ? [{ label: "Tipo", value: "Transferencia simulada" }]
             : []),
         ]}
         onConfirm={() => void executeSend()}
