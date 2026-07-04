@@ -244,10 +244,16 @@ export async function getSimulatedBalances(
 
   return {
     byTokenId: Object.fromEntries(
-      [...byTokenId.entries()].map(([id, amount]) => [id, amount.toString()])
+      [...byTokenId.entries()].map(([id, amount]) => [
+        id,
+        (amount > 0n ? amount : 0n).toString(),
+      ])
     ),
     byContract: Object.fromEntries(
-      [...byContract.entries()].map(([addr, amount]) => [addr, amount.toString()])
+      [...byContract.entries()].map(([addr, amount]) => [
+        addr,
+        (amount > 0n ? amount : 0n).toString(),
+      ])
     ),
   };
 }

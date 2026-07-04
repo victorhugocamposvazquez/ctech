@@ -103,3 +103,27 @@ export function managedTokenToWalletToken(
 export function normalizeWalletAddress(address: string): string {
   return address.trim().toLowerCase();
 }
+
+const DEFAULT_TOKEN_ID_PREFIX = "default-";
+
+export function resolveManagedTokenId(
+  tokenId: string,
+  contractAddress?: string | null,
+  managed?: Array<{ id: string; address: string }>
+): string | null {
+  if (
+    tokenId &&
+    tokenId !== "custom" &&
+    !tokenId.startsWith(DEFAULT_TOKEN_ID_PREFIX)
+  ) {
+    return tokenId;
+  }
+
+  const normalizedContract = contractAddress?.trim().toLowerCase();
+  if (!normalizedContract) return null;
+
+  const match = managed?.find(
+    (item) => item.address.trim().toLowerCase() === normalizedContract
+  );
+  return match?.id ?? null;
+}

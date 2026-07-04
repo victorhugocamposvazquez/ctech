@@ -1,21 +1,54 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizeWalletAddress } from "@/lib/wallet/managed-tokens";
+import {
+  normalizeWalletAddress,
+  resolveManagedTokenId,
+} from "@/lib/wallet/managed-tokens";
 import { transferSimulatedBetweenWallets } from "@/lib/wallet/simulated-credit";
 import { isAddress } from "viem";
+
+async function resolveActiveToken(
+  supabase: ReturnType<typeof createAdminClient>,
+  tokenId: string,
+  contractAddress?: string
+) {
+  const resolvedId = tokenId.trim();
+  const normalizedContract = contractAddress?.trim().toLowerCase();
+
+  if (resolvedId) {
+    const { data } = await supabase
+      .from("wallet_managed_tokens")
+      .select("id, symbol, decimals, is_active, contract_address")
+      .eq("id", resolvedId)
+      .maybeSingle();
+    if (data?.is_active) return data;
+  }
+
+  if (normalizedContract && isAddress(normalizedContract)) {
+    const { data } = await supabase
+      .from("wallet_managed_tokens")
+      .select("id, symbol, decimals, is_active, contract_address")
+      .eq("contract_address", normalizedContract)
+      .maybeSingle();
+    if (data?.is_active) return data;
+  }
+
+  return null;
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const rawFrom = String(body.from_address ?? "").trim();
   const rawTo = String(body.to_address ?? "").trim();
   const tokenId = String(body.token_id ?? "").trim();
+  const contractAddress = String(body.contract_address ?? "").trim();
   const amountStr = String(body.amount ?? "").trim();
 
   if (!isAddress(rawFrom) || !isAddress(rawTo)) {
     return NextResponse.json({ error: "Dirección inválida" }, { status: 400 });
   }
 
-  if (!tokenId) {
+  if (!tokenId && !contractAddress) {
     return NextResponse.json({ error: "Token requerido" }, { status: 400 });
   }
 
@@ -36,24 +69,18 @@ export async function POST(req: Request) {
   try {
     const supabase = createAdminClient();
 
-    const [{ data: fromWallet }, { data: toWallet }, { data: token }] =
-      await Promise.all([
-        supabase
-          .from("wallet_registered_addresses")
-          .select("id")
-          .eq("wallet_address", fromWalletAddress)
-          .maybeSingle(),
-        supabase
-          .from("wallet_registered_addresses")
-          .select("id")
-          .eq("wallet_address", toWalletAddress)
-          .maybeSingle(),
-        supabase
-          .from("wallet_managed_tokens")
-          .select("id, symbol, decimals, is_active")
-          .eq("id", tokenId)
-          .maybeSingle(),
-      ]);
+    const [{ data: fromWallet }, { data: toWallet }] = await Promise.all([
+      supabase
+        .from("wallet_registered_addresses")
+        .select("id")
+        .eq("wallet_address", fromWalletAddress)
+        .maybeSingle(),
+      supabase
+        .from("wallet_registered_addresses")
+        .select("id")
+        .eq("wallet_address", toWalletAddress)
+        .maybeSingle(),
+    ]);
 
     if (!fromWallet) {
       return NextResponse.json(
@@ -64,12 +91,21 @@ export async function POST(req: Request) {
 
     if (!toWallet) {
       return NextResponse.json(
-        { error: "La wallet destino no está registrada" },
+        {
+          error:
+            "La wallet destino no está registrada. Pide al admin que la registre en el backoffice.",
+        },
         { status: 404 }
       );
     }
 
-    if (!token?.is_active) {
+    const token = await resolveActiveToken(
+      supabase,
+      resolveManagedTokenId(tokenId, contractAddress) ?? tokenId,
+      contractAddress
+    );
+
+    if (!token) {
       return NextResponse.json({ error: "Token no disponible" }, { status: 400 });
     }
 

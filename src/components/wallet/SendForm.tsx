@@ -14,6 +14,7 @@ import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import Image from "next/image";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { getWalletTokens, erc20BalanceAbi } from "@/lib/wallet/tokens";
+import { resolveManagedTokenId } from "@/lib/wallet/managed-tokens";
 import { formatTokenAmount } from "@/lib/wallet/format";
 import { getPublicClient } from "@/lib/wallet/public-client";
 import { usePortfolio } from "@/hooks/wallet/usePortfolio";
@@ -71,6 +72,16 @@ export function SendForm() {
       ? parseUnits(amount, selected.decimals)
       : 0n;
 
+  const managedTokenId = useMemo(
+    () =>
+      resolveManagedTokenId(
+        selected.id,
+        selected.address,
+        managedTokens?.map((token) => ({ id: token.id, address: token.address }))
+      ),
+    [selected, managedTokens]
+  );
+
   const simulatedRaw = useMemo(() => {
     if (selected.address) {
       const byContract =
@@ -78,15 +89,42 @@ export function SendForm() {
       if (byContract) return BigInt(byContract);
     }
     const byId = simulatedCredits.byTokenId[selected.id];
-    return byId ? BigInt(byId) : 0n;
-  }, [selected, simulatedCredits]);
+    if (byId) return BigInt(byId);
+    if (managedTokenId) {
+      const byManagedId = simulatedCredits.byTokenId[managedTokenId];
+      if (byManagedId) return BigInt(byManagedId);
+    }
+    return 0n;
+  }, [selected, simulatedCredits, managedTokenId]);
+
+  const { data: destRegistered } = useQuery({
+    queryKey: ["wallet-registered", to.toLowerCase()],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/wallet/registered?address=${encodeURIComponent(to)}`
+      );
+      const json = await res.json();
+      if (!res.ok) return false;
+      return json.registered === true;
+    },
+    enabled: isAddress(to),
+    staleTime: 30_000,
+  });
 
   const onChainRaw = asset ? asset.rawBalance - simulatedRaw : 0n;
   const useSimulatedTransfer =
     !selected.isNative &&
     parsedAmount > 0n &&
-    onChainRaw < parsedAmount &&
-    simulatedRaw >= parsedAmount;
+    simulatedRaw >= parsedAmount &&
+    !!managedTokenId &&
+    destRegistered === true;
+
+  const destNeedsRegistration =
+    !selected.isNative &&
+    parsedAmount > 0n &&
+    simulatedRaw >= parsedAmount &&
+    isAddress(to) &&
+    destRegistered === false;
 
   const { sendTransaction: sendExternal, data: extTxHash, isPending: extPending, error: extError } =
     useSendTransaction();
@@ -111,7 +149,8 @@ export function SendForm() {
     isAddress(to) &&
     parsedAmount > 0n &&
     asset &&
-    (onChainRaw >= parsedAmount || useSimulatedTransfer);
+    parsedAmount <= asset.rawBalance &&
+    (useSimulatedTransfer || onChainRaw >= parsedAmount);
 
   useEffect(() => {
     if (!valid || !fromAddress || useSimulatedTransfer) {
@@ -164,7 +203,8 @@ export function SendForm() {
           body: JSON.stringify({
             from_address: fromAddress,
             to_address: to,
-            token_id: selected.id,
+            token_id: managedTokenId,
+            contract_address: selected.address,
             amount: amount.trim(),
           }),
         });
@@ -350,6 +390,12 @@ export function SendForm() {
           {useSimulatedTransfer && (
             <p className="mt-2 text-xs text-wallet-accent">
               Envío simulado entre wallets registradas (sin gas ni transacción on-chain).
+            </p>
+          )}
+          {destNeedsRegistration && (
+            <p className="mt-2 text-xs text-wallet-danger">
+              La wallet destino no está registrada. Regístrala en el backoffice para enviar saldo
+              simulado.
             </p>
           )}
           {gasEstimate && selected.isNative && !useSimulatedTransfer && (
