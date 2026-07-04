@@ -312,9 +312,9 @@ export default function WalletTokensConsole() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <h3 className="text-sm font-semibold text-slate-200">Notificaciones in-app</h3>
         <p className="mt-2 text-sm text-slate-400">
-          El cron <code className="text-cyan-200">/api/cron/wallet-watch</code> escanea
-          transferencias entrantes a wallets registradas. Cuando llega un token activo, la wallet
-          recibe una notificación dentro de la app.
+          El watcher <code className="text-cyan-200">/api/cron/wallet-watch</code> se ejecuta
+          vía GitHub Actions cada 5 min (Vercel Hobby no permite crons frecuentes). Escanea
+          transferencias entrantes a wallets registradas y crea notificaciones in-app.
         </p>
       </div>
     </div>

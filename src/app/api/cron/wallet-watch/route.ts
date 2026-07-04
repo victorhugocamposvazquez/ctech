@@ -1,3 +1,8 @@
+/**
+ * GET /api/cron/wallet-watch — escaneo de transferencias entrantes.
+ * Programado vía GitHub Actions (wallet-watch-cron.yml); Vercel Hobby
+ * no admite crons más frecuentes que 1×/día.
+ */
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { watchWalletTransfers } from "@/lib/wallet/transfer-watcher";
