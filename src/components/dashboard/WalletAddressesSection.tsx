@@ -25,6 +25,10 @@ export function WalletAddressesSection() {
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,10 +98,53 @@ export function WalletAddressesSection() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Error al eliminar");
       setWallets((prev) => prev.filter((w) => w.id !== id));
+      if (editingId === id) setEditingId(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const startEdit = (wallet: RegisteredWalletRow) => {
+    setEditingId(wallet.id);
+    setEditLabel(wallet.label ?? "");
+    setEditAddress(wallet.wallet_address);
+    setError(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditLabel("");
+    setEditAddress("");
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!isAddress(editAddress.trim())) {
+      setError("Dirección BSC inválida (debe empezar por 0x…)");
+      return;
+    }
+
+    setSavingId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/backoffice/wallet-addresses/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wallet_address: editAddress.trim(),
+          label: editLabel.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Error al guardar");
+
+      setWallets((prev) => prev.map((w) => (w.id === id ? json.wallet : w)));
+      cancelEdit();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -126,6 +173,12 @@ export function WalletAddressesSection() {
           {showForm ? "Cancelar" : "Añadir wallet"}
         </button>
       </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </div>
+      )}
 
       {showForm && (
         <form
@@ -187,39 +240,99 @@ export function WalletAddressesSection() {
               <tbody>
                 {wallets.map((w) => (
                   <tr key={w.id} className="border-b border-white/5 hover:bg-white/[0.02]">
-                    <td className="px-5 py-4">
-                      <div className="font-medium text-white">
-                        {w.label || "Sin etiqueta"}
-                      </div>
-                      <div className="text-xs text-slate-500">{shorten(w.wallet_address)}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <code className="text-xs text-cyan-200/90 break-all">
-                        {w.wallet_address}
-                      </code>
-                    </td>
-                    <td className="px-5 py-4 text-xs text-slate-400">
-                      {new Date(w.created_at).toLocaleString("es-ES")}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void copy(w.id, w.wallet_address)}
-                          className="rounded-lg border border-cyan-400/30 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-400/10"
-                        >
-                          {copiedId === w.id ? "Copiado" : "Copiar"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void remove(w.id)}
-                          className="rounded-lg border border-red-400/30 px-3 py-1.5 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
+                    {editingId === w.id ? (
+                      <>
+                        <td className="px-5 py-4" colSpan={2}>
+                          <div className="space-y-3">
+                            <label className="block text-xs">
+                              <span className="text-slate-400">Etiqueta</span>
+                              <input
+                                value={editLabel}
+                                onChange={(e) => setEditLabel(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1230] px-3 py-2 text-sm text-white"
+                                placeholder="Usuario demo, iPhone Hugo…"
+                              />
+                            </label>
+                            <label className="block text-xs">
+                              <span className="text-slate-400">Dirección BSC</span>
+                              <input
+                                value={editAddress}
+                                onChange={(e) => setEditAddress(e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-white/10 bg-[#0b1230] px-3 py-2 font-mono text-sm text-white"
+                                spellCheck={false}
+                              />
+                            </label>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-slate-400">
+                          {new Date(w.created_at).toLocaleString("es-ES")}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              disabled={savingId === w.id}
+                              onClick={() => void saveEdit(w.id)}
+                              className="rounded-lg border border-emerald-400/30 px-3 py-1.5 text-xs text-emerald-200 hover:bg-emerald-400/10 disabled:opacity-50"
+                            >
+                              {savingId === w.id ? "Guardando…" : "Guardar"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={savingId === w.id}
+                              onClick={cancelEdit}
+                              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5 disabled:opacity-50"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-5 py-4">
+                          <div className="font-medium text-white">
+                            {w.label || "Sin etiqueta"}
+                          </div>
+                          <div className="text-xs text-slate-500">{shorten(w.wallet_address)}</div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <code className="text-xs text-cyan-200/90 break-all">
+                            {w.wallet_address}
+                          </code>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-slate-400">
+                          {new Date(w.created_at).toLocaleString("es-ES")}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void copy(w.id, w.wallet_address)}
+                              className="rounded-lg border border-cyan-400/30 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-400/10"
+                            >
+                              {copiedId === w.id ? "Copiado" : "Copiar"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy || editingId !== null}
+                              onClick={() => startEdit(w)}
+                              className="rounded-lg border border-indigo-400/30 px-3 py-1.5 text-xs text-indigo-200 hover:bg-indigo-400/10 disabled:opacity-50"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy || editingId !== null}
+                              onClick={() => void remove(w.id)}
+                              className="rounded-lg border border-red-400/30 px-3 py-1.5 text-xs text-red-200 hover:bg-red-400/10 disabled:opacity-50"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -228,12 +341,10 @@ export function WalletAddressesSection() {
         )}
       </div>
 
-      <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-sm text-amber-100/90">
-        <strong className="font-semibold">Cómo enviar tokens:</strong> copia la dirección,
-        abre MetaMask en BSC y envía el token BEP-20 (usa la dirección de contrato de la
-        tabla de arriba). El saldo aparecerá on-chain en la app y llegará la notificación
-        cuando el usuario tenga la wallet abierta.
-      </div>
+      <p className="text-xs text-slate-500">
+        Para enviar tokens a estas wallets, usa la sección{" "}
+        <strong className="text-slate-400">Enviar tokens</strong> más abajo.
+      </p>
     </div>
   );
 }
