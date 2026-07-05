@@ -28,6 +28,8 @@ export const t = {
   retry: "Reintentar",
   refresh: "Actualizar",
   recentActivity: "Actividad reciente",
+  viewAllActivity: "Ver todo",
+  showLessActivity: "Mostrar menos",
   sentTo: "A",
   receivedFrom: "De",
   notifications: "Notificaciones",

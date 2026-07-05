@@ -29,10 +29,10 @@ export default function WalletHomePage() {
     <WalletShell address={sessionAddress ?? address} gradient>
       <BalanceHeader totalUsd={totalUsd} isLoading={isLoading} onRefresh={refresh} />
       <QuickActions />
-      <RecentTxList txs={txs} />
       <AssetTabs>
         <TokenList assets={assets} isLoading={isLoading} isError={isError} onRetry={refresh} />
       </AssetTabs>
+      <RecentTxList txs={txs} />
     </WalletShell>
   );
 }
