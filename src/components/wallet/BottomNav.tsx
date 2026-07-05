@@ -61,7 +61,7 @@ export function BottomNav() {
 
   return (
     <nav className="wallet-bottom-nav">
-      <div className="mx-auto flex max-w-lg items-end justify-around px-3 pb-2 pt-1">
+      <div className="flex items-end justify-around px-2 pb-2 pt-1">
         {SIDE_NAV.map(({ href, label, icon, match }) => {
           const active = match(pathname);
           return (

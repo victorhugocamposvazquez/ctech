@@ -25,7 +25,7 @@ export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProp
 
   return (
     <div
-      className={`fixed left-0 right-0 z-[60] mx-auto max-w-lg px-4 ${positionClass}`}
+      className={`fixed left-0 right-0 z-[60] px-3 ${positionClass}`}
       role="region"
       aria-label="Instalar aplicación"
     >

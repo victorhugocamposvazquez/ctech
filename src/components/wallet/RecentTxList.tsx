@@ -23,7 +23,7 @@ export function RecentTxList({ txs }: { txs: StoredTx[] }) {
 
   return (
     <>
-      <div className="px-5 pb-4">
+      <div className="pb-4">
         <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-wallet-muted">
           {t.recentActivity}
         </h2>

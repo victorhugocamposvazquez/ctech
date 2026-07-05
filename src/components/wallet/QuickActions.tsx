@@ -44,7 +44,7 @@ const ACTIONS = [
 
 export function QuickActions() {
   return (
-    <div className="flex justify-center gap-1 px-4 pb-8 pt-1">
+    <div className="flex justify-center gap-1 pb-8 pt-1">
       {ACTIONS.map(({ href, label, icon }) => (
         <Link key={label} href={href} className="wallet-action-btn">
           <span className="wallet-action-icon">{icon}</span>

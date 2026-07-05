@@ -22,7 +22,7 @@ export function BalanceHeader({ totalUsd, isLoading, onRefresh }: BalanceHeaderP
   };
 
   return (
-    <div className="px-5 pb-4 pt-2 text-center">
+    <div className="pb-4 pt-2 text-center">
       <div className="flex items-center justify-center gap-2">
         <p className="wallet-balance-label">{t.totalBalance}</p>
         {onRefresh && (
