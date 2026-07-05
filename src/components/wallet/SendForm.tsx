@@ -308,14 +308,14 @@ export function SendForm() {
 
   if (step === "success" && txHash) {
     return (
-      <div className="wallet-screen pt-4">
+      <div className="wallet-screen wallet-screen--safe-bottom pt-4">
         <TxReceipt hash={txHash} onReset={reset} />
       </div>
     );
   }
 
   return (
-    <div className="wallet-screen pt-4">
+    <div className="wallet-screen wallet-screen--safe-bottom pt-4">
       <h1 className="wallet-page-title">{t.sendTitle}</h1>
       <p className="wallet-page-subtitle">{t.sendSubtitle}</p>
 

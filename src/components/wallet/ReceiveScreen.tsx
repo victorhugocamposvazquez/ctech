@@ -27,7 +27,7 @@ export function ReceiveScreen() {
   };
 
   return (
-    <div className="wallet-screen items-center pt-4 text-center">
+    <div className="wallet-screen wallet-screen--safe-bottom items-center pt-4 text-center">
       <h1 className="wallet-page-title w-full text-left">{t.receiveTitle}</h1>
       <p className="wallet-page-subtitle w-full text-left">
         {t.receiveSubtitle} {walletChain.name}

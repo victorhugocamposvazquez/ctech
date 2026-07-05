@@ -277,6 +277,12 @@ export function routeTitle(pathname: string): string {
   return t.appName;
 }
 
+const TAB_ROUTES = ["/wallet/trending", "/wallet/discover", "/wallet/swap", "/wallet/settings"] as const;
+
+export function isTabRoute(pathname: string): boolean {
+  return TAB_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 export function isSubpage(pathname: string): boolean {
-  return pathname !== "/wallet" && pathname.startsWith("/wallet/");
+  return pathname !== "/wallet" && pathname.startsWith("/wallet/") && !isTabRoute(pathname);
 }

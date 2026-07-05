@@ -12,7 +12,7 @@ const PROVIDERS = [
 export default function BuyPage() {
   return (
     <WalletShell hideNav gradient>
-      <div className="wallet-screen pt-2">
+      <div className="wallet-screen wallet-screen--safe-bottom pt-2">
         <h1 className="wallet-page-title">{t.buyTitle}</h1>
         <p className="wallet-page-subtitle">{t.buySubtitle}</p>
 

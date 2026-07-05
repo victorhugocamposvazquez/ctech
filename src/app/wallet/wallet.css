@@ -88,7 +88,14 @@
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-.wallet-gradient-top { position: relative; background: var(--wallet-bg); min-height: inherit; }
+.wallet-gradient-top {
+  position: relative;
+  background: var(--wallet-bg);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .wallet-gradient-top::before {
   content: "";
   pointer-events: none;
@@ -110,7 +117,10 @@
 .wallet-screen {
   display: flex;
   flex-direction: column;
-  padding: 0 0 max(24px, env(safe-area-inset-bottom, 24px));
+}
+
+.wallet-screen--safe-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
 }
 
 .wallet-screen-centered {
@@ -135,21 +145,15 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-}
-
-.wallet-shell--docked-nav {
   flex: 1 1 auto;
-  height: 100svh;
-  max-height: 100svh;
   min-height: 0;
-  overflow: hidden;
 }
 
+.wallet-shell--docked-nav,
 .wallet-shell--free-scroll {
   flex: 1 1 auto;
-  height: 100%;
-  max-height: 100%;
   min-height: 0;
+  max-height: 100%;
   overflow: hidden;
 }
 
@@ -219,7 +223,7 @@
 }
 
 .wallet-main-pb-tight {
-  padding-bottom: 4px;
+  padding-bottom: 0;
 }
 
 .wallet-asset-tabs {
@@ -320,8 +324,8 @@ html.wallet-route body {
 }
 
 /* Main con nav inferior fija */
-.wallet-main-pb-min { padding-bottom: max(24px, env(safe-area-inset-bottom, 24px)); }
-.wallet-main-pb-compact { padding-bottom: max(112px, calc(env(safe-area-inset-bottom, 0px) + 96px)); }
+.wallet-main-pb-min { padding-bottom: 8px; }
+.wallet-main-pb-compact { padding-bottom: max(96px, calc(env(safe-area-inset-bottom, 0px) + 88px)); }
 .wallet-main-pb-nav-banner {
   padding-bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px) + 72px);
 }
