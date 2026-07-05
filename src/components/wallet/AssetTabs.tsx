@@ -16,7 +16,7 @@ export function AssetTabs({
   const [tab, setTab] = useState<Tab>("crypto");
 
   return (
-    <div>
+    <div className="wallet-asset-tabs">
       <div className="wallet-tabs">
         <button
           type="button"
@@ -41,10 +41,10 @@ export function AssetTabs({
         </button>
       </div>
 
-      <div className="pt-4 pb-2">
+      <div className="wallet-tab-panel">
         {tab === "crypto" && children}
         {tab === "nfts" && (
-          <div className="wallet-empty py-16">
+          <div className="wallet-tab-empty">
             <div className="wallet-empty-icon">🖼</div>
             <p className="font-semibold text-wallet-text">{t.noNfts}</p>
             <p className="mt-1 max-w-xs text-sm text-wallet-muted">{t.noNftsHint}</p>

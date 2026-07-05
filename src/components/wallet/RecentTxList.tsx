@@ -21,7 +21,7 @@ export function RecentTxList({ txs }: { txs: StoredTx[] }) {
 
   if (txs.length === 0) {
     return (
-      <div className="wallet-empty py-16">
+      <div className="wallet-tab-empty">
         <p className="font-semibold text-wallet-text">{t.noActivity}</p>
       </div>
     );
