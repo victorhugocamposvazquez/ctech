@@ -151,6 +151,58 @@
   overscroll-behavior-y: contain;
 }
 
+.wallet-shell-main--pull {
+  overscroll-behavior-y: none;
+}
+
+.wallet-pull-refresh {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  overflow: hidden;
+  margin-top: -4px;
+  transition: height 0.2s ease, opacity 0.15s ease;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wallet-pull-refresh-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--wallet-accent-soft);
+  color: var(--wallet-accent);
+  transition: transform 0.1s linear;
+}
+
+.wallet-pull-refresh-icon--spin {
+  animation: wallet-pull-spin 0.8s linear infinite;
+}
+
+.wallet-pull-refresh-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wallet-muted);
+}
+
+.wallet-pull-content {
+  will-change: transform;
+  transition: transform 0.2s ease;
+}
+
+.wallet-pull-content--dragging {
+  transition: none;
+}
+
+@keyframes wallet-pull-spin {
+  to { transform: rotate(360deg); }
+}
+
 .wallet-main-pb-tight {
   padding-bottom: 8px;
 }
