@@ -17,12 +17,12 @@ export function PwaUpdateBanner() {
 
   return (
     <div
-      className="fixed left-0 right-0 top-0 z-[900] px-4 pt-[max(0.75rem,env(safe-area-inset-top))]"
+      className="fixed left-0 right-0 top-0 z-[900] px-3 pt-[max(0.75rem,env(safe-area-inset-top))]"
       role="region"
       aria-live="polite"
       aria-label={t.pwaUpdateTitle}
     >
-      <div className="wallet-update-banner mx-auto flex max-w-lg items-center gap-3 px-4 py-3">
+      <div className="wallet-update-banner mx-3 flex items-center gap-3 px-3 py-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-wallet-accent/15">
           <svg
             className="h-5 w-5 text-wallet-accent"

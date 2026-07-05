@@ -10,7 +10,7 @@ export function AssetTabs({ children }: { children: ReactNode }) {
   const [tab, setTab] = useState<Tab>("crypto");
 
   return (
-    <div className="px-5">
+    <div>
       <div className="wallet-tabs">
         <button
           type="button"
