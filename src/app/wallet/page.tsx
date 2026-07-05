@@ -16,7 +16,7 @@ export default function WalletHomePage() {
   const refresh = useWalletPortfolioRefresh();
 
   return (
-    <WalletShell address={sessionAddress} gradient onPullRefresh={refresh}>
+    <WalletShell address={sessionAddress ?? undefined} gradient onPullRefresh={refresh}>
       <BalanceHeader totalUsd={totalUsd} isLoading={isLoading} onRefresh={refresh} />
       <QuickActions />
       <AssetTabs activity={<RecentTxList txs={txs} />}>
