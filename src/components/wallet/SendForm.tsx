@@ -433,7 +433,7 @@ export function SendForm() {
         onClick={() => setConfirmOpen(true)}
         className="wallet-btn-primary mt-8"
       >
-        {isPending ? t.sending : t.review}
+        {isPending ? t.sending : t.send}
       </button>
 
       {error && <p className="mt-3 text-center text-sm text-wallet-danger">{error}</p>}
