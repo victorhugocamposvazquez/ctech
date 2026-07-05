@@ -29,10 +29,9 @@ export default function WalletHomePage() {
     <WalletShell address={sessionAddress ?? address} gradient>
       <BalanceHeader totalUsd={totalUsd} isLoading={isLoading} onRefresh={refresh} />
       <QuickActions />
-      <AssetTabs>
+      <AssetTabs activity={<RecentTxList txs={txs} />}>
         <TokenList assets={assets} isLoading={isLoading} isError={isError} onRetry={refresh} />
       </AssetTabs>
-      <RecentTxList txs={txs} />
     </WalletShell>
   );
 }
