@@ -19,6 +19,10 @@ import {
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
 import { useWalletTheme } from "@/contexts/WalletThemeContext";
 import { t } from "@/lib/wallet/i18n";
+import {
+  loadShownTransferModalIds,
+  markTransferModalShown,
+} from "@/lib/wallet/shown-transfer-modals";
 
 type WalletNotificationUi = {
   unreadCount: number;
@@ -125,10 +129,20 @@ export function WalletNotificationProvider({ children }: { children: ReactNode }
   const [mounted, setMounted] = useState(false);
   const prevUnreadRef = useRef<number | null>(null);
   const seenTransferIdsRef = useRef<Set<string>>(new Set());
+  const initializedAddressRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!address) return;
+    const key = address.toLowerCase();
+    if (initializedAddressRef.current === key) return;
+    initializedAddressRef.current = key;
+    seenTransferIdsRef.current = loadShownTransferModalIds(address);
+    prevUnreadRef.current = null;
+  }, [address]);
 
   useEffect(() => {
     const handler = () => void refresh();
@@ -139,15 +153,15 @@ export function WalletNotificationProvider({ children }: { children: ReactNode }
   const showIncoming = useCallback(
     (item: WalletNotification) => {
       if (item.type !== "transfer_in") return;
+      if (!address) return;
       if (seenTransferIdsRef.current.has(item.id)) return;
       seenTransferIdsRef.current.add(item.id);
+      markTransferModalShown(address, item.id);
       setIncomingModal(item);
       notifyWalletTransferReceived();
-      if (address) {
-        void queryClient.invalidateQueries({
-          queryKey: ["wallet-simulated-credits", address.toLowerCase()],
-        });
-      }
+      void queryClient.invalidateQueries({
+        queryKey: ["wallet-simulated-credits", address.toLowerCase()],
+      });
     },
     [address, queryClient]
   );
@@ -160,12 +174,6 @@ export function WalletNotificationProvider({ children }: { children: ReactNode }
 
     if (prev === null) {
       prevUnreadRef.current = unread.length;
-      const recent = unread.find(
-        (n) =>
-          n.type === "transfer_in" &&
-          Date.now() - new Date(n.created_at).getTime() < 5 * 60_000
-      );
-      if (recent) showIncoming(recent);
       return;
     }
 
