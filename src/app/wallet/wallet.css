@@ -714,6 +714,12 @@ html.wallet-route body {
 .wallet-token-option.active {
   border-color: rgba(72, 255, 145, 0.45); background: var(--wallet-accent-soft);
 }
+.wallet-token-option--empty {
+  opacity: 0.42;
+}
+.wallet-token-option--empty.active {
+  opacity: 1;
+}
 .wallet-token-option:hover { border-color: var(--wallet-border-strong); }
 
 .wallet-link-row {

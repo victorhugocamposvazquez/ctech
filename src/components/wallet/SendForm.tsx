@@ -15,7 +15,7 @@ import Image from "next/image";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import { getWalletTokens, erc20BalanceAbi } from "@/lib/wallet/tokens";
 import { resolveManagedTokenId } from "@/lib/wallet/managed-tokens";
-import { formatTokenAmount } from "@/lib/wallet/format";
+import { formatTokenAmount, formatUsd } from "@/lib/wallet/format";
 import { getPublicClient } from "@/lib/wallet/public-client";
 import { usePortfolio } from "@/hooks/wallet/usePortfolio";
 import { useManagedTokens } from "@/hooks/wallet/useManagedTokens";
@@ -35,6 +35,20 @@ export function SendForm() {
   const { assets } = usePortfolio();
   const { data: managedTokens } = useManagedTokens();
   const tokens = getWalletTokens(managedTokens);
+
+  const assetById = useMemo(
+    () => new Map(assets.map((item) => [item.token.id, item])),
+    [assets]
+  );
+
+  const sortedTokens = useMemo(() => {
+    return [...tokens].sort((a, b) => {
+      const aHas = (assetById.get(a.id)?.rawBalance ?? 0n) > 0n;
+      const bHas = (assetById.get(b.id)?.rawBalance ?? 0n) > 0n;
+      if (aHas === bHas) return 0;
+      return aHas ? -1 : 1;
+    });
+  }, [tokens, assetById]);
 
   const [tokenId, setTokenId] = useState(tokens[0]?.id ?? "bnb");
   const [to, setTo] = useState("");
@@ -307,20 +321,37 @@ export function SendForm() {
         <div>
           <label className="wallet-label">{t.asset}</label>
           <div className="wallet-token-picker">
-            {tokens.map((tok) => (
-              <button
-                key={tok.id}
-                type="button"
-                onClick={() => setTokenId(tok.id)}
-                className={`wallet-token-option ${tokenId === tok.id ? "active" : ""}`}
-              >
-                <Image src={tok.logo} alt="" width={32} height={32} className="rounded-full" />
-                <div className="flex-1">
-                  <p className="font-semibold text-wallet-text">{tok.symbol}</p>
-                  <p className="text-xs text-wallet-muted">{tok.name}</p>
-                </div>
-              </button>
-            ))}
+            {sortedTokens.map((tok) => {
+              const tokAsset = assetById.get(tok.id);
+              const rawBalance = tokAsset?.rawBalance ?? 0n;
+              const hasBalance = rawBalance > 0n;
+              const isActive = tokenId === tok.id;
+
+              return (
+                <button
+                  key={tok.id}
+                  type="button"
+                  onClick={() => setTokenId(tok.id)}
+                  className={`wallet-token-option ${isActive ? "active" : ""} ${
+                    !hasBalance ? "wallet-token-option--empty" : ""
+                  }`}
+                >
+                  <Image src={tok.logo} alt="" width={32} height={32} className="rounded-full" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-wallet-text">{tok.symbol}</p>
+                    <p className="text-xs text-wallet-muted">{tok.name}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[15px] font-semibold tabular-nums leading-tight text-wallet-text">
+                      {formatTokenAmount(rawBalance, tok.decimals, 5)} {tok.symbol}
+                    </p>
+                    <p className="mt-0.5 text-xs tabular-nums text-wallet-muted">
+                      {formatUsd(tokAsset?.usdValue ?? 0)}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
