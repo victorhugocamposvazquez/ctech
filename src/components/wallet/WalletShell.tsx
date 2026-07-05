@@ -31,13 +31,13 @@ export function WalletShell({
 
   return (
     <div
-      className={`wallet-theme w-full min-h-dvh text-wallet-text ${
+      className={`wallet-shell wallet-theme w-full min-h-dvh text-wallet-text ${
         gradient ? "wallet-gradient-top" : "bg-wallet-bg"
       }`}
     >
       {!hideHeader && <WalletHeader address={address} showWalletSelector={!hideNav} />}
 
-      <main className={`${mainPb} wallet-gutter-x`}>{children}</main>
+      <main className={`wallet-shell-main ${mainPb} wallet-gutter-x`}>{children}</main>
 
       {!hideNav && <BottomNav />}
       <InstallBottomBanner aboveNav={!hideNav} />
