@@ -292,6 +292,17 @@ html.wallet-route body {
   padding: max(12px, env(safe-area-inset-top, 0px)) var(--wallet-gutter) 12px;
 }
 
+.wallet-app-header--home {
+  gap: 10px;
+}
+
+.wallet-app-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+
 /* Pantallas de auth (unlock, connect, onboarding) */
 .wallet-auth-screen {
   display: flex;
@@ -959,6 +970,18 @@ html.wallet-route body {
   display: inline-flex; align-items: center; gap: 6px; border-radius: var(--wallet-radius-pill);
   border: 1px solid var(--wallet-border); background: var(--wallet-hover);
   padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--wallet-text-secondary);
+}
+
+.wallet-network-pill--home {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wallet-text);
+  gap: 8px;
 }
 .wallet-alert {
   border-radius: var(--wallet-radius-sm); border: 1px solid rgba(248, 113, 113, 0.3);
