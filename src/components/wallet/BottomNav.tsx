@@ -61,7 +61,7 @@ export function BottomNav() {
 
   return (
     <nav className="wallet-bottom-nav">
-      <div className="flex items-end justify-around px-2 pb-2 pt-1">
+      <div className="wallet-bottom-nav-inner">
         {SIDE_NAV.map(({ href, label, icon, match }) => {
           const active = match(pathname);
           return (
@@ -72,7 +72,7 @@ export function BottomNav() {
           );
         })}
 
-        <Link href="/wallet/swap" className="wallet-nav-item mb-0.5">
+        <Link href="/wallet/swap" className="wallet-nav-item">
           <span className={`wallet-nav-swap ${swapActive ? "" : "inactive"}`}>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
