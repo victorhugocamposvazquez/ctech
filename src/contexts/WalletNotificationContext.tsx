@@ -17,6 +17,7 @@ import {
   type WalletNotification,
 } from "@/hooks/wallet/useWalletNotifications";
 import { useWalletSession } from "@/hooks/wallet/useWalletSession";
+import { useWalletTheme } from "@/contexts/WalletThemeContext";
 import { t } from "@/lib/wallet/i18n";
 
 type WalletNotificationUi = {
@@ -44,23 +45,35 @@ function NotificationRow({
   onRead: (id: string) => void;
 }) {
   const unread = !item.read_at;
+  const isIn = item.type === "transfer_in";
+  const isOut = item.type === "transfer_out";
 
   return (
     <button
       type="button"
       onClick={() => unread && void onRead(item.id)}
-      className={`w-full text-left px-4 py-3 border-b border-wallet-border last:border-0 transition ${
-        unread ? "bg-wallet-accent-soft/40" : "opacity-80"
-      }`}
+      className={`wallet-notif-row ${unread ? "wallet-notif-row--unread" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-semibold text-wallet-text text-[15px]">{item.title}</p>
-        {unread && (
-          <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-wallet-accent" />
-        )}
+      <div
+        className={`wallet-notif-row-icon ${
+          isIn ? "wallet-notif-row-icon--in" : isOut ? "wallet-notif-row-icon--out" : ""
+        }`}
+        aria-hidden
+      >
+        {isIn ? "↓" : isOut ? "↑" : "•"}
       </div>
-      <p className="mt-1 text-sm text-wallet-muted">{item.body}</p>
-      <p className="mt-2 text-xs text-wallet-muted">{formatWhen(item.created_at)}</p>
+      <div className="min-w-0 flex-1 text-left">
+        <p className="wallet-notif-row-title">{item.title}</p>
+        <p
+          className={`wallet-notif-row-body ${
+            isIn ? "wallet-notif-row-body--in" : isOut ? "wallet-notif-row-body--out" : ""
+          }`}
+        >
+          {item.body}
+        </p>
+        <p className="wallet-notif-row-time">{formatWhen(item.created_at)}</p>
+      </div>
+      {unread && <span className="wallet-notif-row-dot" aria-hidden />}
     </button>
   );
 }
@@ -75,7 +88,7 @@ function TransferReceivedModal({
   onViewAll: () => void;
 }) {
   return (
-    <div className="wallet-overlay wallet-overlay--modal" role="dialog" aria-modal="true">
+    <div className="wallet-overlay wallet-overlay--modal wallet-notif-modal-wrap" role="dialog" aria-modal="true">
       <button
         type="button"
         className="wallet-overlay-backdrop"
@@ -87,13 +100,13 @@ function TransferReceivedModal({
           ↓
         </div>
         <h2 className="wallet-transfer-modal-title">{item.title}</h2>
-        <p className="wallet-transfer-modal-body">{item.body}</p>
+        <p className="wallet-transfer-modal-amount">{item.body}</p>
         <div className="wallet-transfer-modal-actions">
           <button type="button" className="wallet-btn-primary" onClick={onClose}>
             {t.close}
           </button>
-          <button type="button" className="wallet-btn-secondary" onClick={onViewAll}>
-            {t.notifications}
+          <button type="button" className="wallet-notif-link-btn" onClick={onViewAll}>
+            {t.viewAllNotifications}
           </button>
         </div>
       </div>
@@ -103,6 +116,7 @@ function TransferReceivedModal({
 
 export function WalletNotificationProvider({ children }: { children: ReactNode }) {
   const { address } = useWalletSession();
+  const { themeClass } = useWalletTheme();
   const queryClient = useQueryClient();
   const { notifications, unreadCount, markRead, markAllRead, refresh } =
     useWalletNotifications(address);
@@ -167,7 +181,7 @@ export function WalletNotificationProvider({ children }: { children: ReactNode }
 
   const portal =
     mounted && address ? (
-      <>
+      <div className={`wallet-theme ${themeClass}`}>
         {incomingModal && (
           <TransferReceivedModal
             item={incomingModal}
@@ -180,23 +194,23 @@ export function WalletNotificationProvider({ children }: { children: ReactNode }
         )}
 
         {sheetOpen && (
-          <div className="wallet-overlay" role="dialog" aria-modal="true">
+          <div className="wallet-overlay wallet-notif-sheet-wrap" role="dialog" aria-modal="true">
             <button
               type="button"
               className="wallet-overlay-backdrop"
               aria-label={t.close}
               onClick={() => setSheetOpen(false)}
             />
-            <div className="wallet-sheet wallet-sheet--nav-safe max-h-[min(72dvh,560px)] overflow-hidden">
+            <div className="wallet-sheet wallet-notif-sheet">
               <div className="wallet-sheet-handle" />
-              <div className="flex items-center justify-between border-b border-wallet-border px-4 pb-3">
-                <h2 className="text-[17px] font-semibold text-wallet-text">{t.notifications}</h2>
-                <div className="flex items-center gap-2">
+              <div className="wallet-notif-sheet-header">
+                <h2 className="wallet-notif-sheet-title">{t.notifications}</h2>
+                <div className="flex items-center gap-1">
                   {unreadCount > 0 && (
                     <button
                       type="button"
                       onClick={() => void markAllRead()}
-                      className="text-xs font-medium text-wallet-accent"
+                      className="wallet-notif-mark-read"
                     >
                       {t.markAllRead}
                     </button>
@@ -204,18 +218,16 @@ export function WalletNotificationProvider({ children }: { children: ReactNode }
                   <button
                     type="button"
                     onClick={() => setSheetOpen(false)}
-                    className="wallet-icon-btn !h-8 !w-8"
+                    className="wallet-icon-btn !h-9 !w-9"
                     aria-label={t.close}
                   >
                     ✕
                   </button>
                 </div>
               </div>
-              <div className="overflow-y-auto max-h-[calc(min(72dvh,560px)-96px)]">
+              <div className="wallet-notif-sheet-list">
                 {notifications.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-sm text-wallet-muted">
-                    {t.noNotifications}
-                  </div>
+                  <div className="wallet-notif-empty">{t.noNotifications}</div>
                 ) : (
                   notifications.map((item) => (
                     <NotificationRow key={item.id} item={item} onRead={markRead} />
@@ -225,7 +237,7 @@ export function WalletNotificationProvider({ children }: { children: ReactNode }
             </div>
           </div>
         )}
-      </>
+      </div>
     ) : null;
 
   return (

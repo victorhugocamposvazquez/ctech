@@ -33,6 +33,7 @@ export const t = {
   notifications: "Notificaciones",
   noNotifications: "Sin notificaciones",
   markAllRead: "Marcar todo leído",
+  viewAllNotifications: "Ver todas las notificaciones",
 
   // Onboarding
   createWallet: "Crear wallet nueva",
