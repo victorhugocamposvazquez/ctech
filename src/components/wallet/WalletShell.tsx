@@ -1,13 +1,11 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { type ReactNode } from "react";
 import { BottomNav } from "./BottomNav";
 import { WalletHeader } from "./WalletHeader";
 import { InstallBottomBanner } from "./InstallBanner";
 import { useInstallPrompt } from "@/hooks/wallet/useInstallPrompt";
 import { usePullToRefresh } from "@/hooks/wallet/usePullToRefresh";
-import { useWalletTheme } from "@/contexts/WalletThemeContext";
 import { t } from "@/lib/wallet/i18n";
 
 export function WalletShell({
@@ -26,13 +24,7 @@ export function WalletShell({
   onPullRefresh?: () => void | Promise<void>;
 }) {
   const { showInstallBanner } = useInstallPrompt();
-  const { themeClass } = useWalletTheme();
-  const [mounted, setMounted] = useState(false);
   const { scrollRef, pull, progress, refreshing, active } = usePullToRefresh(onPullRefresh);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const mainPb = hideNav
     ? showInstallBanner
@@ -44,16 +36,6 @@ export function WalletShell({
 
   const shellClass = hideNav ? "wallet-shell--free-scroll" : "wallet-shell--docked-nav";
   const pullEnabled = !!onPullRefresh && !hideNav;
-
-  const navPortal =
-    mounted && !hideNav
-      ? createPortal(
-          <div className={`wallet-theme ${themeClass}`}>
-            <BottomNav />
-          </div>,
-          document.body
-        )
-      : null;
 
   return (
     <div
@@ -105,8 +87,8 @@ export function WalletShell({
         </div>
       </main>
 
+      {!hideNav && <BottomNav />}
       <InstallBottomBanner aboveNav={!hideNav} />
-      {navPortal}
     </div>
   );
 }
