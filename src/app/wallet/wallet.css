@@ -728,6 +728,71 @@ html.wallet-route body {
 }
 .wallet-link-row:hover { background: var(--wallet-hover); }
 .wallet-link-row + .wallet-link-row { border-top: 1px solid var(--wallet-border); }
+
+/* Actividad reciente (compacta en inicio) */
+.wallet-recent-section {
+  padding-top: 8px;
+  padding-bottom: 4px;
+}
+.wallet-recent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.wallet-recent-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--wallet-muted);
+}
+.wallet-recent-view-all {
+  padding: 4px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--wallet-accent);
+}
+.wallet-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  transition: background 0.15s;
+}
+.wallet-recent-row:hover { background: var(--wallet-hover); }
+.wallet-recent-row + .wallet-recent-row { border-top: 1px solid var(--wallet-border); }
+.wallet-recent-row-icon {
+  display: flex;
+  height: 32px;
+  width: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--wallet-accent-soft);
+}
+.wallet-recent-row-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wallet-text);
+  line-height: 1.25;
+}
+.wallet-recent-row-meta {
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--wallet-muted);
+  line-height: 1.3;
+}
+.wallet-recent-row-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--wallet-muted);
+}
+
 .wallet-badge-soon {
   border-radius: var(--wallet-radius-pill); background: var(--wallet-accent-soft);
   padding: 4px 10px; font-size: 11px; font-weight: 700; color: var(--wallet-accent);

@@ -16,39 +16,67 @@ function formatWhen(ts: number): string {
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 }
 
-export function RecentTxList({ txs }: { txs: StoredTx[] }) {
+export function RecentTxList({
+  txs,
+  limit = 2,
+}: {
+  txs: StoredTx[];
+  limit?: number;
+}) {
   const [selected, setSelected] = useState<StoredTx | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   if (txs.length === 0) return null;
 
+  const visible = expanded ? txs.slice(0, 5) : txs.slice(0, limit);
+  const hasMore = txs.length > limit;
+
   return (
     <>
-      <div className="pb-4">
-        <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-wallet-muted">
-          {t.recentActivity}
-        </h2>
+      <div className="wallet-recent-section">
+        <div className="wallet-recent-header">
+          <h2 className="wallet-recent-title">{t.recentActivity}</h2>
+          {hasMore && !expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="wallet-recent-view-all"
+            >
+              {t.viewAllActivity}
+            </button>
+          )}
+          {expanded && hasMore && (
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="wallet-recent-view-all"
+            >
+              {t.showLessActivity}
+            </button>
+          )}
+        </div>
         <div className="wallet-settings-group">
-          {txs.slice(0, 5).map((tx) => (
+          {visible.map((tx) => (
             <button
               key={tx.hash}
               type="button"
               onClick={() => setSelected(tx)}
-              className="wallet-link-row w-full text-left"
+              className="wallet-recent-row w-full text-left"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-wallet-accent-soft">
-                <svg className="h-5 w-5 text-wallet-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="wallet-recent-row-icon" aria-hidden>
+                <svg className="h-4 w-4 text-wallet-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-wallet-text">
+                <p className="wallet-recent-row-amount">
                   − {tx.amount} {tx.symbol}
                 </p>
-                <p className="text-xs text-wallet-muted">
-                  {t.sentTo} {shortenAddress(tx.to, 6)}
+                <p className="wallet-recent-row-meta truncate">
+                  {t.sentTo} {shortenAddress(tx.to, 4)}
                 </p>
               </div>
-              <span className="text-xs text-wallet-muted">{formatWhen(tx.timestamp)}</span>
+              <span className="wallet-recent-row-time">{formatWhen(tx.timestamp)}</span>
             </button>
           ))}
         </div>
