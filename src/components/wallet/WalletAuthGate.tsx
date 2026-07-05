@@ -26,27 +26,23 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
 
   if (addingWallet && !isConnected) {
     return (
-      <div className="wallet-theme">
+      <>
         <ConnectScreen />
         <InstallBottomBanner aboveNav={false} />
-      </div>
+      </>
     );
   }
 
   if (needsUnlock) {
-    return (
-      <div className="wallet-theme">
-        <UnlockScreen />
-      </div>
-    );
+    return <UnlockScreen />;
   }
 
   if (needsOnboarding && !isConnected) {
     return (
-      <div className="wallet-theme">
+      <>
         <ConnectScreen />
         <InstallBottomBanner aboveNav={false} />
-      </div>
+      </>
     );
   }
 

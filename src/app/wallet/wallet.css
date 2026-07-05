@@ -74,16 +74,19 @@
 }
 
 .wallet-root {
+  display: flex;
+  flex-direction: column;
   background: var(--wallet-bg);
   min-height: 100dvh;
   min-height: 100svh;
+  min-height: -webkit-fill-available;
   color: var(--wallet-text);
   transition: background 0.25s, color 0.25s;
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-.wallet-gradient-top { position: relative; background: var(--wallet-bg); }
+.wallet-gradient-top { position: relative; background: var(--wallet-bg); min-height: inherit; }
 .wallet-gradient-top::before {
   content: "";
   pointer-events: none;
@@ -119,6 +122,12 @@
 .bg-wallet-accent { background-color: var(--wallet-accent); }
 .text-wallet-danger { color: var(--wallet-danger); }
 
+html.wallet-route,
+html.wallet-route body {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+}
+
 .safe-top { padding-top: max(12px, env(safe-area-inset-top, 0px)); }
 .safe-bottom { padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
 
@@ -134,15 +143,19 @@
 /* Pantallas de auth (unlock, connect, onboarding) */
 .wallet-auth-screen {
   display: flex;
+  flex: 1 1 auto;
+  width: 100%;
   min-height: 100dvh;
   min-height: 100svh;
+  min-height: -webkit-fill-available;
   flex-direction: column;
+  background: var(--wallet-bg);
   padding-left: max(20px, env(safe-area-inset-left, 0px));
   padding-right: max(20px, env(safe-area-inset-right, 0px));
   padding-top: max(12px, env(safe-area-inset-top, 0px));
   padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
 }
 

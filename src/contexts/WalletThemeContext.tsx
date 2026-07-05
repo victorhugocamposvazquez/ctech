@@ -38,6 +38,14 @@ function ThemeColorEffect({ theme }: { theme: WalletTheme }) {
     const color = theme === "light" ? "#f4f4f5" : "#060608";
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", color);
+    document.documentElement.classList.add("wallet-route");
+    document.documentElement.style.backgroundColor = color;
+    document.body.style.backgroundColor = color;
+    return () => {
+      document.documentElement.classList.remove("wallet-route");
+      document.documentElement.style.backgroundColor = "";
+      document.body.style.backgroundColor = "";
+    };
   }, [theme]);
   return null;
 }
