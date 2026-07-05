@@ -29,6 +29,8 @@ export function WalletHeader({
 
   const activeMeta = wallets.find((w) => w.id === activeWalletId);
   const hasMultiple = wallets.length > 1;
+  const displayAddress = activeMeta?.address ?? address;
+  const addressPreview = displayAddress ? shortenAddress(displayAddress, 6) : null;
 
   const handleSelect = (id: string) => {
     setShowPicker(false);
@@ -57,18 +59,28 @@ export function WalletHeader({
               onClick={() => setShowPicker(true)}
               className="wallet-network-pill wallet-network-pill--home"
             >
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
-              <span className="min-w-0 flex-1 truncate text-left">
-                {activeMeta?.label ?? shortenAddress(address ?? "", 4)}
+              <span className="h-2.5 w-2.5 shrink-0 self-center rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
+              <span className="wallet-pill-content min-w-0 flex-1">
+                <span className="wallet-pill-label truncate">
+                  {activeMeta?.label ?? t.walletLabel}
+                </span>
+                {addressPreview && (
+                  <span className="wallet-pill-address truncate">{addressPreview}</span>
+                )}
               </span>
-              <svg className="h-4 w-4 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="h-4 w-4 shrink-0 self-center opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
           ) : (
             <span className="wallet-network-pill wallet-network-pill--home">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
-              <span className="min-w-0 flex-1 truncate text-left">{walletChain.name}</span>
+              <span className="h-2.5 w-2.5 shrink-0 self-center rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
+              <span className="wallet-pill-content min-w-0 flex-1">
+                <span className="wallet-pill-label truncate">{walletChain.name}</span>
+                {addressPreview && (
+                  <span className="wallet-pill-address truncate">{addressPreview}</span>
+                )}
+              </span>
             </span>
           )
         ) : (
