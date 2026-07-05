@@ -20,6 +20,7 @@ export function WalletHeader({
   showWalletSelector = true,
 }: WalletHeaderProps) {
   const pathname = usePathname();
+  const isHome = pathname === "/wallet";
   const sub = isSubpage(pathname);
   const title = routeTitle(pathname);
   const { wallets, activeWalletId, switchWallet, startAddingWallet, lock } =
@@ -52,14 +53,10 @@ export function WalletHeader({
             </svg>
           </Link>
         ) : (
-          <Link href="/wallet/settings" className="wallet-icon-btn" aria-label={t.navSettings}>
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </Link>
+          <span className="wallet-icon-btn pointer-events-none opacity-0" aria-hidden="true" />
         )}
 
-        {showWalletSelector && !sub ? (
+        {isHome && showWalletSelector ? (
           hasMultiple ? (
             <button
               type="button"
