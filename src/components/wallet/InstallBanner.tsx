@@ -13,7 +13,7 @@ export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProp
 
   if (!showInstallBanner) return null;
 
-  const positionClass = aboveNav ? "bottom-[72px]" : "bottom-3 safe-bottom";
+  const positionClass = aboveNav ? "wallet-install-above-nav" : "bottom-3 safe-bottom";
 
   const hint = needsSafari
     ? "Abre en Safari para poder instalar"
