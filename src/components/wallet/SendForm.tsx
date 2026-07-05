@@ -50,7 +50,8 @@ export function SendForm() {
     });
   }, [tokens, assetById]);
 
-  const [tokenId, setTokenId] = useState(tokens[0]?.id ?? "bnb");
+  const [tokenId, setTokenId] = useState<string | undefined>(undefined);
+  const selectedTokenId = tokenId ?? sortedTokens[0]?.id ?? "bnb";
   const [to, setTo] = useState("");
   const [amount, setAmount] = useState("");
   const [step, setStep] = useState<Step>("form");
@@ -78,8 +79,8 @@ export function SendForm() {
     staleTime: 15_000,
   });
 
-  const selected = tokens.find((tok) => tok.id === tokenId)!;
-  const asset = assets.find((a) => a.token.id === tokenId);
+  const selected = tokens.find((tok) => tok.id === selectedTokenId)!;
+  const asset = assets.find((a) => a.token.id === selectedTokenId);
 
   const parsedAmount =
     amount && !Number.isNaN(Number(amount))
@@ -296,6 +297,7 @@ export function SendForm() {
     setStep("form");
     setTo("");
     setAmount("");
+    setTokenId(undefined);
     setLocalTxHash(null);
     setLocalError(null);
   };
@@ -325,7 +327,7 @@ export function SendForm() {
               const tokAsset = assetById.get(tok.id);
               const rawBalance = tokAsset?.rawBalance ?? 0n;
               const hasBalance = rawBalance > 0n;
-              const isActive = tokenId === tok.id;
+              const isActive = selectedTokenId === tok.id;
 
               return (
                 <button
