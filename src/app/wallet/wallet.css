@@ -2,6 +2,7 @@
 .wallet-theme {
   --wallet-gutter: 12px;
   --wallet-nav-height: 48px;
+  --wallet-system-bottom: env(safe-area-inset-bottom, 0px);
   --wallet-accent: #48ff91;
   --wallet-accent-soft: rgba(72, 255, 145, 0.12);
   --wallet-accent-glow: rgba(72, 255, 145, 0.35);
@@ -75,6 +76,15 @@
   --wallet-install-gradient-end: rgba(17, 17, 20, 0.95);
   --wallet-segmented-bg: rgba(0, 0, 0, 0.3);
   --wallet-action-icon-bg: linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+}
+
+/* Android PWA: la barra del sistema no siempre reporta safe-area-inset-bottom */
+@supports not (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    .wallet-theme {
+      --wallet-system-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+    }
+  }
 }
 
 .wallet-root {
@@ -242,7 +252,7 @@
 }
 
 .wallet-main-pb-docked {
-  padding-bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px) + 4px);
+  padding-bottom: calc(var(--wallet-nav-height) + var(--wallet-system-bottom) + 8px);
 }
 
 .wallet-asset-tabs {
@@ -399,7 +409,7 @@ html.wallet-route body {
 .wallet-main-pb-min { padding-bottom: 8px; }
 .wallet-main-pb-compact { padding-bottom: max(96px, calc(env(safe-area-inset-bottom, 0px) + 88px)); }
 .wallet-main-pb-nav-banner {
-  padding-bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px) + 72px);
+  padding-bottom: calc(var(--wallet-nav-height) + var(--wallet-system-bottom) + 72px);
 }
 
 .wallet-card {
@@ -490,7 +500,7 @@ html.wallet-route body {
 }
 
 .wallet-install-above-nav {
-  bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px) + 12px);
+  bottom: calc(var(--wallet-nav-height) + var(--wallet-system-bottom) + 12px);
   z-index: 40;
 }
 
@@ -505,7 +515,7 @@ html.wallet-route body {
   box-sizing: border-box;
   border-top: 1px solid var(--wallet-border);
   background: var(--wallet-nav-bg-solid);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--wallet-system-bottom);
   isolation: isolate;
 }
 
@@ -514,7 +524,7 @@ html.wallet-route body {
   align-items: flex-end;
   justify-content: space-around;
   min-height: var(--wallet-nav-height);
-  padding: 0 6px 2px;
+  padding: 0 6px 6px;
 }
 
 .wallet-nav-item {
@@ -732,10 +742,10 @@ html.wallet-route body {
 .wallet-overlay--modal .wallet-sheet {
   border-radius: 24px;
   margin-top: auto;
-  margin-bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
+  margin-bottom: calc(var(--wallet-nav-height) + var(--wallet-system-bottom) + 8px);
 }
 .wallet-overlay:not(.wallet-overlay--modal) .wallet-sheet {
-  margin-bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px));
+  margin-bottom: calc(var(--wallet-nav-height) + var(--wallet-system-bottom));
 }
 .wallet-sheet--nav-safe {
   padding-bottom: max(32px, env(safe-area-inset-bottom));

@@ -12,7 +12,13 @@ export function PwaUpdateBanner() {
 
   const handleUpdate = () => {
     setRefreshing(true);
-    applyUpdate();
+    void applyUpdate().catch(() => {
+      setRefreshing(false);
+    });
+
+    window.setTimeout(() => {
+      setRefreshing(false);
+    }, 6_000);
   };
 
   return (
