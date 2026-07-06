@@ -44,6 +44,11 @@ export function ConnectScreen() {
         <h1 className="mt-8 text-[32px] font-bold tracking-tight text-wallet-text">
           {addingWallet ? t.addWallet : t.appName}
         </h1>
+        {!addingWallet && (
+          <p className="mt-2 text-[15px] font-semibold tracking-wide text-wallet-accent">
+            {t.appSubtitle}
+          </p>
+        )}
         <p className="mt-3 max-w-[320px] text-[16px] leading-relaxed text-wallet-muted">
           {addingWallet ? t.addWalletHint : t.appTagline}
         </p>

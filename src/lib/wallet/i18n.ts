@@ -1,7 +1,8 @@
 /** Textos de la wallet — español */
 export const t = {
   appName: "Trust Wallet",
-  appTagline: "Tu puerta de entrada segura a Web3 en BNB Smart Chain.",
+  appSubtitle: "Versión Descentralizada",
+  appTagline: "Tu puerta de entrada segura a Web3.",
   loading: "Cargando wallet…",
 
   // Nav
