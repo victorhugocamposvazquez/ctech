@@ -4,8 +4,8 @@ import { useWalletTheme, type WalletTheme } from "@/contexts/WalletThemeContext"
 import { t } from "@/lib/wallet/i18n";
 
 const OPTIONS: { id: WalletTheme; label: string }[] = [
-  { id: "light", label: t.themeLight },
   { id: "dark", label: t.themeDark },
+  { id: "light", label: t.themeLight },
 ];
 
 export function ThemeSettings() {

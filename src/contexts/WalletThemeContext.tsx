@@ -17,7 +17,7 @@ import {
 export type WalletTheme = "light" | "dark";
 
 const STORAGE_KEY = "wallet_theme";
-const DEFAULT_THEME: WalletTheme = "light";
+const DEFAULT_THEME: WalletTheme = "dark";
 
 interface WalletThemeContextValue {
   theme: WalletTheme;
@@ -30,7 +30,8 @@ const WalletThemeContext = createContext<WalletThemeContextValue | null>(null);
 function readTheme(): WalletTheme {
   if (typeof window === "undefined") return DEFAULT_THEME;
   const v = localStorage.getItem(STORAGE_KEY);
-  return v === "dark" ? "dark" : "light";
+  if (v === "light" || v === "dark") return v;
+  return DEFAULT_THEME;
 }
 
 function ThemeColorEffect({ theme }: { theme: WalletTheme }) {
