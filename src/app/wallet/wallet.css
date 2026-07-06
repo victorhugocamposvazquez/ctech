@@ -442,7 +442,8 @@ html.wallet-route body {
 }
 
 .wallet-install-above-nav {
-  bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px) + 4px);
+  bottom: calc(var(--wallet-nav-height) + env(safe-area-inset-bottom, 0px) + 12px);
+  z-index: 40;
 }
 
 .wallet-bottom-nav {
@@ -454,6 +455,7 @@ html.wallet-route body {
   border-top: 1px solid var(--wallet-border);
   background: var(--wallet-nav-bg-solid);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  isolation: isolate;
 }
 
 .wallet-bottom-nav-inner {
@@ -1025,3 +1027,28 @@ html.wallet-route body {
 }
 .wallet-btn-biometric:hover:not(:disabled) { border-color: rgba(72, 255, 145, 0.4); background: var(--wallet-accent-soft); }
 .wallet-btn-biometric:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* pwa-install: solo lógica programática, sin UI flotante */
+pwa-install {
+  position: fixed;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Escritorio: columna móvil centrada */
+@media (min-width: 640px) {
+  .wallet-root:has(.wallet-shell--docked-nav),
+  .wallet-root:has(.wallet-shell--free-scroll) {
+    left: 50%;
+    right: auto;
+    width: min(100%, 430px);
+    transform: translateX(-50%);
+    border-left: 1px solid var(--wallet-border);
+    border-right: 1px solid var(--wallet-border);
+    box-shadow: 0 0 48px rgba(0, 0, 0, 0.35);
+  }
+}

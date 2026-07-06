@@ -121,7 +121,8 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [componentReady, nativeAvailable, platform, isStandalone, installed, dismissed]);
 
-  const showInstallBanner = !isStandalone && !installed && !dismissed;
+  const showInstallBanner =
+    !isStandalone && !installed && !dismissed && platform !== "desktop";
 
   const value = useMemo(
     () => ({
