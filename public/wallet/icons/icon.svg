@@ -1,6 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="112" fill="#0B0B0C"/>
-  <path d="M256 64L96 128v144c0 112 72 216 160 240 88-24 160-128 160-240V128L256 64z" fill="#48FF91"/>
-  <path d="M256 108L136 160v112c0 88 57 170 120 184 63-14 120-96 120-184V160L256 108z" fill="#0B0B0C"/>
-  <path d="M256 168l-72 30v78c0 48 31 93 72 102 41-9 72-54 72-102v-78l-72-30z" fill="#48FF91"/>
+  <rect width="512" height="512" rx="112" fill="#060608"/>
+  <defs>
+    <linearGradient id="shieldGrad" x1="256" y1="64" x2="256" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5cffaa"/>
+      <stop offset="1" stop-color="#48ff91"/>
+    </linearGradient>
+  </defs>
+  <path
+    d="M256 64L96 128v144c0 112 72 216 160 240 88-24 160-128 160-240V128L256 64z"
+    fill="url(#shieldGrad)"
+  />
+  <path
+    d="M256 108L136 160v112c0 88 57 170 120 184 63-14 120-96 120-184V160L256 108z"
+    fill="#060608"
+    fill-opacity="0.85"
+  />
+  <path
+    d="M256 168l-72 30v78c0 48 31 93 72 102 41-9 72-54 72-102v-78l-72-30z"
+    fill="url(#shieldGrad)"
+  />
 </svg>
