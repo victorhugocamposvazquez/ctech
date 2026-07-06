@@ -162,7 +162,9 @@ export function InstallPromptProvider({ children }: { children: ReactNode }) {
 
   return (
     <InstallPromptContext.Provider value={value}>
-      <div className={showInstallBanner ? "wallet-install-banner-visible" : undefined}>
+      <div
+        className={`wallet-root-fill${showInstallBanner ? " wallet-install-banner-visible" : ""}`}
+      >
         {children}
       </div>
       <PWAInstall
