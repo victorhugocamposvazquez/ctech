@@ -7,8 +7,33 @@ import type { RegisteredWalletRow } from "./WalletAddressesSection";
 
 type SendMode = "credit" | "transfer";
 
+type SimulatedOperation = {
+  id: string;
+  txHash: string;
+  kind: "credit" | "transfer";
+  symbol: string;
+  decimals: number;
+  amount: number;
+  fromAddress: string;
+  toAddress: string;
+  walletAddress: string;
+  detectedAt: string;
+  reversedAt: string | null;
+};
+
 function shorten(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+function walletLabel(
+  address: string,
+  wallets: RegisteredWalletRow[]
+): string {
+  const match = wallets.find(
+    (w) => w.wallet_address.toLowerCase() === address.toLowerCase()
+  );
+  if (match?.label) return `${match.label} (${shorten(address)})`;
+  return shorten(address);
 }
 
 export function WalletSendSection() {
@@ -30,6 +55,9 @@ export function WalletSendSection() {
     from?: string;
     to: string;
   } | null>(null);
+  const [operations, setOperations] = useState<SimulatedOperation[]>([]);
+  const [opsLoading, setOpsLoading] = useState(true);
+  const [revertingId, setRevertingId] = useState<string | null>(null);
 
   const activeTokens = useMemo(
     () => tokens.filter((t) => t.is_active),
@@ -72,9 +100,66 @@ export function WalletSendSection() {
     }
   }, []);
 
+  const loadOperations = useCallback(async () => {
+    setOpsLoading(true);
+    try {
+      const res = await fetch("/api/backoffice/wallet-simulated-events?limit=30");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Error al cargar historial");
+      setOperations(json.operations ?? []);
+    } catch {
+      setOperations([]);
+    } finally {
+      setOpsLoading(false);
+    }
+  }, []);
+
+  const revertOperation = async (op: SimulatedOperation) => {
+    const amountLabel = op.amount.toLocaleString("es-ES", {
+      maximumFractionDigits: 6,
+    });
+    const fromLabel = walletLabel(op.fromAddress, wallets);
+    const toLabel = walletLabel(op.toAddress, wallets);
+
+    const message =
+      op.kind === "credit"
+        ? `¿Revertir acreditación de ${amountLabel} ${op.symbol} a ${toLabel}?\n\nSe restará todo el saldo acreditado en esa wallet.`
+        : `¿Revertir transferencia wallet → wallet de ${amountLabel} ${op.symbol}?\n\n• ${toLabel} perderá el saldo recibido\n• ${fromLabel} recuperará el importe\n\nAmbas wallets recibirán una notificación.`;
+
+    if (!window.confirm(message)) return;
+
+    setRevertingId(op.id);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/backoffice/wallet-simulated-events/${op.id}/revert`,
+        { method: "POST" }
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Error al revertir");
+
+      await loadOperations();
+      if (mode === "transfer" && fromWallet) {
+        const balRes = await fetch(
+          `/api/wallet/credits?address=${encodeURIComponent(fromWallet.wallet_address)}`
+        );
+        const balJson = await balRes.json();
+        if (balRes.ok) setFromBalances(balJson.balances ?? {});
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRevertingId(null);
+    }
+  };
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void loadOperations();
+  }, [loadOperations]);
 
   useEffect(() => {
     if (!fromWalletId && wallets[0]) setFromWalletId(wallets[0].id);
@@ -173,6 +258,7 @@ export function WalletSendSection() {
         const json = await res.json();
         if (res.ok) setFromBalances(json.balances ?? {});
       }
+      void loadOperations();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -407,6 +493,113 @@ export function WalletSendSection() {
               : `Transferir ${selectedToken?.symbol ?? "token"}`}
         </button>
       </form>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div>
+            <h3 className="font-semibold text-white">Historial simulado</h3>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Acreditaciones y transferencias wallet → wallet. Revertir deshace la operación
+              completa (resta en destino y devuelve en origen cuando aplica).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadOperations()}
+            disabled={opsLoading}
+            className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-300 hover:bg-white/5 disabled:opacity-50"
+          >
+            {opsLoading ? "Actualizando…" : "Actualizar"}
+          </button>
+        </div>
+
+        {opsLoading && operations.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-400">Cargando historial…</div>
+        ) : operations.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-400">
+            No hay operaciones simuladas todavía.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-xs uppercase tracking-wide text-slate-500">
+                  <th className="px-5 py-3 font-medium">Fecha</th>
+                  <th className="px-5 py-3 font-medium">Tipo</th>
+                  <th className="px-5 py-3 font-medium">Detalle</th>
+                  <th className="px-5 py-3 font-medium">Cantidad</th>
+                  <th className="px-5 py-3 font-medium">Estado</th>
+                  <th className="px-5 py-3 font-medium" />
+                </tr>
+              </thead>
+              <tbody>
+                {operations.map((op) => {
+                  const when = new Date(op.detectedAt).toLocaleString("es-ES", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  const amountLabel = op.amount.toLocaleString("es-ES", {
+                    maximumFractionDigits: 6,
+                  });
+                  const reverted = !!op.reversedAt;
+                  const fromLabel = walletLabel(op.fromAddress, wallets);
+                  const toLabel = walletLabel(op.toAddress, wallets);
+
+                  return (
+                    <tr key={op.id} className="border-b border-white/5 last:border-0">
+                      <td className="px-5 py-3 text-slate-300 whitespace-nowrap">{when}</td>
+                      <td className="px-5 py-3 text-slate-300">
+                        {op.kind === "credit" ? (
+                          <span>Mint</span>
+                        ) : (
+                          <span title="Wallet → wallet">W → W</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-slate-400 text-xs">
+                        {op.kind === "credit" ? (
+                          <>→ {toLabel}</>
+                        ) : (
+                          <>
+                            {fromLabel} → {toLabel}
+                          </>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 font-medium text-white whitespace-nowrap">
+                        {amountLabel} {op.symbol}
+                      </td>
+                      <td className="px-5 py-3">
+                        {reverted ? (
+                          <span className="rounded-full bg-slate-500/20 px-2 py-0.5 text-xs text-slate-400">
+                            Revertida
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">
+                            Activa
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {!reverted && (
+                          <button
+                            type="button"
+                            disabled={revertingId === op.id}
+                            onClick={() => void revertOperation(op)}
+                            className="rounded-lg border border-red-400/30 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/10 disabled:opacity-50"
+                          >
+                            {revertingId === op.id ? "Revirtiendo…" : "Revertir"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
