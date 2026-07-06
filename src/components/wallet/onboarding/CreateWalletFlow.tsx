@@ -102,6 +102,11 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
             ← {t.back}
           </button>
         }
+        footer={
+          <button type="button" onClick={goToPhrase} className="wallet-btn-primary w-full">
+            {t.continue}
+          </button>
+        }
       >
         <h1 className="wallet-page-title">{t.createPassword}</h1>
         <p className="wallet-page-subtitle">{t.createPasswordHint}</p>
@@ -118,16 +123,20 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
         </div>
 
         {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
-        <button type="button" onClick={goToPhrase} className="wallet-btn-primary mt-8">
-          {t.continue}
-        </button>
       </WalletAuthScreen>
     );
   }
 
   if (step === "phrase") {
     return (
-      <WalletAuthScreen centered={false}>
+      <WalletAuthScreen
+        centered={false}
+        footer={
+          <button type="button" disabled={!saved} onClick={goToVerify} className="wallet-btn-primary w-full">
+            {t.continue}
+          </button>
+        }
+      >
         <h1 className="wallet-page-title">{t.secretPhrase}</h1>
         <p className="wallet-page-subtitle">{t.secretPhraseHint}</p>
 
@@ -152,16 +161,24 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
           <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 accent-[#48ff91]" />
           {t.savedPhrase}
         </label>
-
-        <button type="button" disabled={!saved} onClick={goToVerify} className="wallet-btn-primary mt-6">
-          {t.continue}
-        </button>
       </WalletAuthScreen>
     );
   }
 
   return (
-    <WalletAuthScreen centered={false}>
+    <WalletAuthScreen
+      centered={false}
+      footer={
+        <button
+          type="button"
+          disabled={!allAnswered || busy}
+          onClick={() => void finalize()}
+          className="wallet-btn-primary w-full"
+        >
+          {busy ? t.creating : t.verifyContinue}
+        </button>
+      }
+    >
       <h1 className="wallet-page-title">{t.verifyPhrase}</h1>
       <p className="wallet-page-subtitle">{t.verifyPhraseHint}</p>
 
@@ -201,15 +218,6 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
       </div>
 
       {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
-
-      <button
-        type="button"
-        disabled={!allAnswered || busy}
-        onClick={() => void finalize()}
-        className="wallet-btn-primary mt-8"
-      >
-        {busy ? t.creating : t.verifyContinue}
-      </button>
     </WalletAuthScreen>
   );
 }

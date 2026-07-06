@@ -28,7 +28,7 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
     return (
       <>
         <ConnectScreen />
-        <InstallBottomBanner aboveNav={false} />
+        <InstallBottomBanner aboveNav={false} authLayout />
       </>
     );
   }
@@ -41,7 +41,7 @@ export function WalletAuthGate({ children }: { children: ReactNode }) {
     return (
       <>
         <ConnectScreen />
-        <InstallBottomBanner aboveNav={false} />
+        <InstallBottomBanner aboveNav={false} authLayout />
       </>
     );
   }

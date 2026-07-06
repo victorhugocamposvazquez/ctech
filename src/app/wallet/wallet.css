@@ -347,6 +347,38 @@ html.wallet-route body {
   padding-bottom: 12px;
 }
 
+.wallet-auth-screen--has-footer {
+  overflow: hidden;
+}
+
+.wallet-auth-screen--has-footer .wallet-auth-screen__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  padding-bottom: 8px;
+}
+
+.wallet-auth-screen__footer {
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 24rem;
+  margin: 0 auto;
+  padding-top: 12px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, transparent 0%, var(--wallet-bg) 28%);
+}
+
+.wallet-install-banner-visible .wallet-auth-screen__footer {
+  padding-bottom: max(96px, calc(env(safe-area-inset-bottom, 0px) + 88px));
+}
+
+.wallet-install-banner-visible .wallet-install-banner--auth {
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+}
+
 /* Main con nav inferior fija */
 .wallet-main-pb-min { padding-bottom: 8px; }
 .wallet-main-pb-compact { padding-bottom: max(96px, calc(env(safe-area-inset-bottom, 0px) + 88px)); }

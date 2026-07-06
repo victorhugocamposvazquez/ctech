@@ -85,6 +85,16 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
           ← {t.back}
         </button>
       }
+      footer={
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void submit()}
+          className="wallet-btn-primary w-full"
+        >
+          {busy ? t.importing : t.importWallet}
+        </button>
+      }
     >
       <h1 className="wallet-page-title">{t.importTitle}</h1>
       <p className="wallet-page-subtitle">{t.importHint}</p>
@@ -138,10 +148,6 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
       </div>
 
       {error && <p className="text-sm text-wallet-danger">{error}</p>}
-
-      <button type="button" disabled={busy} onClick={() => void submit()} className="wallet-btn-primary mt-6">
-        {busy ? t.importing : t.importWallet}
-      </button>
     </WalletAuthScreen>
   );
 }

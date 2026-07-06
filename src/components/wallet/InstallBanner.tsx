@@ -5,15 +5,21 @@ import { TrustShield } from "./TrustShield";
 
 interface InstallBottomBannerProps {
   aboveNav?: boolean;
+  /** Pantallas de auth/onboarding sin nav inferior */
+  authLayout?: boolean;
 }
 
-export function InstallBottomBanner({ aboveNav = true }: InstallBottomBannerProps) {
+export function InstallBottomBanner({ aboveNav = true, authLayout = false }: InstallBottomBannerProps) {
   const { showInstallBanner, canNativeInstall, isIOS, needsSafari, install, dismiss } =
     useInstallPrompt();
 
   if (!showInstallBanner) return null;
 
-  const positionClass = aboveNav ? "wallet-install-above-nav" : "bottom-3 safe-bottom";
+  const positionClass = authLayout
+    ? "wallet-install-banner--auth bottom-3 safe-bottom"
+    : aboveNav
+      ? "wallet-install-above-nav"
+      : "bottom-3 safe-bottom";
 
   const hint = needsSafari
     ? "Abre en Safari para poder instalar"
