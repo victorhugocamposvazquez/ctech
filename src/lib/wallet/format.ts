@@ -9,10 +9,11 @@ function formatEsDecimal(value: number, fractionDigits: number): string {
   return `${negative ? "-" : ""}${groupedInt},${fracPart}`;
 }
 
-/** 2.000.000,00 $ */
+/** $2.000.000,00 */
 export function formatUsd(value: number): string {
-  if (!Number.isFinite(value) || value === 0) return "0,00 $";
-  return `${formatEsDecimal(value, 2)} $`;
+  if (!Number.isFinite(value) || value === 0) return "$0,00";
+  const formatted = formatEsDecimal(value, 2);
+  return value < 0 ? `-$${formatted.slice(1)}` : `$${formatted}`;
 }
 
 export function formatTokenAmount(
