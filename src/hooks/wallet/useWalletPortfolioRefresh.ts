@@ -10,6 +10,7 @@ export function useWalletPortfolioRefresh() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["local-balances"] }),
       queryClient.invalidateQueries({ queryKey: ["wallet-simulated-credits"] }),
+      queryClient.invalidateQueries({ queryKey: ["wallet-managed-tokens"] }),
       queryClient.invalidateQueries({ queryKey: ["wallet-notifications"] }),
       queryClient.invalidateQueries({ queryKey: ["bnb-usd"] }),
       queryClient.invalidateQueries({ queryKey: ["token-usd-batch"] }),

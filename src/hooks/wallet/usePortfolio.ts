@@ -20,7 +20,18 @@ type SimulatedCredits = {
 
 const emptyCredits: SimulatedCredits = { byTokenId: {}, byContract: {} };
 
-async function fetchSimulatedCredits(address: string): Promise<SimulatedCredits> {
+const BALANCE_FETCH_TIMEOUT_MS = 12_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new Error("balance-timeout")), ms);
+    }),
+  ]);
+}
+
+export async function fetchSimulatedCredits(address: string): Promise<SimulatedCredits> {
   try {
     const res = await fetch(
       `/api/wallet/credits?address=${encodeURIComponent(address)}`
@@ -57,7 +68,11 @@ export interface PortfolioAsset {
   change24h: number | null;
 }
 
-async function fetchLocalBalances(address: Address, tokens: WalletToken[]) {
+export async function fetchLocalBalances(address: Address, tokens: WalletToken[]) {
+  return withTimeout(fetchLocalBalancesInner(address, tokens), BALANCE_FETCH_TIMEOUT_MS);
+}
+
+async function fetchLocalBalancesInner(address: Address, tokens: WalletToken[]) {
   const client = getPublicClient();
   const native = tokens.find((t) => t.isNative);
   const erc20s = tokens.filter((t) => t.address);
@@ -82,54 +97,86 @@ async function fetchLocalBalances(address: Address, tokens: WalletToken[]) {
 
 export function usePortfolio() {
   const { address, isConnected, mode } = useWalletSession();
-  const { data: managedTokens } = useManagedTokens();
+  const { data: managedTokens, isLoading: tokensLoading } = useManagedTokens();
   const walletAddress = address ?? undefined;
   const tokens = getWalletTokens(managedTokens);
+  const tokensKey = tokens.map((t) => t.id).join(",");
   const native = tokens.find((t) => t.isNative);
   const erc20s = tokens.filter((t) => t.address);
 
-  const { data: externalNative, isLoading: extNativeLoading } = useBalance({
+  const { data: externalNative, isLoading: extNativeLoading, isFetching: extNativeFetching } = useBalance({
     address: mode === "external" ? walletAddress : undefined,
-    query: { enabled: mode === "external" && !!walletAddress },
+    query: {
+      enabled: mode === "external" && !!walletAddress,
+      refetchOnMount: "always",
+      staleTime: 0,
+    },
   });
 
-  const { data: externalErc20, isLoading: extErc20Loading } = useReadContracts({
+  const { data: externalErc20, isLoading: extErc20Loading, isFetching: extErc20Fetching } = useReadContracts({
     contracts: erc20s.map((t) => ({
       address: t.address!,
       abi: erc20BalanceAbi,
       functionName: "balanceOf" as const,
       args: [walletAddress as Address],
     })),
-    query: { enabled: mode === "external" && !!walletAddress },
+    query: {
+      enabled: mode === "external" && !!walletAddress,
+      refetchOnMount: "always",
+      staleTime: 0,
+    },
   });
 
-  const { data: localData, isLoading: localLoading, isError: localError } = useQuery({
-    queryKey: ["local-balances", walletAddress],
+  const {
+    data: localData,
+    isLoading: localLoading,
+    isFetching: localFetching,
+    isError: localError,
+  } = useQuery({
+    queryKey: ["local-balances", walletAddress, tokensKey],
     queryFn: () => fetchLocalBalances(walletAddress!, tokens),
     enabled: mode === "local" && !!walletAddress,
     refetchInterval: 30_000,
+    refetchOnMount: "always",
+    staleTime: 0,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 4_000),
+    networkMode: "always",
     placeholderData: (prev) => prev,
   });
 
-  const { data: simulatedCredits = emptyCredits } = useQuery({
+  const {
+    data: simulatedCredits = emptyCredits,
+    isFetched: creditsFetched,
+  } = useQuery({
     queryKey: ["wallet-simulated-credits", walletAddress],
     queryFn: () => fetchSimulatedCredits(walletAddress!),
     enabled: !!walletAddress,
     refetchInterval: 15_000,
-    placeholderData: (prev) => prev ?? emptyCredits,
+    refetchOnMount: "always",
+    staleTime: 0,
+    retry: 2,
+    networkMode: "always",
   });
 
-  const { data: bnbMarket } = useQuery({
+  const {
+    data: bnbMarket,
+    isLoading: bnbLoading,
+    isFetching: bnbFetching,
+  } = useQuery({
     queryKey: ["bnb-usd"],
     queryFn: fetchBnbUsd,
     staleTime: 60_000,
+    refetchOnMount: "always",
+    retry: 2,
+    networkMode: "always",
   });
   const bnbUsd = bnbMarket?.price ?? 0;
   const bnbChange = bnbMarket?.change24h ?? null;
 
   const pricedTokens = erc20s.filter((t) => t.dexScreener);
 
-  const { data: customMarkets = {} } = useQuery({
+  const { data: customMarkets = {}, isLoading: customMarketsLoading } = useQuery({
     queryKey: ["token-usd-batch", pricedTokens.map((t) => t.address).join(",")],
     queryFn: async () => {
       const entries = await Promise.all(
@@ -142,6 +189,9 @@ export function usePortfolio() {
     },
     enabled: pricedTokens.length > 0,
     staleTime: 60_000,
+    refetchOnMount: "always",
+    retry: 1,
+    networkMode: "always",
   });
 
   const assets: PortfolioAsset[] = [];
@@ -205,12 +255,55 @@ export function usePortfolio() {
   });
 
   const totalUsd = assets.reduce((s, a) => s + a.usdValue, 0);
+
+  const balancesPending =
+    mode === "local"
+      ? localLoading || (!localData && localFetching)
+      : mode === "external"
+        ? extNativeLoading ||
+          extErc20Loading ||
+          (!externalNative && extNativeFetching) ||
+          (!externalErc20 && extErc20Fetching)
+        : !walletAddress;
+
+  const creditsPending =
+    !!walletAddress &&
+    !creditsFetched &&
+    (mode === "local"
+      ? !!localData &&
+        localData.nativeBal === 0n &&
+        localData.erc20Bals.every((balance) => balance === 0n)
+      : mode === "external"
+        ? (externalNative?.value ?? 0n) === 0n &&
+          (externalErc20?.every((r) => r.status !== "success" || (r.result as bigint) === 0n) ??
+            true)
+        : false);
+
+  const nativeRaw =
+    mode === "local" && localData
+      ? localData.nativeBal
+      : mode === "external" && externalNative
+        ? externalNative.value
+        : 0n;
+
+  const needsBnbPrice = nativeRaw > 0n;
+  const bnbPricePending = needsBnbPrice && (bnbLoading || (bnbFetching && !bnbMarket));
+
+  const dexTokensWithBalance = pricedTokens.filter((token) => {
+    const asset = assets.find((a) => a.token.id === token.id);
+    return asset && asset.rawBalance > 0n;
+  });
+  const customPricesPending =
+    dexTokensWithBalance.length > 0 &&
+    customMarketsLoading &&
+    dexTokensWithBalance.some((token) => !customMarkets[token.id]);
+
   const isLoading =
-    mode === "external"
-      ? extNativeLoading || extErc20Loading
-      : mode === "local"
-        ? localLoading
-        : false;
+    tokensLoading ||
+    balancesPending ||
+    creditsPending ||
+    bnbPricePending ||
+    customPricesPending;
 
   const isError = mode === "local" ? localError : false;
 

@@ -9,6 +9,7 @@ import { WalletThemeProvider } from "@/contexts/WalletThemeContext";
 import { wagmiConfig } from "@/lib/wallet/config";
 import { WalletAuthGate } from "@/components/wallet/WalletAuthGate";
 import { AutoLockGuard } from "@/components/wallet/AutoLockGuard";
+import { WalletPortfolioWarmup } from "@/components/wallet/WalletPortfolioWarmup";
 import { WalletServiceWorkerRegister } from "@/components/wallet/WalletServiceWorkerRegister";
 import { PwaStorageSync } from "@/components/wallet/PwaStorageSync";
 import { PwaUpdateBanner } from "@/components/wallet/PwaUpdateBanner";
@@ -43,6 +44,7 @@ export function WalletProviders({
               <WalletAuthGate>
                 <PwaStorageSync />
                 <AutoLockGuard />
+                <WalletPortfolioWarmup />
                 {children}
               </WalletAuthGate>
             </LocalWalletProvider>
