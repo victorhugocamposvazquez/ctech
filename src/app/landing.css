@@ -581,6 +581,176 @@
   color: rgba(245, 245, 247, 0.68);
 }
 
+/* ——— How it works ——— */
+.twc-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 28px;
+  counter-reset: none;
+}
+
+@media (min-width: 800px) {
+  .twc-steps {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+}
+
+.twc-step {
+  position: relative;
+  padding: 8px 0 0;
+}
+
+.twc-step h3 {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.twc-step p {
+  margin: 10px 0 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--twc-ink-soft);
+}
+
+.twc-step::before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--twc-blue), var(--twc-green));
+  margin-bottom: 16px;
+}
+
+/* ——— Tools band ——— */
+.twc-band {
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 50%, rgba(5, 0, 255, 0.06), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, var(--twc-bg-deep) 100%);
+  border-top: 1px solid var(--twc-line);
+  border-bottom: 1px solid var(--twc-line);
+}
+
+.twc-tools {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 720px) {
+  .twc-tools {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px 36px;
+  }
+}
+
+.twc-tool {
+  padding: 4px 0;
+}
+
+.twc-tool-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--twc-blue);
+  margin-bottom: 8px;
+}
+
+.twc-tool h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.twc-tool p {
+  margin: 8px 0 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--twc-ink-soft);
+  max-width: 36ch;
+}
+
+/* ——— Compare ——— */
+.twc-compare {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 800px) {
+  .twc-compare {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+
+.twc-compare-col {
+  padding: 28px 24px;
+  border-radius: 20px;
+  border: 1px solid var(--twc-line);
+}
+
+.twc-compare-col h3 {
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.twc-compare-col ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.twc-compare-col li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  font-weight: 500;
+  color: var(--twc-ink-soft);
+}
+
+.twc-compare-col li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--twc-muted);
+}
+
+.twc-compare-col--muted {
+  background: rgba(11, 11, 18, 0.03);
+}
+
+.twc-compare-col--accent {
+  background: linear-gradient(160deg, rgba(5, 0, 255, 0.06), rgba(72, 255, 145, 0.08));
+  border-color: rgba(5, 0, 255, 0.16);
+}
+
+.twc-compare-col--accent h3 {
+  color: var(--twc-blue);
+}
+
+.twc-compare-col--accent li::before {
+  background: var(--twc-green);
+}
+
+.twc-compare-col--accent li {
+  color: var(--twc-ink);
+}
+
 /* ——— Final CTA ——— */
 .twc-final {
   text-align: center;

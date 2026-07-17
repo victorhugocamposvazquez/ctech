@@ -11,9 +11,9 @@ import {
   type LandingLocale,
 } from "@/lib/landing/i18n";
 
-function useReveal() {
+function useReveal(locale: LandingLocale) {
   useEffect(() => {
-    const nodes = document.querySelectorAll<HTMLElement>(".twc-reveal");
+    const nodes = document.querySelectorAll<HTMLElement>(".twc-reveal:not(.is-in)");
     if (!nodes.length) return;
 
     const observer = new IntersectionObserver(
@@ -25,12 +25,12 @@ function useReveal() {
           }
         }
       },
-      { threshold: 0.18 }
+      { threshold: 0.14 }
     );
 
     nodes.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
-  }, []);
+  }, [locale]);
 }
 
 export function LandingPage() {
@@ -38,7 +38,7 @@ export function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const t = LANDING_COPY[locale];
 
-  useReveal();
+  useReveal(locale);
 
   useEffect(() => {
     setLocale(detectLandingLocale());
@@ -184,6 +184,104 @@ export function LandingPage() {
                 <p>{t.privacyPoint3Body}</p>
               </article>
             </div>
+          </div>
+        </section>
+
+        <section id="how" className="twc-section twc-reveal">
+          <div className="twc-section-head">
+            <h2 className="twc-section-title">{t.howTitle}</h2>
+            <p className="twc-section-body">{t.howBody}</p>
+          </div>
+          <ol className="twc-steps">
+            <li className="twc-step">
+              <h3>{t.how1Title}</h3>
+              <p>{t.how1Body}</p>
+            </li>
+            <li className="twc-step">
+              <h3>{t.how2Title}</h3>
+              <p>{t.how2Body}</p>
+            </li>
+            <li className="twc-step">
+              <h3>{t.how3Title}</h3>
+              <p>{t.how3Body}</p>
+            </li>
+          </ol>
+        </section>
+
+        <section className="twc-band">
+          <div className="twc-section twc-reveal">
+            <div className="twc-section-head">
+              <h2 className="twc-section-title">{t.toolsTitle}</h2>
+              <p className="twc-section-body">{t.toolsBody}</p>
+            </div>
+            <div className="twc-tools">
+              <article className="twc-tool">
+                <span className="twc-tool-label">01</span>
+                <h3>{t.toolSendTitle}</h3>
+                <p>{t.toolSendBody}</p>
+              </article>
+              <article className="twc-tool">
+                <span className="twc-tool-label">02</span>
+                <h3>{t.toolReceiveTitle}</h3>
+                <p>{t.toolReceiveBody}</p>
+              </article>
+              <article className="twc-tool">
+                <span className="twc-tool-label">03</span>
+                <h3>{t.toolSwapTitle}</h3>
+                <p>{t.toolSwapBody}</p>
+              </article>
+              <article className="twc-tool">
+                <span className="twc-tool-label">04</span>
+                <h3>{t.toolDiscoverTitle}</h3>
+                <p>{t.toolDiscoverBody}</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section className="twc-section twc-reveal">
+          <div className="twc-section-head">
+            <h2 className="twc-section-title">{t.compareTitle}</h2>
+            <p className="twc-section-body">{t.compareBody}</p>
+          </div>
+          <div className="twc-compare">
+            <div className="twc-compare-col twc-compare-col--muted">
+              <h3>{t.compareLeftTitle}</h3>
+              <ul>
+                <li>{t.compareLeft1}</li>
+                <li>{t.compareLeft2}</li>
+                <li>{t.compareLeft3}</li>
+              </ul>
+            </div>
+            <div className="twc-compare-col twc-compare-col--accent">
+              <h3>{t.compareRightTitle}</h3>
+              <ul>
+                <li>{t.compareRight1}</li>
+                <li>{t.compareRight2}</li>
+                <li>{t.compareRight3}</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="twc-section twc-reveal">
+          <div className="twc-section-head">
+            <h2 className="twc-section-title">{t.networkTitle}</h2>
+            <p className="twc-section-body">{t.networkBody}</p>
+          </div>
+          <div className="twc-features">
+            <article className="twc-feature">
+              <h3>{t.networkBnbTitle}</h3>
+              <p>{t.networkBnbBody}</p>
+            </article>
+            <article className="twc-feature">
+              <h3>{t.networkOpenTitle}</h3>
+              <p>{t.networkOpenBody}</p>
+            </article>
+            <article className="twc-feature">
+              <h3>{t.networkPwaTitle}</h3>
+              <p>{t.networkPwaBody}</p>
+            </article>
           </div>
         </section>
 

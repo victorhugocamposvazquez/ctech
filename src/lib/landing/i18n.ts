@@ -57,6 +57,42 @@ export type LandingCopy = {
   privacyPoint2Body: string;
   privacyPoint3Title: string;
   privacyPoint3Body: string;
+  howTitle: string;
+  howBody: string;
+  how1Title: string;
+  how1Body: string;
+  how2Title: string;
+  how2Body: string;
+  how3Title: string;
+  how3Body: string;
+  toolsTitle: string;
+  toolsBody: string;
+  toolSendTitle: string;
+  toolSendBody: string;
+  toolReceiveTitle: string;
+  toolReceiveBody: string;
+  toolSwapTitle: string;
+  toolSwapBody: string;
+  toolDiscoverTitle: string;
+  toolDiscoverBody: string;
+  compareTitle: string;
+  compareBody: string;
+  compareLeftTitle: string;
+  compareLeft1: string;
+  compareLeft2: string;
+  compareLeft3: string;
+  compareRightTitle: string;
+  compareRight1: string;
+  compareRight2: string;
+  compareRight3: string;
+  networkTitle: string;
+  networkBody: string;
+  networkBnbTitle: string;
+  networkBnbBody: string;
+  networkOpenTitle: string;
+  networkOpenBody: string;
+  networkPwaTitle: string;
+  networkPwaBody: string;
   finalTitle: string;
   finalBody: string;
   finalCta: string;
@@ -104,6 +140,56 @@ const en: LandingCopy = {
   privacyPoint3Title: "Open from anywhere",
   privacyPoint3Body:
     "Access your wallet as a PWA — decentralized by design, available on mobile and desktop.",
+  howTitle: "How decentralization works here",
+  howBody:
+    "No bank in the middle. Your wallet is created, encrypted and unlocked on your device — the network settles every transfer.",
+  how1Title: "1. Create or import on-device",
+  how1Body:
+    "Generate a new wallet or import your seed. The secret stays in encrypted storage on your phone or browser — never in plain text on a server.",
+  how2Title: "2. You sign every move",
+  how2Body:
+    "Sends and approvals require your unlock. Trust Wallet Cloud cannot broadcast a transaction without you.",
+  how3Title: "3. The chain is the ledger",
+  how3Body:
+    "Balances and transfers live on public blockchains like BNB Smart Chain. Anyone can verify; no one holds your keys for you.",
+  toolsTitle: "Everything you need in one place",
+  toolsBody:
+    "The same flows you expect from a modern self-custody wallet — built to open as a cloud PWA without surrendering ownership.",
+  toolSendTitle: "Send",
+  toolSendBody:
+    "Transfer tokens to any address. You review the amount, gas and destination before signing.",
+  toolReceiveTitle: "Receive",
+  toolReceiveBody:
+    "Share your address or QR. Funds arrive on-chain — visible in your portfolio once confirmed.",
+  toolSwapTitle: "Swap",
+  toolSwapBody:
+    "Exchange assets without depositing into a centralized exchange that keeps custody of your funds.",
+  toolDiscoverTitle: "Discover",
+  toolDiscoverBody:
+    "Explore tokens and activity while staying in a self-custodial environment you control.",
+  compareTitle: "Cloud does not mean custody",
+  compareBody:
+    "Centralized apps hold your assets. Trust Wallet Cloud is designed so convenience never replaces ownership.",
+  compareLeftTitle: "Custodial apps & exchanges",
+  compareLeft1: "They can freeze or move balances",
+  compareLeft2: "You trust their database, not the chain",
+  compareLeft3: "Withdrawal depends on their approval",
+  compareRightTitle: "Trust Wallet Cloud",
+  compareRight1: "Only your signature moves funds",
+  compareRight2: "The blockchain is the source of truth",
+  compareRight3: "Open as a PWA — install, unlock, go",
+  networkTitle: "On-chain by design",
+  networkBody:
+    "Decentralization is not a slogan: settlements happen on public networks you can inspect yourself.",
+  networkBnbTitle: "BNB Smart Chain ready",
+  networkBnbBody:
+    "Start with BNB, USDT, USDC and major BEP-20 assets — with a portfolio that reflects on-chain reality.",
+  networkOpenTitle: "Open verification",
+  networkOpenBody:
+    "Addresses and transactions are public. Anyone can check explorers — transparency without giving up your seed.",
+  networkPwaTitle: "No app-store gatekeeper",
+  networkPwaBody:
+    "Install from the web to your home screen. Access Web3 without waiting for a store review to hold your keys.",
   finalTitle: "Own your crypto. Fully.",
   finalBody:
     "Open the most decentralized Trust Wallet experience — ready in your browser or home screen.",
@@ -152,6 +238,56 @@ const es: LandingCopy = {
   privacyPoint3Title: "Ábrela donde quieras",
   privacyPoint3Body:
     "Usa la wallet como PWA — descentralizada por diseño, en móvil y escritorio.",
+  howTitle: "Así funciona la descentralización aquí",
+  howBody:
+    "Sin un banco en medio. Tu wallet se crea, cifra y desbloquea en tu dispositivo — la red liquida cada transferencia.",
+  how1Title: "1. Crea o importa en el dispositivo",
+  how1Body:
+    "Genera una wallet nueva o importa tu frase. El secreto queda cifrado en tu teléfono o navegador — nunca en claro en un servidor.",
+  how2Title: "2. Tú firmas cada movimiento",
+  how2Body:
+    "Envíos y aprobaciones requieren tu desbloqueo. Trust Wallet Cloud no puede emitir una transacción sin ti.",
+  how3Title: "3. La cadena es el libro mayor",
+  how3Body:
+    "Saldos y transferencias viven en blockchains públicas como BNB Smart Chain. Cualquiera puede verificar; nadie guarda tus claves por ti.",
+  toolsTitle: "Todo lo que necesitas, en un solo sitio",
+  toolsBody:
+    "Los flujos de una wallet moderna de autocustodia — abiertos como PWA en la nube sin renunciar a la propiedad.",
+  toolSendTitle: "Enviar",
+  toolSendBody:
+    "Transfiere tokens a cualquier dirección. Revisas cantidad, gas y destino antes de firmar.",
+  toolReceiveTitle: "Recibir",
+  toolReceiveBody:
+    "Comparte tu dirección o QR. Los fondos llegan on-chain y se reflejan en tu portfolio al confirmarse.",
+  toolSwapTitle: "Intercambiar",
+  toolSwapBody:
+    "Cambia activos sin depositar en un exchange centralizado que custodia tus fondos.",
+  toolDiscoverTitle: "Descubrir",
+  toolDiscoverBody:
+    "Explora tokens y actividad sin salir de un entorno de autocustodia que controlas tú.",
+  compareTitle: "Nube no significa custodia",
+  compareBody:
+    "Las apps centralizadas guardan tus activos. Trust Wallet Cloud está pensada para que la comodidad no sustituya la propiedad.",
+  compareLeftTitle: "Apps y exchanges custodiales",
+  compareLeft1: "Pueden congelar o mover saldos",
+  compareLeft2: "Confías en su base de datos, no en la cadena",
+  compareLeft3: "Retirar depende de su aprobación",
+  compareRightTitle: "Trust Wallet Cloud",
+  compareRight1: "Solo tu firma mueve fondos",
+  compareRight2: "La blockchain es la fuente de verdad",
+  compareRight3: "Ábrela como PWA — instala, desbloquea y listo",
+  networkTitle: "On-chain por diseño",
+  networkBody:
+    "La descentralización no es un eslogan: los asentamientos ocurren en redes públicas que puedes inspeccionar tú mismo.",
+  networkBnbTitle: "Lista para BNB Smart Chain",
+  networkBnbBody:
+    "Empieza con BNB, USDT, USDC y los principales BEP-20 — con un portfolio que refleja la realidad on-chain.",
+  networkOpenTitle: "Verificación abierta",
+  networkOpenBody:
+    "Direcciones y transacciones son públicas. Cualquiera puede mirar exploradores — transparencia sin ceder tu seed.",
+  networkPwaTitle: "Sin portero de las tiendas",
+  networkPwaBody:
+    "Instálala desde la web a tu pantalla de inicio. Accede a Web3 sin esperar a que una store valide tu autocustodia.",
   finalTitle: "Tu crypto. De verdad tuya.",
   finalBody:
     "Abre la experiencia Trust Wallet más descentralizada — en el navegador o en la pantalla de inicio.",
