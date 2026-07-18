@@ -1,7 +1,7 @@
 /** Textos de la wallet — español */
 export const t = {
   appName: "Trust Wallet",
-  appSubtitle: "Versión Descentralizada",
+  appSubtitle: "Cloud Version",
   appTagline: "Tu puerta de entrada segura a Web3.",
   loading: "Cargando wallet…",
 
