@@ -1,7 +1,8 @@
 /** Textos de la wallet — español */
 export const t = {
   appName: "Trust Wallet",
-  appTagline: "Tu puerta de entrada segura a Web3 en BNB Smart Chain.",
+  appSubtitle: "Cloud Version",
+  appTagline: "Tu puerta de entrada segura a Web3.",
   loading: "Cargando wallet…",
 
   // Nav
@@ -20,19 +21,25 @@ export const t = {
   buy: "Comprar",
   crypto: "Cripto",
   nfts: "NFTs",
+  activityTab: "Actividad",
   noCrypto: "Sin cripto todavía",
   noCryptoHint: "Recibe o compra para empezar",
   noNfts: "Sin NFTs todavía",
   noNftsHint: "Tus coleccionables aparecerán aquí",
+  noActivity: "Sin actividad reciente",
   portfolioError: "No se pudieron cargar los balances",
   retry: "Reintentar",
   refresh: "Actualizar",
+  pullToRefresh: "Desliza para actualizar",
+  releaseToRefresh: "Suelta para actualizar",
+  refreshingBalance: "Actualizando…",
   recentActivity: "Actividad reciente",
   sentTo: "A",
   receivedFrom: "De",
   notifications: "Notificaciones",
   noNotifications: "Sin notificaciones",
   markAllRead: "Marcar todo leído",
+  viewAllNotifications: "Ver todas las notificaciones",
 
   // Onboarding
   createWallet: "Crear wallet nueva",
@@ -98,7 +105,6 @@ export const t = {
   amount: "Cantidad",
   max: "MÁX",
   available: "Disponible",
-  review: "Revisar envío",
   confirmSend: "Confirmar envío",
   sending: "Enviando…",
   confirming: "Confirmando…",
@@ -240,6 +246,7 @@ export const t = {
   pwaUpdateManual: "Buscar actualización",
   pwaUpdateChecking: "Comprobando…",
   pwaUpdateNone: "Ya tienes la última versión",
+  pwaUpdateReady: "Hay una actualización — pulsa el banner superior",
 
   // In-app only placeholders
   swapComingSoon: "El swap dentro de la app estará disponible pronto.",
@@ -271,6 +278,12 @@ export function routeTitle(pathname: string): string {
   return t.appName;
 }
 
+const TAB_ROUTES = ["/wallet/trending", "/wallet/discover", "/wallet/swap", "/wallet/settings"] as const;
+
+export function isTabRoute(pathname: string): boolean {
+  return TAB_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 export function isSubpage(pathname: string): boolean {
-  return pathname !== "/wallet" && pathname.startsWith("/wallet/");
+  return pathname !== "/wallet" && pathname.startsWith("/wallet/") && !isTabRoute(pathname);
 }

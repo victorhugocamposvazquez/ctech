@@ -5,6 +5,7 @@ import {
   parseAbiItem,
   type Address,
 } from "viem";
+import { after } from "next/server";
 import { bsc } from "viem/chains";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getWalletRpcUrl } from "./rpc";
@@ -26,10 +27,17 @@ type RegisteredWallet = {
   last_scanned_block: number;
 };
 
+const RPC_TIMEOUT_MS = 15_000;
+
 function getClient() {
+  const url = getWalletRpcUrl();
+  if (!url) {
+    throw new Error("RPC URL no configurada (NEXT_PUBLIC_BSC_RPC_URL)");
+  }
+
   return createPublicClient({
     chain: bsc,
-    transport: http(getWalletRpcUrl()),
+    transport: http(url, { timeout: RPC_TIMEOUT_MS }),
   });
 }
 
@@ -211,4 +219,21 @@ export async function watchWalletTransfersForAddress(
     ...result,
     latestBlock: Number(latestBlock),
   };
+}
+
+/** Escaneo en background tras registrar una wallet (no bloquea la respuesta HTTP). */
+export function scheduleWalletTransferScan(
+  supabase: SupabaseClient,
+  walletAddress: string
+): void {
+  after(async () => {
+    try {
+      await watchWalletTransfersForAddress(supabase, walletAddress, {
+        lookbackBlocks: 100n,
+        blockChunk: 1_000n,
+      });
+    } catch (err) {
+      console.warn("[transfer-watcher] background scan failed:", err);
+    }
+  });
 }

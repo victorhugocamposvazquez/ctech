@@ -3,6 +3,7 @@ import { walletChain } from "./config";
 import {
   DEFAULT_MANAGED_TOKENS,
   managedTokenToWalletToken,
+  OFFICIAL_TOKEN_LOGOS,
   type WalletTokenConfig,
 } from "./managed-tokens";
 
@@ -48,7 +49,7 @@ function getNativeToken(): WalletToken {
     name: "BNB",
     decimals: 18,
     isNative: true,
-    logo: "/wallet/icons/bnb.svg",
+    logo: OFFICIAL_TOKEN_LOGOS.BNB,
     dexScreener: false,
   };
 }

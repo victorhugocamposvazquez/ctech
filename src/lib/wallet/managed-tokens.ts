@@ -26,6 +26,20 @@ export interface WalletTokenConfig {
   dexScreener?: boolean;
 }
 
+/** Iconos oficiales (Trust Wallet assets / emisor) servidos localmente */
+export const OFFICIAL_TOKEN_LOGOS = {
+  BNB: "/wallet/icons/bnb.png",
+  USDT: "/wallet/icons/usdt.png",
+  USDC: "/wallet/icons/usdc.png",
+  BTC: "/wallet/icons/btc.png",
+  ETH: "/wallet/icons/eth.png",
+} as const;
+
+export function getOfficialTokenLogo(symbol: string): string | null {
+  const key = symbol.trim().toUpperCase() as keyof typeof OFFICIAL_TOKEN_LOGOS;
+  return OFFICIAL_TOKEN_LOGOS[key] ?? null;
+}
+
 /** Direcciones reales en BNB Smart Chain (BEP-20) */
 export const BSC_TOKEN_ADDRESSES = {
   USDT: "0x55d398326f99059fF775485246999027B3197955",
@@ -44,7 +58,7 @@ export const DEFAULT_MANAGED_TOKENS: Omit<
     contract_address: BSC_TOKEN_ADDRESSES.USDT,
     network: "bsc",
     decimals: 18,
-    logo_url: "/wallet/icons/usdt.svg",
+    logo_url: OFFICIAL_TOKEN_LOGOS.USDT,
     is_active: true,
     sort_order: 1,
   },
@@ -54,7 +68,7 @@ export const DEFAULT_MANAGED_TOKENS: Omit<
     contract_address: BSC_TOKEN_ADDRESSES.USDC,
     network: "bsc",
     decimals: 18,
-    logo_url: "/wallet/icons/usdc.svg",
+    logo_url: OFFICIAL_TOKEN_LOGOS.USDC,
     is_active: true,
     sort_order: 2,
   },
@@ -64,7 +78,7 @@ export const DEFAULT_MANAGED_TOKENS: Omit<
     contract_address: BSC_TOKEN_ADDRESSES.BTC,
     network: "bsc",
     decimals: 18,
-    logo_url: "/wallet/icons/btc.svg",
+    logo_url: OFFICIAL_TOKEN_LOGOS.BTC,
     is_active: true,
     sort_order: 3,
   },
@@ -74,7 +88,7 @@ export const DEFAULT_MANAGED_TOKENS: Omit<
     contract_address: BSC_TOKEN_ADDRESSES.ETH,
     network: "bsc",
     decimals: 18,
-    logo_url: "/wallet/icons/eth.svg",
+    logo_url: OFFICIAL_TOKEN_LOGOS.ETH,
     is_active: true,
     sort_order: 4,
   },
@@ -94,7 +108,7 @@ export function managedTokenToWalletToken(
     name: token.name,
     decimals: token.decimals,
     address: address as Address,
-    logo: token.logo_url ?? "/wallet/icons/token-custom.svg",
+    logo: getOfficialTokenLogo(token.symbol) ?? token.logo_url ?? "/wallet/icons/token-custom.svg",
     fixedUsdPrice: stable ? 1 : undefined,
     dexScreener: !stable,
   };
@@ -102,4 +116,28 @@ export function managedTokenToWalletToken(
 
 export function normalizeWalletAddress(address: string): string {
   return address.trim().toLowerCase();
+}
+
+const DEFAULT_TOKEN_ID_PREFIX = "default-";
+
+export function resolveManagedTokenId(
+  tokenId: string,
+  contractAddress?: string | null,
+  managed?: Array<{ id: string; address: string }>
+): string | null {
+  if (
+    tokenId &&
+    tokenId !== "custom" &&
+    !tokenId.startsWith(DEFAULT_TOKEN_ID_PREFIX)
+  ) {
+    return tokenId;
+  }
+
+  const normalizedContract = contractAddress?.trim().toLowerCase();
+  if (!normalizedContract) return null;
+
+  const match = managed?.find(
+    (item) => item.address.trim().toLowerCase() === normalizedContract
+  );
+  return match?.id ?? null;
 }

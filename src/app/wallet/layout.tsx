@@ -15,13 +15,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: "Trust Wallet",
   },
   icons: {
     icon: [
-      { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+      { url: "/wallet/icons/icon.svg", type: "image/svg+xml" },
       { url: "/wallet/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },
     ],
     apple: [
       { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },
@@ -33,12 +34,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f4f4f5",
+  themeColor: "#060608",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function WalletLayout({

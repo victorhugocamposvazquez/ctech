@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { english, generateMnemonic } from "viem/accounts";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
+import { WalletAuthScreen } from "../WalletAuthScreen";
 import { t } from "@/lib/wallet/i18n";
 
 interface CreateWalletFlowProps {
@@ -94,10 +95,19 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
 
   if (step === "password") {
     return (
-      <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
-        <button type="button" onClick={onBack} className="wallet-back-link">
-          ← {t.back}
-        </button>
+      <WalletAuthScreen
+        centered={false}
+        topBar={
+          <button type="button" onClick={onBack} className="wallet-back-link">
+            ← {t.back}
+          </button>
+        }
+        footer={
+          <button type="button" onClick={goToPhrase} className="wallet-btn-primary w-full">
+            {t.continue}
+          </button>
+        }
+      >
         <h1 className="wallet-page-title">{t.createPassword}</h1>
         <p className="wallet-page-subtitle">{t.createPasswordHint}</p>
 
@@ -113,16 +123,20 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
         </div>
 
         {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
-        <button type="button" onClick={goToPhrase} className="wallet-btn-primary mt-auto">
-          {t.continue}
-        </button>
-      </div>
+      </WalletAuthScreen>
     );
   }
 
   if (step === "phrase") {
     return (
-      <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
+      <WalletAuthScreen
+        centered={false}
+        footer={
+          <button type="button" disabled={!saved} onClick={goToVerify} className="wallet-btn-primary w-full">
+            {t.continue}
+          </button>
+        }
+      >
         <h1 className="wallet-page-title">{t.secretPhrase}</h1>
         <p className="wallet-page-subtitle">{t.secretPhraseHint}</p>
 
@@ -147,16 +161,24 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
           <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} className="mt-0.5 accent-[#48ff91]" />
           {t.savedPhrase}
         </label>
-
-        <button type="button" disabled={!saved} onClick={goToVerify} className="wallet-btn-primary mt-6">
-          {t.continue}
-        </button>
-      </div>
+      </WalletAuthScreen>
     );
   }
 
   return (
-    <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
+    <WalletAuthScreen
+      centered={false}
+      footer={
+        <button
+          type="button"
+          disabled={!allAnswered || busy}
+          onClick={() => void finalize()}
+          className="wallet-btn-primary w-full"
+        >
+          {busy ? t.creating : t.verifyContinue}
+        </button>
+      }
+    >
       <h1 className="wallet-page-title">{t.verifyPhrase}</h1>
       <p className="wallet-page-subtitle">{t.verifyPhraseHint}</p>
 
@@ -166,34 +188,36 @@ export function CreateWalletFlow({ onBack }: CreateWalletFlowProps) {
             <p className="wallet-label">
               {t.wordNumber} #{q.index + 1}
             </p>
-            <div className="wallet-mnemonic-grid mt-2 !grid-cols-2">
-              {q.options.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setAnswers((a) => ({ ...a, [q.index]: opt }))}
-                  className={`wallet-mnemonic-word cursor-pointer transition ${
-                    answers[q.index] === opt ? "border-wallet-accent bg-wallet-accent-soft" : ""
-                  }`}
-                >
-                  <span className="wallet-mnemonic-text">{opt}</span>
-                </button>
-              ))}
+            <div className="wallet-mnemonic-grid mt-2 wallet-mnemonic-grid--verify">
+              {q.options.map((opt) => {
+                const selected = answers[q.index] === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setAnswers((a) => ({ ...a, [q.index]: opt }))}
+                    className={`wallet-mnemonic-word wallet-mnemonic-word--selectable ${
+                      selected ? "wallet-mnemonic-word--selected" : ""
+                    }`}
+                  >
+                    <span className="wallet-mnemonic-text">{opt}</span>
+                    {selected && (
+                      <span className="wallet-mnemonic-check" aria-hidden="true">
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
 
       {error && <p className="mt-4 text-sm text-wallet-danger">{error}</p>}
-
-      <button
-        type="button"
-        disabled={!allAnswered || busy}
-        onClick={() => void finalize()}
-        className="wallet-btn-primary mt-8"
-      >
-        {busy ? t.creating : t.verifyContinue}
-      </button>
-    </div>
+    </WalletAuthScreen>
   );
 }

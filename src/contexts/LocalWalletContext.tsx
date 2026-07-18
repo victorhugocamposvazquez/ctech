@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -69,6 +70,19 @@ interface LocalWalletContextValue {
 }
 
 const LocalWalletContext = createContext<LocalWalletContextValue | null>(null);
+const SESSION_PASSWORD_KEY = "wallet_session_pw_v1";
+let providerBootstrapped = false;
+
+function readSessionPassword(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(SESSION_PASSWORD_KEY);
+}
+
+function persistSessionPassword(password: string | null): void {
+  if (typeof window === "undefined") return;
+  if (password) sessionStorage.setItem(SESSION_PASSWORD_KEY, password);
+  else sessionStorage.removeItem(SESSION_PASSWORD_KEY);
+}
 
 function accountFromSecret(payload: SecretPayload): Account {
   if (payload.type === "mnemonic") {
@@ -91,27 +105,91 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
   const [wallets, setWallets] = useState<WalletMeta[]>([]);
   const [activeWalletId, setActiveWalletIdState] = useState<string | null>(null);
   const [addingWallet, setAddingWallet] = useState(false);
+  const unlockedCacheRef = useRef<Map<string, SecretPayload>>(new Map());
+  const sessionPasswordRef = useRef<string | null>(null);
+  const switchGenerationRef = useRef(0);
 
-  const syncFromStorage = useCallback(() => {
+  const syncFromStorage = useCallback((resetSession = false) => {
     setWallets(refreshWalletList());
     setActiveWalletIdState(getActiveWalletId());
+    if (!resetSession) return;
+
+    sessionPasswordRef.current = null;
+    persistSessionPassword(null);
+    unlockedCacheRef.current.clear();
+    setAccount(null);
+    setSecret(null);
     setStatus(hasKeystore() ? "locked" : "none");
   }, []);
 
-  useEffect(() => {
-    syncFromStorage();
-    const onSync = () => syncFromStorage();
-    window.addEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
-    return () => window.removeEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
-  }, [syncFromStorage]);
-
-  const unlockWithSecret = useCallback((payload: SecretPayload) => {
+  const unlockWithSecret = useCallback((payload: SecretPayload, walletId?: string | null) => {
     const acc = accountFromSecret(payload);
+    const id = walletId ?? getActiveWalletId();
     setSecret(payload);
     setAccount(acc);
     setStatus("unlocked");
     setAddingWallet(false);
+    if (id) unlockedCacheRef.current.set(id, payload);
   }, []);
+
+  const warmUnlockCache = useCallback(async (password: string) => {
+    sessionPasswordRef.current = password;
+    persistSessionPassword(password);
+    for (const wallet of refreshWalletList()) {
+      if (unlockedCacheRef.current.has(wallet.id)) continue;
+      const store = loadKeystoreById(wallet.id);
+      if (!store) continue;
+      try {
+        const payload = await decryptSecret(store, password);
+        unlockedCacheRef.current.set(wallet.id, payload);
+      } catch {
+        /* Esta wallet usa otra contraseña */
+      }
+    }
+  }, []);
+
+  const restoreSessionFromPassword = useCallback(
+    async (password: string) => {
+      await warmUnlockCache(password);
+      const activeId = getActiveWalletId();
+      if (!activeId) return;
+      const cached = unlockedCacheRef.current.get(activeId);
+      if (cached) unlockWithSecret(cached, activeId);
+    },
+    [warmUnlockCache, unlockWithSecret]
+  );
+
+  useEffect(() => {
+    const firstBoot = !providerBootstrapped;
+    providerBootstrapped = true;
+    const savedPassword = readSessionPassword();
+    syncFromStorage(firstBoot && !savedPassword);
+
+    if (savedPassword) {
+      sessionPasswordRef.current = savedPassword;
+      void restoreSessionFromPassword(savedPassword);
+    }
+
+    const onSync = () => syncFromStorage(false);
+    window.addEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
+    return () => window.removeEventListener(WALLET_SYNC_APPLIED_EVENT, onSync);
+  }, [syncFromStorage, restoreSessionFromPassword]);
+
+  const tryUnlockWalletId = useCallback(
+    async (id: string, password: string) => {
+      const store = loadKeystoreById(id);
+      if (!store) return false;
+      try {
+        const payload = await decryptSecret(store, password);
+        unlockWithSecret(payload, id);
+        unlockedCacheRef.current.set(id, payload);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [unlockWithSecret]
+  );
 
   const createWallet = useCallback(async (password: string) => {
     const mnemonic = generateMnemonic(english);
@@ -121,9 +199,11 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
     const id = addWalletToVault(store);
     setWallets(refreshWalletList());
     setActiveWalletIdState(id);
-    unlockWithSecret(payload);
+    sessionPasswordRef.current = password;
+    await warmUnlockCache(password);
+    unlockWithSecret(payload, id);
     return { mnemonic, address: acc.address };
-  }, [unlockWithSecret]);
+  }, [unlockWithSecret, warmUnlockCache]);
 
   const importWallet = useCallback(
     async (payload: SecretPayload, password: string) => {
@@ -132,20 +212,26 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
       const id = addWalletToVault(store);
       setWallets(refreshWalletList());
       setActiveWalletIdState(id);
-      unlockWithSecret(payload);
+      sessionPasswordRef.current = password;
+      await warmUnlockCache(password);
+      unlockWithSecret(payload, id);
       return acc.address;
     },
-    [unlockWithSecret]
+    [unlockWithSecret, warmUnlockCache]
   );
 
   const unlock = useCallback(async (password: string) => {
     const store = loadKeystore();
     if (!store) throw new Error("No wallet found");
     const payload = await decryptSecret(store, password);
-    unlockWithSecret(payload);
-  }, [unlockWithSecret]);
+    await warmUnlockCache(password);
+    unlockWithSecret(payload, getActiveWalletId());
+  }, [unlockWithSecret, warmUnlockCache]);
 
   const lock = useCallback(() => {
+    sessionPasswordRef.current = null;
+    persistSessionPassword(null);
+    unlockedCacheRef.current.clear();
     setAccount(null);
     setSecret(null);
     setAddingWallet(false);
@@ -153,14 +239,41 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
     else setStatus("none");
   }, []);
 
-  const switchWallet = useCallback((id: string) => {
-    if (!setActiveWallet(id)) return;
-    setActiveWalletIdState(id);
-    setAccount(null);
-    setSecret(null);
-    setAddingWallet(false);
-    setStatus("locked");
-  }, []);
+  const switchWallet = useCallback(
+    (id: string) => {
+      if (!setActiveWallet(id)) return;
+      const generation = ++switchGenerationRef.current;
+      setActiveWalletIdState(id);
+      setAddingWallet(false);
+
+      const cached = unlockedCacheRef.current.get(id);
+      if (cached) {
+        unlockWithSecret(cached, id);
+        return;
+      }
+
+      const sessionPassword =
+        sessionPasswordRef.current ?? readSessionPassword();
+      if (sessionPassword) {
+        sessionPasswordRef.current = sessionPassword;
+        void (async () => {
+          const ok = await tryUnlockWalletId(id, sessionPassword);
+          if (generation !== switchGenerationRef.current) return;
+          if (!ok) {
+            setAccount(null);
+            setSecret(null);
+            setStatus("locked");
+          }
+        })();
+        return;
+      }
+
+      setAccount(null);
+      setSecret(null);
+      setStatus("locked");
+    },
+    [unlockWithSecret, tryUnlockWalletId]
+  );
 
   const startAddingWallet = useCallback(() => {
     setAccount(null);
@@ -175,6 +288,9 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeAllWallets = useCallback(() => {
+    sessionPasswordRef.current = null;
+    persistSessionPassword(null);
+    unlockedCacheRef.current.clear();
     clearKeystore();
     setWallets([]);
     setActiveWalletIdState(null);
@@ -187,6 +303,7 @@ export function LocalWalletProvider({ children }: { children: ReactNode }) {
   const removeWallet = useCallback((id?: string) => {
     const targetId = id ?? getActiveWalletId();
     if (!targetId) return;
+    unlockedCacheRef.current.delete(targetId);
     removeWalletFromVault(targetId);
     setWallets(refreshWalletList());
     setActiveWalletIdState(getActiveWalletId());

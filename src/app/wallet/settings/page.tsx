@@ -29,7 +29,7 @@ export default function WalletSettingsPage() {
   };
 
   return (
-    <WalletShell hideNav gradient>
+    <WalletShell gradient>
       <div className="wallet-screen pt-2">
         <div className="wallet-hero-glow mb-8 flex flex-col items-center pt-2">
           <TrustShield className="relative h-16 w-16" />
@@ -116,7 +116,7 @@ export default function WalletSettingsPage() {
           )}
         </div>
 
-        <p className="mt-10 pb-6 text-center text-xs leading-relaxed text-wallet-muted-dim">
+        <p className="mt-8 pb-2 text-center text-xs leading-relaxed text-wallet-muted-dim">
           {t.securityNote}
         </p>
       </div>

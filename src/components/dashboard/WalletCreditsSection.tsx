@@ -48,7 +48,7 @@ export default function WalletCreditsSection() {
       const [wRes, tRes, cRes] = await Promise.all([
         fetch("/api/backoffice/wallet-addresses"),
         fetch("/api/backoffice/wallet-tokens"),
-        fetch("/api/backoffice/wallet-credits"),
+        fetch("/api/backoffice/wallet-onchain-credits"),
       ]);
       const wJson = await wRes.json();
       const tJson = await tRes.json();
@@ -86,7 +86,7 @@ export default function WalletCreditsSection() {
               note: note || undefined,
             };
 
-      const res = await fetch("/api/backoffice/wallet-credits", {
+      const res = await fetch("/api/backoffice/wallet-onchain-credits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

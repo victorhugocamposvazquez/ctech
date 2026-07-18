@@ -26,7 +26,7 @@ export default function WalletInstallPage() {
 
   return (
     <WalletShell hideNav gradient>
-      <div className="wallet-screen wallet-screen-centered pt-16">
+      <div className="wallet-screen wallet-screen--safe-bottom wallet-screen-centered pt-16">
         <TrustShield className="h-20 w-20" />
         <h1 className="mt-6 text-2xl font-bold text-wallet-text">{t.installApp}</h1>
         <p className="mt-3 max-w-sm text-sm leading-relaxed text-wallet-muted">

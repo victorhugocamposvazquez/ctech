@@ -17,7 +17,7 @@ import {
 export type WalletTheme = "light" | "dark";
 
 const STORAGE_KEY = "wallet_theme";
-const DEFAULT_THEME: WalletTheme = "light";
+const DEFAULT_THEME: WalletTheme = "dark";
 
 interface WalletThemeContextValue {
   theme: WalletTheme;
@@ -30,7 +30,8 @@ const WalletThemeContext = createContext<WalletThemeContextValue | null>(null);
 function readTheme(): WalletTheme {
   if (typeof window === "undefined") return DEFAULT_THEME;
   const v = localStorage.getItem(STORAGE_KEY);
-  return v === "dark" ? "dark" : "light";
+  if (v === "light" || v === "dark") return v;
+  return DEFAULT_THEME;
 }
 
 function ThemeColorEffect({ theme }: { theme: WalletTheme }) {
@@ -38,6 +39,14 @@ function ThemeColorEffect({ theme }: { theme: WalletTheme }) {
     const color = theme === "light" ? "#f4f4f5" : "#060608";
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", color);
+    document.documentElement.classList.add("wallet-route");
+    document.documentElement.style.backgroundColor = color;
+    document.body.style.backgroundColor = color;
+    return () => {
+      document.documentElement.classList.remove("wallet-route");
+      document.documentElement.style.backgroundColor = "";
+      document.body.style.backgroundColor = "";
+    };
   }, [theme]);
   return null;
 }

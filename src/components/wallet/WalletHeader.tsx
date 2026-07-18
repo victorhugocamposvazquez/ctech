@@ -20,6 +20,7 @@ export function WalletHeader({
   showWalletSelector = true,
 }: WalletHeaderProps) {
   const pathname = usePathname();
+  const isHome = pathname === "/wallet";
   const sub = isSubpage(pathname);
   const title = routeTitle(pathname);
   const { wallets, activeWalletId, switchWallet, startAddingWallet, lock } =
@@ -28,11 +29,12 @@ export function WalletHeader({
 
   const activeMeta = wallets.find((w) => w.id === activeWalletId);
   const hasMultiple = wallets.length > 1;
+  const displayAddress = activeMeta?.address ?? address;
+  const addressPreview = displayAddress ? shortenAddress(displayAddress, 6) : null;
 
   const handleSelect = (id: string) => {
     setShowPicker(false);
     if (id !== activeWalletId) {
-      lock();
       switchWallet(id);
     }
   };
@@ -45,50 +47,62 @@ export function WalletHeader({
 
   return (
     <>
-      <header className="safe-top flex items-center justify-between px-5 pb-3 pt-4">
-        {sub ? (
-          <Link href="/wallet" className="wallet-icon-btn" aria-label={t.back}>
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-        ) : (
-          <Link href="/wallet/settings" className="wallet-icon-btn" aria-label={t.navSettings}>
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </Link>
-        )}
-
-        {showWalletSelector && !sub ? (
+      <header
+        className={`wallet-app-header ${
+          isHome && showWalletSelector ? "wallet-app-header--home" : ""
+        }`.trim()}
+      >
+        {isHome && showWalletSelector ? (
           hasMultiple ? (
             <button
               type="button"
               onClick={() => setShowPicker(true)}
-              className="wallet-network-pill max-w-[52%] truncate"
+              className="wallet-network-pill wallet-network-pill--home"
             >
-              <span className="h-2 w-2 shrink-0 rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
-              <span className="truncate">
-                {activeMeta?.label ?? shortenAddress(address ?? "", 4)}
+              <span className="h-2.5 w-2.5 shrink-0 self-center rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
+              <span className="wallet-pill-content min-w-0 flex-1">
+                <span className="wallet-pill-label truncate">
+                  {activeMeta?.label ?? t.walletLabel}
+                </span>
+                {addressPreview && (
+                  <span className="wallet-pill-address truncate">{addressPreview}</span>
+                )}
               </span>
-              <svg className="h-3.5 w-3.5 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="h-4 w-4 shrink-0 self-center opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
           ) : (
-            <span className="wallet-network-pill">
-              <span className="h-2 w-2 rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
-              {walletChain.name}
+            <span className="wallet-network-pill wallet-network-pill--home">
+              <span className="h-2.5 w-2.5 shrink-0 self-center rounded-full bg-wallet-accent shadow-[0_0_8px_var(--wallet-accent-glow)]" />
+              <span className="wallet-pill-content min-w-0 flex-1">
+                <span className="wallet-pill-label truncate">{walletChain.name}</span>
+                {addressPreview && (
+                  <span className="wallet-pill-address truncate">{addressPreview}</span>
+                )}
+              </span>
             </span>
           )
         ) : (
-          <span className="text-[17px] font-semibold tracking-tight text-wallet-text">
-            {title}
-          </span>
+          <>
+            {sub ? (
+              <Link href="/wallet" className="wallet-icon-btn" aria-label={t.back}>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+            ) : (
+              <span className="wallet-icon-btn pointer-events-none opacity-0" aria-hidden="true" />
+            )}
+
+            <span className="text-[17px] font-semibold tracking-tight text-wallet-text">
+              {title}
+            </span>
+          </>
         )}
 
-        <div className="flex items-center gap-0.5">
-          {address && <WalletNotificationsBell address={address} />}
+        <div className="wallet-app-header-actions">
+          <WalletNotificationsBell />
           {address && (
             <button
               type="button"

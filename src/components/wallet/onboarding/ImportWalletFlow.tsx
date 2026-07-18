@@ -4,6 +4,7 @@ import { useState } from "react";
 import { mnemonicToAccount, privateKeyToAccount } from "viem/accounts";
 import { useLocalWallet } from "@/contexts/LocalWalletContext";
 import type { SecretPayload } from "@/lib/wallet/keystore";
+import { WalletAuthScreen } from "../WalletAuthScreen";
 import { t } from "@/lib/wallet/i18n";
 
 function normalizeMnemonic(input: string): string {
@@ -77,10 +78,24 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
   };
 
   return (
-    <div className="wallet-screen wallet-gradient-top min-h-dvh pb-28 pt-8">
-      <button type="button" onClick={onBack} className="wallet-back-link">
-        ← {t.back}
-      </button>
+    <WalletAuthScreen
+      centered={false}
+      topBar={
+        <button type="button" onClick={onBack} className="wallet-back-link">
+          ← {t.back}
+        </button>
+      }
+      footer={
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void submit()}
+          className="wallet-btn-primary w-full"
+        >
+          {busy ? t.importing : t.importWallet}
+        </button>
+      }
+    >
       <h1 className="wallet-page-title">{t.importTitle}</h1>
       <p className="wallet-page-subtitle">{t.importHint}</p>
 
@@ -97,7 +112,7 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
         ))}
       </div>
 
-      <div className="mt-6 flex-1 space-y-5">
+      <div className="mt-6 space-y-5">
         {tab === "phrase" ? (
           <div>
             <label className="wallet-label">{t.recoveryPhrase}</label>
@@ -133,10 +148,6 @@ export function ImportWalletFlow({ onBack }: ImportWalletFlowProps) {
       </div>
 
       {error && <p className="text-sm text-wallet-danger">{error}</p>}
-
-      <button type="button" disabled={busy} onClick={() => void submit()} className="wallet-btn-primary mt-6">
-        {busy ? t.importing : t.importWallet}
-      </button>
-    </div>
+    </WalletAuthScreen>
   );
 }

@@ -121,9 +121,11 @@ export default function WalletTokensConsole() {
         <div>
           <h1 className="text-2xl font-bold text-white">Gestión de Wallets</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-400">
-            Tokens simulados con símbolos y direcciones reales en BSC (USDT, USDC, BTC, ETH).
-            Actívalos o desactívalos para controlar qué aparece en la wallet y qué transferencias
-            generan notificaciones in-app.
+            Tokens BEP-20 en BSC y wallets destino. Acredita fondos simulados desde
+            el backoffice; la app suma el saldo y muestra la notificación.{" "}
+            <a href="#wallet-historial" className="text-cyan-300 hover:underline">
+              Ver historial y reversiones ↓
+            </a>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
