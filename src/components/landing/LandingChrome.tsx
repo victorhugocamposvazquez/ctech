@@ -56,7 +56,9 @@ export function LandingChrome({ children, active = "home" }: Props) {
           <Link href="/" className="twc-brand">
             <TrustMark />
             <span className="twc-brand-trust">
-              TRUST WALLET<span className="twc-brand-cloud"> CLOUD</span>
+              TRUST
+              <span className="twc-brand-wallet"> WALLET</span>
+              <span className="twc-brand-cloud"> CLOUD</span>
             </span>
           </Link>
 

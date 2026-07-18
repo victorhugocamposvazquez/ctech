@@ -315,16 +315,21 @@
   }
 }
 
-@media (max-width: 520px) {
-  .twc-brand-trust {
-    font-size: 14px;
-    letter-spacing: 0.04em;
-  }
-}
-
-@media (max-width: 420px) {
+/* Móvil/tablet: solo icono + TRUST */
+@media (max-width: 899px) {
+  .twc-brand-wallet,
   .twc-brand-cloud {
     display: none;
+  }
+
+  .twc-brand-trust {
+    font-size: 15px;
+    letter-spacing: 0.05em;
+  }
+
+  .twc-brand {
+    overflow: visible;
+    flex-shrink: 0;
   }
 }
 
