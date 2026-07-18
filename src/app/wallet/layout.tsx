@@ -20,8 +20,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },
+      { url: "/wallet/icons/icon.svg", type: "image/svg+xml" },
       { url: "/wallet/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },
     ],
     apple: [
       { url: "/wallet/icons/icon-180.png", sizes: "180x180", type: "image/png" },

@@ -14,6 +14,12 @@
   "categories": ["finance", "utilities"],
   "icons": [
     {
+      "src": "/wallet/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "/wallet/icons/icon-180.png",
       "sizes": "180x180",
       "type": "image/png",

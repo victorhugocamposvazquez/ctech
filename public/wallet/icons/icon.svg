@@ -1,11 +1,11 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#FFFFFF"/>
-  <g transform="translate(256 256) scale(9.2) translate(-19.43 -21.6)">
+  <rect width="512" height="512" rx="112" fill="#060608"/>
+  <g transform="translate(256 256) scale(8.4) translate(-19.432 -21.606)">
     <path d="M0.710815 6.67346L19.4317 0.606445V42.6064C6.05944 37.0059 0.710815 26.2727 0.710815 20.207V6.67346Z" fill="#0500FF"/>
-    <path d="M38.1537 6.67346L19.4329 0.606445V42.6064C32.8051 37.0059 38.1537 26.2727 38.1537 20.207V6.67346Z" fill="url(#twcPwaShieldGrad)"/>
+    <path d="M38.1537 6.67346L19.4329 0.606445V42.6064C32.8051 37.0059 38.1537 26.2727 38.1537 20.207V6.67346Z" fill="url(#twcWalletShieldGrad)"/>
   </g>
   <defs>
-    <linearGradient id="twcPwaShieldGrad" x1="33.1809" y1="-2.33467" x2="19.115" y2="42.0564" gradientUnits="userSpaceOnUse">
+    <linearGradient id="twcWalletShieldGrad" x1="33.1809" y1="-2.33467" x2="19.115" y2="42.0564" gradientUnits="userSpaceOnUse">
       <stop offset="0.02" stop-color="#0000FF"/>
       <stop offset="0.08" stop-color="#0094FF"/>
       <stop offset="0.16" stop-color="#48FF91"/>

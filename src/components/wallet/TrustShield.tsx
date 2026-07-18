@@ -1,30 +1,43 @@
+"use client";
+
+import { useId } from "react";
+
 export function TrustShield({ className = "h-16 w-16" }: { className?: string }) {
+  const gradId = `twcWalletShield-${useId().replace(/:/g, "")}`;
+
   return (
     <svg
-      className={`${className} drop-shadow-[0_0_24px_rgba(72,255,145,0.45)]`}
-      viewBox="0 0 48 48"
+      className={className}
+      viewBox="0 0 39 43"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
     >
+      <path
+        d="M0.710815 6.67346L19.4317 0.606445V42.6064C6.05944 37.0059 0.710815 26.2727 0.710815 20.207V6.67346Z"
+        fill="#0500FF"
+      />
+      <path
+        d="M38.1537 6.67346L19.4329 0.606445V42.6064C32.8051 37.0059 38.1537 26.2727 38.1537 20.207V6.67346Z"
+        fill={`url(#${gradId})`}
+      />
       <defs>
-        <linearGradient id="shieldGrad" x1="24" y1="4" x2="24" y2="44" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#5cffaa" />
-          <stop offset="1" stopColor="#48ff91" />
+        <linearGradient
+          id={gradId}
+          x1="33.1809"
+          y1="-2.33467"
+          x2="19.115"
+          y2="42.0564"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0.02" stopColor="#0000FF" />
+          <stop offset="0.08" stopColor="#0094FF" />
+          <stop offset="0.16" stopColor="#48FF91" />
+          <stop offset="0.42" stopColor="#0094FF" />
+          <stop offset="0.68" stopColor="#0038FF" />
+          <stop offset="0.9" stopColor="#0500FF" />
         </linearGradient>
       </defs>
-      <path
-        d="M24 4L8 10v12c0 10.5 6.8 20.3 16 22 9.2-1.7 16-11.5 16-22V10L24 4z"
-        fill="url(#shieldGrad)"
-      />
-      <path
-        d="M24 8.5L12 13v9.5c0 8.2 5.3 15.9 12 17.3 6.7-1.4 12-9.1 12-17.3V13L24 8.5z"
-        fill="#060608"
-        fillOpacity="0.85"
-      />
-      <path
-        d="M24 14l-6 2.5v6.5c0 4.5 2.9 8.7 6 9.5 3.1-.8 6-5 6-9.5v-6.5L24 14z"
-        fill="url(#shieldGrad)"
-      />
     </svg>
   );
 }
