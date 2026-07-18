@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ChainStrip } from "./ChainStrip";
+import { CookieBanner } from "./CookieBanner";
+import { FooterCertBadges } from "./FooterCertBadges";
 import { HeroScene, IconDesktop, IconPhone, TrustMark } from "./HeroScene";
 import { LanguageSelector } from "./LanguageSelector";
 import {
@@ -468,9 +470,17 @@ export function LandingPage() {
           </div>
           <div className="twc-footer-meta">
             <p className="twc-footer-copy">{t.footerRights}</p>
-            <Link href="/wallet" className="twc-footer-link">
-              {t.footerWallet}
-            </Link>
+            <nav className="twc-footer-links" aria-label="Legal">
+              <Link href="/privacy" className="twc-footer-link">
+                {t.footerPrivacy}
+              </Link>
+              <Link href="/cookies" className="twc-footer-link">
+                {t.footerCookies}
+              </Link>
+              <Link href="/wallet" className="twc-footer-link">
+                {t.footerWallet}
+              </Link>
+            </nav>
             <LanguageSelector
               locale={locale}
               onChange={changeLocale}
@@ -478,7 +488,13 @@ export function LandingPage() {
             />
           </div>
         </div>
+        <FooterCertBadges
+          iso27701Alt={t.footerIso27701}
+          iso27001Alt={t.footerIso27001}
+        />
       </footer>
+
+      <CookieBanner copy={t} />
     </div>
   );
 }

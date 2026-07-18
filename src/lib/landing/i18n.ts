@@ -109,6 +109,13 @@ export type LandingCopy = {
   finalCta: string;
   footerRights: string;
   footerWallet: string;
+  footerPrivacy: string;
+  footerCookies: string;
+  footerIso27701: string;
+  footerIso27001: string;
+  cookieBannerBody: string;
+  cookieBannerAccept: string;
+  cookieBannerCookies: string;
   language: string;
 };
 
@@ -222,6 +229,14 @@ const en: LandingCopy = {
   finalCta: "Launch wallet",
   footerRights: "Trust Wallet Cloud. True crypto ownership.",
   footerWallet: "Go to wallet",
+  footerPrivacy: "Privacy Policy",
+  footerCookies: "Cookie Notice",
+  footerIso27701: "A-LIGN ISO 27701 certified",
+  footerIso27001: "A-LIGN ISO 27001 certified",
+  cookieBannerBody:
+    "We use essential cookies and local storage to remember your preferences and keep the site working.",
+  cookieBannerAccept: "Accept",
+  cookieBannerCookies: "Learn more",
   language: "Language",
 };
 
@@ -335,6 +350,14 @@ const es: LandingCopy = {
   finalCta: "Abrir wallet",
   footerRights: "Trust Wallet Cloud. Propiedad real de tu crypto.",
   footerWallet: "Ir a la wallet",
+  footerPrivacy: "Política de privacidad",
+  footerCookies: "Aviso de cookies",
+  footerIso27701: "Certificación A-LIGN ISO 27701",
+  footerIso27001: "Certificación A-LIGN ISO 27001",
+  cookieBannerBody:
+    "Usamos cookies esenciales y almacenamiento local para recordar tus preferencias y mantener el sitio funcionando.",
+  cookieBannerAccept: "Aceptar",
+  cookieBannerCookies: "Más información",
   language: "Idioma",
 };
 
