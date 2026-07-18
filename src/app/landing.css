@@ -277,6 +277,13 @@
   }
 }
 
+@media (max-width: 520px) {
+  .twc-brand-trust {
+    font-size: 14px;
+    letter-spacing: 0.04em;
+  }
+}
+
 @media (max-width: 420px) {
   .twc-brand-cloud {
     display: none;
@@ -311,8 +318,14 @@
   color: #fff;
 }
 
-.twc-btn-primary:hover {
+.twc a.twc-btn-primary {
+  color: #fff;
+}
+
+.twc-btn-primary:hover,
+.twc a.twc-btn-primary:hover {
   background: var(--twc-blue-hover);
+  color: #fff;
 }
 
 .twc-btn-secondary {

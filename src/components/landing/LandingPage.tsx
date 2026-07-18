@@ -90,7 +90,7 @@ export function LandingPage() {
           <a href="#top" className="twc-brand">
             <TrustMark />
             <span className="twc-brand-trust">
-              TRUST<span className="twc-brand-cloud"> CLOUD</span>
+              TRUST WALLET<span className="twc-brand-cloud"> CLOUD</span>
             </span>
           </a>
 
