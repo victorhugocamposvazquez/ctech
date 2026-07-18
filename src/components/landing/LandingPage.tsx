@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ChainStrip } from "./ChainStrip";
 import { LanguageSelector } from "./LanguageSelector";
 import {
   detectLandingLocale,
@@ -25,7 +26,7 @@ function useReveal(locale: LandingLocale) {
           }
         }
       },
-      { threshold: 0.14 }
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
     );
 
     nodes.forEach((node) => observer.observe(node));
@@ -49,7 +50,7 @@ export function LandingPage() {
   }, [locale]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () => setScrolled(window.scrollY > 4);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -62,19 +63,21 @@ export function LandingPage() {
 
   return (
     <div className="twc">
+      <ChainStrip label={t.chainsLabel} />
+
       <header className={`twc-nav ${scrolled ? "is-scrolled" : ""}`}>
         <div className="twc-nav-inner">
           <a href="#top" className="twc-brand">
             <Image
               src="/wallet/icons/icon-192.png"
               alt=""
-              width={36}
-              height={36}
+              width={34}
+              height={34}
               className="twc-brand-mark"
               priority
             />
             <span className="twc-brand-name">
-              Trust Wallet <span>Cloud</span>
+              Trust Wallet <em>Cloud</em>
             </span>
           </a>
 
@@ -96,34 +99,36 @@ export function LandingPage() {
 
       <main id="top">
         <section className="twc-hero" aria-label={t.brand}>
-          <div className="twc-hero-plane" aria-hidden />
           <div className="twc-hero-inner">
             <div className="twc-hero-copy">
-              <span className="twc-hero-brand">
-                Trust Wallet <em>Cloud</em>
-              </span>
               <h1 className="twc-hero-title">{t.heroTitle}</h1>
               <p className="twc-hero-sub">{t.heroSubtitle}</p>
               <div className="twc-hero-ctas">
                 <Link href="/wallet" className="twc-btn twc-btn-primary">
                   {t.ctaPrimary}
                 </Link>
-                <a href="#decentralized" className="twc-btn twc-btn-ghost">
+                <a href="#decentralized" className="twc-btn twc-btn-secondary">
                   {t.ctaSecondary}
                 </a>
               </div>
             </div>
 
             <div className="twc-hero-visual" aria-hidden>
-              <div className="twc-hero-orb" />
-              <Image
-                src="/wallet/icons/icon-512.png"
-                alt=""
-                width={512}
-                height={512}
-                className="twc-hero-shield"
-                priority
-              />
+              <div className="twc-phone-glow" />
+              <div className="twc-phone">
+                <div className="twc-phone-screen">
+                  <Image
+                    src="/wallet/icons/icon-192.png"
+                    alt=""
+                    width={88}
+                    height={88}
+                    className="twc-phone-shield"
+                    priority
+                  />
+                  <span className="twc-phone-label">Trust Wallet Cloud</span>
+                  <span className="twc-phone-balance">$2.480,00</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>

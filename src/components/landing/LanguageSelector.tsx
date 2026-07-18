@@ -44,7 +44,7 @@ export function LanguageSelector({
         className="twc-lang-trigger"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={label}
+        aria-label={`${label}: ${current.native}`}
         onClick={() => setOpen((v) => !v)}
       >
         <svg className="twc-lang-globe" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -55,7 +55,7 @@ export function LanguageSelector({
             strokeWidth="1.6"
           />
         </svg>
-        <span>{current.native}</span>
+        <span className="twc-lang-text">{current.native}</span>
         <svg
           className={`twc-lang-chevron ${open ? "is-open" : ""}`}
           viewBox="0 0 16 16"

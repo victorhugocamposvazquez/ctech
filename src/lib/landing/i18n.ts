@@ -31,6 +31,7 @@ export type LandingCopy = {
   brand: string;
   navWallet: string;
   navOpen: string;
+  chainsLabel: string;
   heroTitle: string;
   heroSubtitle: string;
   ctaPrimary: string;
@@ -105,15 +106,16 @@ const en: LandingCopy = {
   brand: "Trust Wallet Cloud",
   navWallet: "Wallet",
   navOpen: "Open wallet",
-  heroTitle: "The most decentralized version of the wallet",
+  chainsLabel: "Compatible networks",
+  heroTitle: "True crypto ownership.\nThe most decentralized wallet.",
   heroSubtitle:
-    "Self-custody in the cloud. Your keys stay yours — no intermediaries holding your crypto.",
-  ctaPrimary: "Open Trust Wallet Cloud",
+    "Trust Wallet Cloud — self-custody in the cloud. Your keys stay yours. No intermediaries holding your crypto.",
+  ctaPrimary: "Open wallet",
   ctaSecondary: "Learn more",
   statsUsers: "Self-custody",
   statsUsersLabel: "first",
   statsChains: "100+",
-  statsChainsLabel: "blockchains ready",
+  statsChainsLabel: "blockchains",
   statsSelfCustody: "0",
   statsSelfCustodyLabel: "keys on our servers",
   sectionDecentralizedTitle: "Built for true ownership",
@@ -203,15 +205,16 @@ const es: LandingCopy = {
   brand: "Trust Wallet Cloud",
   navWallet: "Wallet",
   navOpen: "Abrir wallet",
-  heroTitle: "La versión más descentralizada de la billetera",
+  chainsLabel: "Redes compatibles",
+  heroTitle: "Propiedad real de tu crypto.\nLa wallet más descentralizada.",
   heroSubtitle:
-    "Autocustodia en la nube. Tus claves son tuyas — sin intermediarios que guarden tu crypto.",
-  ctaPrimary: "Abrir Trust Wallet Cloud",
+    "Trust Wallet Cloud — autocustodia en la nube. Tus claves son tuyas. Sin intermediarios que guarden tu crypto.",
+  ctaPrimary: "Abrir wallet",
   ctaSecondary: "Saber más",
   statsUsers: "Autocustodia",
   statsUsersLabel: "primero",
   statsChains: "100+",
-  statsChainsLabel: "blockchains listas",
+  statsChainsLabel: "blockchains",
   statsSelfCustody: "0",
   statsSelfCustodyLabel: "claves en nuestros servidores",
   sectionDecentralizedTitle: "Diseñada para la propiedad real",
