@@ -502,6 +502,11 @@
   z-index: 100;
 }
 
+.twc-footer-meta .twc-lang-menu {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
 @media (max-width: 719px) {
   .twc-footer-meta .twc-lang-menu {
     left: 0;
