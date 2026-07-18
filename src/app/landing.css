@@ -1098,12 +1098,589 @@
   .twc-chains-track,
   .twc-phone-shield,
   .twc-hero-copy,
-  .twc-hero-visual {
+  .twc-hero-visual,
+  .twc-orbit-ring,
+  .twc-orbit-coin,
+  .twc-hero-float {
     animation: none !important;
   }
 
   .twc-reveal {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ——— Graphic blobs & icons (Trust style) ——— */
+.twc-gblob {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 28%;
+  position: relative;
+}
+
+.twc-gblob svg {
+  width: 55%;
+  height: 55%;
+  display: block;
+}
+
+.twc-gblob--sm {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+
+.twc-gblob--md {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+}
+
+.twc-gblob--lg {
+  width: 96px;
+  height: 96px;
+  border-radius: 28px;
+}
+
+.twc-gblob::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 1px solid currentColor;
+  opacity: 0.12;
+  pointer-events: none;
+}
+
+/* Hero decorations */
+.twc-hero-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.twc-hero-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.55;
+}
+
+.twc-hero-blob--a {
+  width: 280px;
+  height: 280px;
+  top: -80px;
+  right: -40px;
+  background: rgba(5, 0, 255, 0.18);
+}
+
+.twc-hero-blob--b {
+  width: 220px;
+  height: 220px;
+  bottom: 10%;
+  left: -60px;
+  background: rgba(72, 255, 145, 0.2);
+}
+
+.twc-hero-visual {
+  position: relative;
+}
+
+.twc-hero-float {
+  position: absolute;
+  z-index: 2;
+  filter: drop-shadow(0 10px 20px rgba(5, 0, 255, 0.12));
+  animation: twc-float 5.5s ease-in-out infinite;
+}
+
+.twc-hero-float--shield {
+  top: 8%;
+  left: -4%;
+  animation-delay: -1s;
+}
+
+.twc-hero-float--lock {
+  bottom: 14%;
+  right: -2%;
+  animation-delay: -2.5s;
+}
+
+@media (max-width: 480px) {
+  .twc-hero-float--shield {
+    left: 0;
+  }
+
+  .twc-hero-float--lock {
+    right: 0;
+  }
+}
+
+.twc-phone-chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.twc-phone-chips span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+/* Stats with icons */
+.twc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.twc-stat-icon {
+  margin-bottom: 10px;
+}
+
+/* Features visual */
+.twc-feature--visual {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.twc-feature--visual:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(5, 0, 255, 0.08);
+}
+
+.twc-feature--visual .twc-gblob {
+  margin-bottom: 12px;
+}
+
+.twc-feature--row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 16px;
+}
+
+.twc-feature--row h3 {
+  margin: 0;
+}
+
+.twc-feature--row p {
+  margin: 6px 0 0;
+}
+
+.twc-features--stack {
+  display: grid;
+  gap: 12px;
+}
+
+.twc-features--stack .twc-feature {
+  background: #fff;
+}
+
+/* Split layouts */
+.twc-split {
+  display: grid;
+  gap: 36px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .twc-split {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 48px;
+  }
+}
+
+.twc-split-copy .twc-section-head {
+  margin-bottom: 28px;
+}
+
+.twc-privacy .twc-split {
+  padding-top: 64px;
+  padding-bottom: 64px;
+}
+
+@media (min-width: 768px) {
+  .twc-privacy .twc-split {
+    padding-top: 88px;
+    padding-bottom: 88px;
+  }
+}
+
+.twc-privacy-item--visual {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 0;
+}
+
+.twc-privacy-item--visual h3::before {
+  display: none;
+}
+
+.twc-privacy-grid {
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+}
+
+@media (min-width: 900px) {
+  .twc-privacy .twc-privacy-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Showcase arts */
+.twc-showcase-art {
+  position: relative;
+  min-height: 280px;
+  border-radius: 28px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.twc-showcase-art--privacy {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(72, 255, 145, 0.2), transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(5, 0, 255, 0.35), transparent 50%),
+    #12121c;
+}
+
+.twc-showcase-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(28px);
+}
+
+.twc-showcase-blob--a {
+  width: 160px;
+  height: 160px;
+  top: 10%;
+  left: 12%;
+  background: rgba(72, 255, 145, 0.25);
+}
+
+.twc-showcase-blob--b {
+  width: 180px;
+  height: 180px;
+  bottom: 8%;
+  right: 10%;
+  background: rgba(5, 0, 255, 0.35);
+}
+
+.twc-showcase-stack {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.twc-showcase-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.twc-showcase-pills span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+
+.twc-showcase-pills svg {
+  width: 16px;
+  height: 16px;
+  color: var(--twc-green);
+}
+
+.twc-showcase-art--network {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(5, 0, 255, 0.08), transparent 55%),
+    var(--twc-soft);
+  border: 1px solid var(--twc-line);
+}
+
+.twc-showcase-grid {
+  position: absolute;
+  inset: 18%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  opacity: 0.9;
+}
+
+.twc-showcase-node {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  margin: auto;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--twc-line), 0 8px 18px rgba(5, 0, 255, 0.08);
+}
+
+.twc-showcase-node--0 { background: #f3ba2f; }
+.twc-showcase-node--1 { background: #627eea; }
+.twc-showcase-node--2 { background: #f7931a; }
+.twc-showcase-node--3 { background: #14f195; }
+.twc-showcase-node--4 { background: #8247e5; }
+.twc-showcase-node--5 { background: #0052ff; }
+
+.twc-showcase-center {
+  position: relative;
+  z-index: 1;
+}
+
+.twc-network-wrap {
+  background: linear-gradient(180deg, #fff 0%, var(--twc-soft) 100%);
+}
+
+/* Steps visual */
+.twc-steps--visual {
+  gap: 16px;
+}
+
+.twc-step--visual {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--twc-soft);
+  border: 1px solid var(--twc-line);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.twc-step--visual:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(5, 0, 255, 0.07);
+}
+
+.twc-step--visual::before {
+  display: none;
+}
+
+.twc-step-top {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.twc-step-num {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--twc-blue);
+  background: rgba(5, 0, 255, 0.08);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+/* Tools visual */
+.twc-tool--visual {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.twc-tool--visual:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(5, 0, 255, 0.07);
+}
+
+.twc-tool--visual .twc-tool-label {
+  margin-bottom: 4px;
+}
+
+/* Compare visual */
+.twc-compare--visual .twc-compare-col {
+  position: relative;
+  padding-top: 36px;
+}
+
+.twc-compare-badge {
+  position: absolute;
+  top: -14px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1px solid var(--twc-line);
+  box-shadow: 0 8px 18px rgba(10, 10, 15, 0.08);
+}
+
+.twc-compare-badge svg {
+  width: 22px;
+  height: 22px;
+}
+
+.twc-compare-badge--bad {
+  color: #a1a1aa;
+}
+
+.twc-compare-badge--good {
+  color: var(--twc-blue);
+  border-color: rgba(5, 0, 255, 0.2);
+}
+
+.twc-compare--visual li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-left: 0 !important;
+}
+
+.twc-compare--visual li::before {
+  display: none !important;
+}
+
+.twc-compare--visual li svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.twc-compare-col--muted li svg {
+  color: #a1a1aa;
+}
+
+.twc-compare-col--accent li svg {
+  color: #0a9f5c;
+}
+
+/* Final orbit art */
+.twc-final--visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding-top: 72px;
+}
+
+.twc-final-art {
+  width: min(280px, 70vw);
+}
+
+.twc-orbit {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.twc-orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed rgba(5, 0, 255, 0.22);
+  animation: twc-spin 28s linear infinite;
+}
+
+.twc-orbit-ring--a {
+  inset: 8%;
+}
+
+.twc-orbit-ring--b {
+  inset: 22%;
+  border-style: solid;
+  border-color: rgba(72, 255, 145, 0.28);
+  animation-direction: reverse;
+  animation-duration: 22s;
+}
+
+@keyframes twc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.twc-orbit-core {
+  position: relative;
+  z-index: 2;
+  width: 42%;
+  filter: drop-shadow(0 16px 32px rgba(5, 0, 255, 0.2));
+}
+
+.twc-orbit-shield {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.twc-orbit-coin {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  z-index: 3;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  animation: twc-float 4.5s ease-in-out infinite;
+}
+
+.twc-orbit-coin--1 {
+  top: 12%;
+  left: 46%;
+  background: #f3ba2f;
+  animation-delay: 0s;
+}
+
+.twc-orbit-coin--2 {
+  top: 48%;
+  right: 10%;
+  background: #627eea;
+  animation-delay: -1s;
+}
+
+.twc-orbit-coin--3 {
+  bottom: 16%;
+  left: 22%;
+  background: #14f195;
+  animation-delay: -2s;
+}
+
+.twc-orbit-coin--4 {
+  top: 30%;
+  left: 12%;
+  background: #f7931a;
+  animation-delay: -3s;
+}
+
+@media (max-width: 640px) {
+  .twc-showcase-art {
+    min-height: 240px;
+  }
+
+  .twc-privacy .twc-split,
+  .twc-network-wrap .twc-split {
+    gap: 28px;
   }
 }
