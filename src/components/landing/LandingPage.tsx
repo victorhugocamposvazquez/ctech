@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { ChainStrip } from "./ChainStrip";
 import { HeroScene, IconDesktop, IconPhone } from "./HeroScene";
 import { LandingChrome } from "./LandingChrome";
+import { useLandingLocale } from "./LandingLocaleContext";
 import {
   GraphicBlob,
   IconChains,
@@ -26,7 +27,7 @@ import {
   ShowcaseArt,
   ShieldOrbitArt,
 } from "./LandingGraphics";
-import type { LandingCopy, LandingLocale } from "@/lib/landing/i18n";
+import type { LandingLocale } from "@/lib/landing/i18n";
 
 function useReveal(locale: LandingLocale) {
   useEffect(() => {
@@ -53,18 +54,13 @@ function useReveal(locale: LandingLocale) {
 export function LandingPage() {
   return (
     <LandingChrome active="home">
-      {({ locale, t }) => <LandingContent locale={locale} t={t} />}
+      <LandingContent />
     </LandingChrome>
   );
 }
 
-function LandingContent({
-  locale,
-  t,
-}: {
-  locale: LandingLocale;
-  t: LandingCopy;
-}) {
+function LandingContent() {
+  const { locale, t } = useLandingLocale();
   useReveal(locale);
 
   return (

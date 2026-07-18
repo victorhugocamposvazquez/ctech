@@ -12,6 +12,7 @@ import {
   ShieldOrbitArt,
 } from "./LandingGraphics";
 import { LandingChrome } from "./LandingChrome";
+import { useLandingLocale } from "./LandingLocaleContext";
 
 function useReveal(locale: LandingLocale) {
   useEffect(() => {
@@ -38,17 +39,18 @@ function useReveal(locale: LandingLocale) {
 export function AboutPage() {
   return (
     <LandingChrome active="about">
-      {({ locale }) => <AboutContent locale={locale} />}
+      <AboutContent />
     </LandingChrome>
   );
 }
 
-function AboutContent({ locale }: { locale: LandingLocale }) {
+function AboutContent() {
+  const { locale } = useLandingLocale();
   const a = getAboutCopy(locale);
   useReveal(locale);
 
   return (
-    <main className="twc-about">
+    <main className="twc-about" key={locale}>
       <section className="twc-about-hero">
         <div className="twc-about-hero-inner">
           <div className="twc-about-hero-copy">
@@ -99,7 +101,7 @@ function AboutContent({ locale }: { locale: LandingLocale }) {
           </div>
           <div className="twc-about-milestones">
             {a.milestones.map((item, index) => (
-              <article key={item.title} className="twc-about-milestone">
+              <article key={`${locale}-${item.title}`} className="twc-about-milestone">
                 <span className="twc-about-milestone-num">
                   {String(index + 1).padStart(2, "0")}
                 </span>
@@ -117,7 +119,7 @@ function AboutContent({ locale }: { locale: LandingLocale }) {
         </div>
         <div className="twc-about-values">
           {a.values.map((value) => (
-            <article key={value.title} className="twc-about-value">
+            <article key={`${locale}-${value.title}`} className="twc-about-value">
               <h3>{value.title}</h3>
               <p>{value.body}</p>
             </article>

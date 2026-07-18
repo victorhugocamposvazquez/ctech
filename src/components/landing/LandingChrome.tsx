@@ -7,32 +7,18 @@ import { FooterCertBadges } from "./FooterCertBadges";
 import { TrustMark } from "./HeroScene";
 import { LanguageSelector } from "./LanguageSelector";
 import {
-  detectLandingLocale,
-  LANDING_COPY,
-  persistLandingLocale,
-  type LandingLocale,
-} from "@/lib/landing/i18n";
+  LandingLocaleProvider,
+  useLandingLocale,
+} from "./LandingLocaleContext";
 
 type Props = {
   active?: "home" | "about";
-  children: (ctx: {
-    locale: LandingLocale;
-    t: (typeof LANDING_COPY)[LandingLocale];
-  }) => ReactNode;
+  children: ReactNode;
 };
 
-export function LandingChrome({ children, active = "home" }: Props) {
-  const [locale, setLocale] = useState<LandingLocale>("en");
+function LandingChromeInner({ children, active = "home" }: Props) {
+  const { locale, t, setLocale } = useLandingLocale();
   const [scrolled, setScrolled] = useState(false);
-  const t = LANDING_COPY[locale];
-
-  useEffect(() => {
-    setLocale(detectLandingLocale());
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.lang = locale;
-  }, [locale]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -40,11 +26,6 @@ export function LandingChrome({ children, active = "home" }: Props) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const changeLocale = (next: LandingLocale) => {
-    setLocale(next);
-    persistLandingLocale(next);
-  };
 
   const featuresHref = active === "home" ? "#decentralized" : "/#decentralized";
   const securityHref = active === "home" ? "#security" : "/#security";
@@ -80,7 +61,7 @@ export function LandingChrome({ children, active = "home" }: Props) {
             </a>
             <LanguageSelector
               locale={locale}
-              onChange={changeLocale}
+              onChange={setLocale}
               label={t.language}
             />
             <Link href="/wallet" className="twc-btn twc-btn-primary twc-btn-sm">
@@ -90,7 +71,7 @@ export function LandingChrome({ children, active = "home" }: Props) {
         </div>
       </header>
 
-      {children({ locale, t })}
+      {children}
 
       <footer className="twc-footer">
         <div className="twc-footer-inner">
@@ -116,7 +97,7 @@ export function LandingChrome({ children, active = "home" }: Props) {
             </nav>
             <LanguageSelector
               locale={locale}
-              onChange={changeLocale}
+              onChange={setLocale}
               label={t.language}
             />
           </div>
@@ -129,5 +110,13 @@ export function LandingChrome({ children, active = "home" }: Props) {
 
       <CookieBanner copy={t} />
     </div>
+  );
+}
+
+export function LandingChrome({ children, active = "home" }: Props) {
+  return (
+    <LandingLocaleProvider>
+      <LandingChromeInner active={active}>{children}</LandingChromeInner>
+    </LandingLocaleProvider>
   );
 }

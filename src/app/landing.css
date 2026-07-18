@@ -172,6 +172,7 @@
   background: #fff;
   border-bottom: 1px solid transparent;
   transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: visible;
 }
 
 .twc-nav.is-scrolled {
@@ -498,7 +499,7 @@
   border-radius: 16px;
   box-shadow: 0 16px 40px rgba(10, 10, 15, 0.12);
   animation: twc-pop 0.16s ease-out;
-  z-index: 60;
+  z-index: 100;
 }
 
 @keyframes twc-pop {
