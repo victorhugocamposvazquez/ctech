@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { CookieBanner } from "./CookieBanner";
@@ -65,15 +64,18 @@ export function LandingChrome({ children, active = "home" }: Props) {
             <Link href="/wallet">{t.navWallet}</Link>
             <a href={featuresHref}>{t.navFeatures}</a>
             <a href={securityHref}>{t.navSecurity}</a>
-            <Link
+            <a
               href="/about"
               className={active === "about" ? "is-active" : undefined}
             >
               {t.navAbout}
-            </Link>
+            </a>
           </nav>
 
           <div className="twc-nav-actions">
+            <a href="/about" className="twc-nav-about-mobile">
+              {t.navAbout}
+            </a>
             <LanguageSelector
               locale={locale}
               onChange={changeLocale}
@@ -91,12 +93,7 @@ export function LandingChrome({ children, active = "home" }: Props) {
       <footer className="twc-footer">
         <div className="twc-footer-inner">
           <div className="twc-footer-brand">
-            <Image
-              src="/wallet/icons/icon-192.png"
-              alt=""
-              width={28}
-              height={28}
-            />
+            <TrustMark />
             <span>Trust Wallet Cloud</span>
           </div>
           <div className="twc-footer-meta">

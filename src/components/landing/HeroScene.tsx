@@ -1,3 +1,7 @@
+"use client";
+
+import { useId } from "react";
+
 /** Composición hero estilo Trust Wallet: móviles + props neón. */
 
 export function HeroScene() {
@@ -184,23 +188,43 @@ export function IconDesktop() {
 }
 
 export function TrustMark() {
+  const gradId = `twcLogoGrad-${useId().replace(/:/g, "")}`;
+
   return (
-    <svg className="twc-trust-mark" viewBox="0 0 32 32" fill="none" aria-hidden>
+    <svg
+      className="twc-trust-mark"
+      width="39"
+      height="43"
+      viewBox="0 0 39 43"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M0.710815 6.67346L19.4317 0.606445V42.6064C6.05944 37.0059 0.710815 26.2727 0.710815 20.207V6.67346Z"
+        fill="#0500FF"
+      />
+      <path
+        d="M38.1537 6.67346L19.4329 0.606445V42.6064C32.8051 37.0059 38.1537 26.2727 38.1537 20.207V6.67346Z"
+        fill={`url(#${gradId})`}
+      />
       <defs>
-        <linearGradient id="twcLogoGrad" x1="6" y1="4" x2="26" y2="28">
-          <stop stopColor="#0500ff" />
-          <stop offset="1" stopColor="#48ff91" />
+        <linearGradient
+          id={gradId}
+          x1="33.1809"
+          y1="-2.33467"
+          x2="19.115"
+          y2="42.0564"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0.02" stopColor="#0000FF" />
+          <stop offset="0.08" stopColor="#0094FF" />
+          <stop offset="0.16" stopColor="#48FF91" />
+          <stop offset="0.42" stopColor="#0094FF" />
+          <stop offset="0.68" stopColor="#0038FF" />
+          <stop offset="0.9" stopColor="#0500FF" />
         </linearGradient>
       </defs>
-      <path
-        d="M16 3L5 8v8c0 8 5.5 13.5 11 15 5.5-1.5 11-7 11-15V8L16 3z"
-        fill="url(#twcLogoGrad)"
-      />
-      <path
-        d="M16 8L10 11v5c0 4.5 2.8 7.8 6 8.8 3.2-1 6-4.3 6-8.8v-5L16 8z"
-        fill="#fff"
-        fillOpacity="0.92"
-      />
     </svg>
   );
 }

@@ -23,8 +23,8 @@ export const metadata: Metadata = {
     type: "website",
   },
   icons: {
-    icon: "/wallet/icons/icon-192.png",
-    apple: "/wallet/icons/icon-180.png",
+    icon: [{ url: "/brand/trust-shield.svg", type: "image/svg+xml" }],
+    apple: "/brand/trust-shield.svg",
   },
 };
 
