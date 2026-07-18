@@ -120,7 +120,7 @@ export function LandingPage() {
               <h1 className="twc-hero-title">{t.heroTitle}</h1>
               <p className="twc-hero-sub">{t.heroSubtitle}</p>
               <div className="twc-hero-ctas">
-                <Link href="/wallet" className="twc-btn twc-btn-outline">
+                <Link href="/wallet" className="twc-btn twc-btn-primary">
                   <IconPhone />
                   {t.ctaPrimary}
                 </Link>
@@ -141,23 +141,14 @@ export function LandingPage() {
 
         <div className="twc-stats twc-reveal">
           <div className="twc-stat">
-            <GraphicBlob tone="blue" size="sm" className="twc-stat-icon">
-              <IconShield />
-            </GraphicBlob>
             <span className="twc-stat-value">{t.statsUsers}</span>
             <span className="twc-stat-label">{t.statsUsersLabel}</span>
           </div>
           <div className="twc-stat">
-            <GraphicBlob tone="soft" size="sm" className="twc-stat-icon">
-              <IconChains />
-            </GraphicBlob>
             <span className="twc-stat-value">{t.statsChains}</span>
             <span className="twc-stat-label">{t.statsChainsLabel}</span>
           </div>
           <div className="twc-stat">
-            <GraphicBlob tone="green" size="sm" className="twc-stat-icon">
-              <IconKeys />
-            </GraphicBlob>
             <span className="twc-stat-value">{t.statsSelfCustody}</span>
             <span className="twc-stat-label">{t.statsSelfCustodyLabel}</span>
           </div>
@@ -411,6 +402,42 @@ export function LandingPage() {
               </div>
             </div>
             <ShowcaseArt variant="network" />
+          </div>
+        </section>
+
+        <section className="twc-community twc-section twc-reveal">
+          <div className="twc-section-head twc-section-head--center">
+            <h2 className="twc-section-title twc-title-pre">{t.communityTitle}</h2>
+            <p className="twc-section-body">{t.communityBody}</p>
+          </div>
+          <div className="twc-quotes">
+            <figure className="twc-quote">
+              <blockquote>{t.quote1Text}</blockquote>
+              <figcaption>
+                <span className="twc-quote-avatar twc-quote-avatar--blue" aria-hidden>
+                  {t.quote1Name.charAt(0)}
+                </span>
+                <b>{t.quote1Name}</b>
+              </figcaption>
+            </figure>
+            <figure className="twc-quote twc-quote--accent">
+              <blockquote>{t.quote2Text}</blockquote>
+              <figcaption>
+                <span className="twc-quote-avatar twc-quote-avatar--green" aria-hidden>
+                  {t.quote2Name.charAt(0)}
+                </span>
+                <b>{t.quote2Name}</b>
+              </figcaption>
+            </figure>
+            <figure className="twc-quote">
+              <blockquote>{t.quote3Text}</blockquote>
+              <figcaption>
+                <span className="twc-quote-avatar twc-quote-avatar--ink" aria-hidden>
+                  {t.quote3Name.charAt(0)}
+                </span>
+                <b>{t.quote3Name}</b>
+              </figcaption>
+            </figure>
           </div>
         </section>
 

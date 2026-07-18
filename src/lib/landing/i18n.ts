@@ -96,6 +96,14 @@ export type LandingCopy = {
   networkOpenBody: string;
   networkPwaTitle: string;
   networkPwaBody: string;
+  communityTitle: string;
+  communityBody: string;
+  quote1Name: string;
+  quote1Text: string;
+  quote2Name: string;
+  quote2Text: string;
+  quote3Name: string;
+  quote3Text: string;
   finalTitle: string;
   finalBody: string;
   finalCta: string;
@@ -196,6 +204,18 @@ const en: LandingCopy = {
   networkPwaTitle: "No app-store gatekeeper",
   networkPwaBody:
     "Install from the web to your home screen. Access Web3 without waiting for a store review to hold your keys.",
+  communityTitle: "Enjoy a community-powered\nWeb3 experience",
+  communityBody:
+    "Join a vibrant, diverse community learning the power of self-custody, crypto and Web3.",
+  quote1Name: "Juan",
+  quote1Text:
+    "The easiest way to understand DeFi is hands-on. Opening my wallet as a PWA meant I could try things with small amounts from any device.",
+  quote2Name: "Jen",
+  quote2Text:
+    "Guard your private keys with your life. #DontShareThem 🔑",
+  quote3Name: "Harry",
+  quote3Text:
+    "As a beginner, self-custody felt intimidating. Having the same wallet on my phone and browser — without giving anyone my keys — changed that.",
   finalTitle: "Own your crypto. Fully.",
   finalBody:
     "Open the most decentralized Trust Wallet experience — ready in your browser or home screen.",
@@ -297,6 +317,18 @@ const es: LandingCopy = {
   networkPwaTitle: "Sin portero de las tiendas",
   networkPwaBody:
     "Instálala desde la web a tu pantalla de inicio. Accede a Web3 sin esperar a que una store valide tu autocustodia.",
+  communityTitle: "Disfruta de una experiencia Web3\nimpulsada por la comunidad",
+  communityBody:
+    "Únete a una comunidad dinámica y diversa para descubrir el poder de la autocustodia, las criptomonedas y la Web3.",
+  quote1Name: "Juan",
+  quote1Text:
+    "La forma más fácil de entender DeFi es ponerse manos a la obra. Abrir mi wallet como PWA me permitió probar con pequeños importes desde cualquier dispositivo.",
+  quote2Name: "Jen",
+  quote2Text:
+    "Protege tus claves privadas como si tu vida dependiera de ello. #NoLasCompartas 🔑",
+  quote3Name: "Harry",
+  quote3Text:
+    "Como principiante, la autocustodia imponía. Tener la misma wallet en el móvil y el navegador — sin dar mis claves a nadie — lo cambió todo.",
   finalTitle: "Tu crypto. De verdad tuya.",
   finalBody:
     "Abre la experiencia Trust Wallet más descentralizada — en el navegador o en la pantalla de inicio.",
