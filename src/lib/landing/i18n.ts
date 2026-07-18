@@ -32,6 +32,7 @@ export type LandingCopy = {
   navWallet: string;
   navFeatures: string;
   navSecurity: string;
+  navAbout: string;
   navOpen: string;
   chainsLabel: string;
   heroTitle: string;
@@ -124,6 +125,7 @@ const en: LandingCopy = {
   navWallet: "Wallet",
   navFeatures: "Features",
   navSecurity: "Security",
+  navAbout: "About",
   navOpen: "Open",
   chainsLabel: "Compatible networks",
   heroTitle: "True crypto ownership.\nPowerful Web3 — decentralized.",
@@ -229,7 +231,7 @@ const en: LandingCopy = {
   finalCta: "Launch wallet",
   footerRights: "Trust Wallet Cloud. True crypto ownership.",
   footerWallet: "Go to wallet",
-  footerPrivacy: "Privacy Policy",
+  footerPrivacy: "Privacy Notice",
   footerCookies: "Cookie Notice",
   footerIso27701: "A-LIGN ISO 27701 certified",
   footerIso27001: "A-LIGN ISO 27001 certified",
@@ -245,6 +247,7 @@ const es: LandingCopy = {
   navWallet: "Billetera",
   navFeatures: "Funciones",
   navSecurity: "Seguridad",
+  navAbout: "Acerca de",
   navOpen: "Abrir",
   chainsLabel: "Redes compatibles",
   heroTitle: "Titularidad real de criptomonedas.\nWeb3 descentralizada.",
