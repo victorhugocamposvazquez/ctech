@@ -85,15 +85,12 @@ export function LandingPage() {
 
   return (
     <div className="twc">
-      <ChainStrip label={t.chainsLabel} />
-
       <header className={`twc-nav ${scrolled ? "is-scrolled" : ""}`}>
         <div className="twc-nav-inner">
           <a href="#top" className="twc-brand">
             <TrustMark />
-            <span className="twc-brand-lockup">
-              <span className="twc-brand-trust">TRUST</span>
-              <span className="twc-brand-cloud">Wallet Cloud</span>
+            <span className="twc-brand-trust">
+              TRUST<span className="twc-brand-cloud"> CLOUD</span>
             </span>
           </a>
 
@@ -138,6 +135,8 @@ export function LandingPage() {
               <HeroScene />
             </div>
           </div>
+
+          <ChainStrip label={t.chainsLabel} />
         </section>
 
         <div className="twc-stats twc-reveal">

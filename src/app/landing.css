@@ -39,29 +39,29 @@
   max-width: 100%;
 }
 
-/* ——— Chains strip (arriba del todo) ——— */
-.twc-chains {
-  background: var(--twc-soft);
-  border-bottom: 1px solid var(--twc-line);
+/* ——— Chains strip (final del hero) ——— */
+.twc-chains--hero {
+  margin-top: 8px;
+  border-top: 1px solid var(--twc-line);
+  background: #fff;
   overflow: hidden;
 }
 
 .twc-chains-inner {
   max-width: var(--twc-max);
   margin: 0 auto;
-  padding: 10px var(--twc-gutter);
+  padding: 18px var(--twc-gutter) 28px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 52px;
+  gap: 16px;
 }
 
 .twc-chains-label {
   margin: 0;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--twc-muted);
   white-space: nowrap;
@@ -71,7 +71,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
 }
 
 .twc-chains-track {
@@ -80,7 +80,7 @@
   padding: 0;
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 20px;
   width: max-content;
   animation: twc-marquee 36s linear infinite;
 }
@@ -103,6 +103,10 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  padding: 6px 10px 6px 6px;
+  border-radius: 999px;
+  background: var(--twc-soft);
+  border: 1px solid var(--twc-line);
 }
 
 .twc-chain-icon {
@@ -111,7 +115,6 @@
   flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .twc-chain-icon svg {
@@ -121,148 +124,162 @@
 }
 
 .twc-chain-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 650;
   color: var(--twc-body);
   white-space: nowrap;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .twc-chains-inner {
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
-    padding: 10px 0 10px;
+    gap: 10px;
+    padding: 16px 0 24px;
   }
 
   .twc-chains-label {
     padding: 0 var(--twc-gutter);
+    text-align: center;
   }
 
   .twc-chain-name {
     display: none;
   }
 
+  .twc-chain {
+    padding: 4px;
+    background: transparent;
+    border: none;
+  }
+
   .twc-chains-track {
-    gap: 14px;
+    gap: 12px;
     padding-inline: var(--twc-gutter);
   }
 
   .twc-chain-icon {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
   }
 }
 
-/* ——— Nav ——— */
+/* ——— Nav (estilo captura Trust) ——— */
 .twc-nav {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: saturate(1.2) blur(14px);
+  background: #fff;
   border-bottom: 1px solid transparent;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .twc-nav.is-scrolled {
   border-bottom-color: var(--twc-line);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
 }
 
 .twc-nav-inner {
-  max-width: var(--twc-max);
+  max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--twc-gutter);
-  height: 64px;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
 .twc-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-}
-
-.twc-trust-mark {
-  width: 32px;
-  height: 32px;
   flex-shrink: 0;
 }
 
-.twc-brand-lockup {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.05;
-  min-width: 0;
+.twc-trust-mark {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
 }
 
 .twc-brand-trust {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--twc-blue);
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .twc-brand-cloud {
-  font-size: 11px;
-  font-weight: 650;
-  color: var(--twc-muted);
-  letter-spacing: -0.01em;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--twc-blue);
+  opacity: 0.55;
 }
 
 .twc-nav-links {
   display: none;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
 }
 
 .twc-nav-links a {
   font-size: 14px;
-  font-weight: 550;
-  color: #2a2a33;
-  padding: 8px 12px;
-  border-radius: 999px;
-  transition: color 0.15s, background 0.15s;
+  font-weight: 500;
+  color: #1a1a1f;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: color 0.15s;
 }
 
 .twc-nav-links a:hover {
   color: var(--twc-blue);
-  background: rgba(5, 0, 255, 0.05);
 }
 
 .twc-nav-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
-  margin-left: auto;
+}
+
+.twc-nav .twc-btn-primary.twc-btn-sm {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 999px;
+  min-width: 96px;
 }
 
 @media (min-width: 900px) {
   .twc-nav-inner {
-    height: 72px;
+    height: 76px;
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: minmax(140px, 1fr) auto minmax(140px, 1fr);
     align-items: center;
-    gap: 24px;
   }
 
   .twc-nav-links {
     display: flex;
-    justify-content: center;
   }
 
   .twc-nav-actions {
-    margin-left: 0;
+    justify-content: flex-end;
   }
 
   .twc-brand-trust {
-    font-size: 16px;
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 420px) {
+  .twc-brand-cloud {
+    display: none;
   }
 }
 

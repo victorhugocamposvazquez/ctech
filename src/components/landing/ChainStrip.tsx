@@ -4,7 +4,7 @@ export function ChainStrip({ label }: { label: string }) {
   const loop = [...COMPATIBLE_CHAINS, ...COMPATIBLE_CHAINS];
 
   return (
-    <div className="twc-chains" role="region" aria-label={label}>
+    <div className="twc-chains twc-chains--hero" role="region" aria-label={label}>
       <div className="twc-chains-inner">
         <p className="twc-chains-label">{label}</p>
         <div className="twc-chains-viewport">
