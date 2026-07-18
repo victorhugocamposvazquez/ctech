@@ -55,7 +55,7 @@ export function LanguageSelector({
             strokeWidth="1.6"
           />
         </svg>
-        <span className="twc-lang-text">{current.native}</span>
+        <span className="twc-lang-text">{label}</span>
         <svg
           className={`twc-lang-chevron ${open ? "is-open" : ""}`}
           viewBox="0 0 16 16"

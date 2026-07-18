@@ -30,6 +30,8 @@ export const LANDING_LOCALES: {
 export type LandingCopy = {
   brand: string;
   navWallet: string;
+  navFeatures: string;
+  navSecurity: string;
   navOpen: string;
   chainsLabel: string;
   heroTitle: string;
@@ -105,13 +107,15 @@ export type LandingCopy = {
 const en: LandingCopy = {
   brand: "Trust Wallet Cloud",
   navWallet: "Wallet",
-  navOpen: "Open wallet",
+  navFeatures: "Features",
+  navSecurity: "Security",
+  navOpen: "Open",
   chainsLabel: "Compatible networks",
-  heroTitle: "True crypto ownership.\nThe most decentralized wallet.",
+  heroTitle: "True crypto ownership.\nPowerful Web3 — decentralized.",
   heroSubtitle:
-    "Trust Wallet Cloud — self-custody in the cloud. Your keys stay yours. No intermediaries holding your crypto.",
-  ctaPrimary: "Open wallet",
-  ctaSecondary: "Learn more",
+    "Unlock your assets and explore Web3 with Trust Wallet Cloud — the most decentralized version of the wallet. Your keys stay yours.",
+  ctaPrimary: "Open mobile wallet",
+  ctaSecondary: "Open in browser",
   statsUsers: "Self-custody",
   statsUsersLabel: "first",
   statsChains: "100+",
@@ -203,14 +207,16 @@ const en: LandingCopy = {
 
 const es: LandingCopy = {
   brand: "Trust Wallet Cloud",
-  navWallet: "Wallet",
-  navOpen: "Abrir wallet",
+  navWallet: "Billetera",
+  navFeatures: "Funciones",
+  navSecurity: "Seguridad",
+  navOpen: "Abrir",
   chainsLabel: "Redes compatibles",
-  heroTitle: "Propiedad real de tu crypto.\nLa wallet más descentralizada.",
+  heroTitle: "Titularidad real de criptomonedas.\nWeb3 descentralizada.",
   heroSubtitle:
-    "Trust Wallet Cloud — autocustodia en la nube. Tus claves son tuyas. Sin intermediarios que guarden tu crypto.",
-  ctaPrimary: "Abrir wallet",
-  ctaSecondary: "Saber más",
+    "Desbloquea el poder de tus activos y explora Web3 con Trust Wallet Cloud — la versión más descentralizada de la billetera. Tus claves son tuyas.",
+  ctaPrimary: "Abrir aplicación móvil",
+  ctaSecondary: "Abrir en el navegador",
   statsUsers: "Autocustodia",
   statsUsersLabel: "primero",
   statsChains: "100+",

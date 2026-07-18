@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ChainStrip } from "./ChainStrip";
+import { HeroScene, IconDesktop, IconPhone, TrustMark } from "./HeroScene";
 import { LanguageSelector } from "./LanguageSelector";
 import {
   GraphicBlob,
@@ -89,23 +90,20 @@ export function LandingPage() {
       <header className={`twc-nav ${scrolled ? "is-scrolled" : ""}`}>
         <div className="twc-nav-inner">
           <a href="#top" className="twc-brand">
-            <Image
-              src="/wallet/icons/icon-192.png"
-              alt=""
-              width={34}
-              height={34}
-              className="twc-brand-mark"
-              priority
-            />
-            <span className="twc-brand-name">
-              Trust Wallet <em>Cloud</em>
+            <TrustMark />
+            <span className="twc-brand-lockup">
+              <span className="twc-brand-trust">TRUST</span>
+              <span className="twc-brand-cloud">Wallet Cloud</span>
             </span>
           </a>
 
+          <nav className="twc-nav-links" aria-label="Primary">
+            <Link href="/wallet">{t.navWallet}</Link>
+            <a href="#decentralized">{t.navFeatures}</a>
+            <a href="#security">{t.navSecurity}</a>
+          </nav>
+
           <div className="twc-nav-actions">
-            <Link href="/wallet" className="twc-nav-link">
-              {t.navWallet}
-            </Link>
             <LanguageSelector
               locale={locale}
               onChange={changeLocale}
@@ -120,55 +118,24 @@ export function LandingPage() {
 
       <main id="top">
         <section className="twc-hero" aria-label={t.brand}>
-          <div className="twc-hero-deco" aria-hidden>
-            <span className="twc-hero-blob twc-hero-blob--a" />
-            <span className="twc-hero-blob twc-hero-blob--b" />
-          </div>
           <div className="twc-hero-inner">
             <div className="twc-hero-copy">
               <h1 className="twc-hero-title">{t.heroTitle}</h1>
               <p className="twc-hero-sub">{t.heroSubtitle}</p>
               <div className="twc-hero-ctas">
-                <Link href="/wallet" className="twc-btn twc-btn-primary">
+                <Link href="/wallet" className="twc-btn twc-btn-outline">
+                  <IconPhone />
                   {t.ctaPrimary}
                 </Link>
-                <a href="#decentralized" className="twc-btn twc-btn-secondary">
+                <Link href="/wallet" className="twc-btn twc-btn-outline">
+                  <IconDesktop />
                   {t.ctaSecondary}
-                </a>
+                </Link>
               </div>
             </div>
 
-            <div className="twc-hero-visual" aria-hidden>
-              <div className="twc-phone-glow" />
-              <div className="twc-phone">
-                <div className="twc-phone-screen">
-                  <Image
-                    src="/wallet/icons/icon-192.png"
-                    alt=""
-                    width={88}
-                    height={88}
-                    className="twc-phone-shield"
-                    priority
-                  />
-                  <span className="twc-phone-label">Trust Wallet Cloud</span>
-                  <span className="twc-phone-balance">$2.480,00</span>
-                  <div className="twc-phone-chips">
-                    <span>BNB</span>
-                    <span>USDT</span>
-                    <span>ETH</span>
-                  </div>
-                </div>
-              </div>
-              <div className="twc-hero-float twc-hero-float--shield">
-                <GraphicBlob tone="green" size="sm">
-                  <IconShield />
-                </GraphicBlob>
-              </div>
-              <div className="twc-hero-float twc-hero-float--lock">
-                <GraphicBlob tone="blue" size="sm">
-                  <IconLock />
-                </GraphicBlob>
-              </div>
+            <div className="twc-hero-visual">
+              <HeroScene />
             </div>
           </div>
         </section>
@@ -227,7 +194,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="twc-privacy">
+        <section id="security" className="twc-privacy">
           <div className="twc-section twc-split twc-reveal">
             <div className="twc-split-copy">
               <div className="twc-section-head">
@@ -407,7 +374,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="twc-network-wrap">
+        <section id="networks" className="twc-network-wrap">
           <div className="twc-section twc-split twc-reveal">
             <div className="twc-split-copy">
               <div className="twc-section-head">
